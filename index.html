@@ -3,261 +3,432 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Matte IA — Painel de E-mails</title>
+<title>Pedro Aranha Gestão de Tráfego — Painel de E-mails</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root{--bg:#0d0f0e;--surface:#151817;--surface2:#1c1f1d;--border:#2a2e2c;--accent:#c8f57a;--accent-dim:#8ab34d;--text:#e8ede9;--muted:#6b756d;--danger:#f5734a;--info:#7ab8f5;--gold:#f5c842}
-  *{box-sizing:border-box;margin:0;padding:0}
-  body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;font-size:14px;min-height:100vh;display:flex;flex-direction:column}
-  header{padding:16px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface)}
-  .logo{font-family:'DM Serif Display',serif;font-size:21px;letter-spacing:-.5px;color:var(--accent)}
-  .logo span{color:var(--muted);font-style:italic}
-  .hm{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--muted);font-family:'DM Mono',monospace}
-  .dot{width:7px;height:7px;border-radius:50%;background:var(--accent);box-shadow:0 0 8px var(--accent);animation:pulse 2s infinite}
-  @keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
-  .layout{display:grid;grid-template-columns:290px 1fr 350px;flex:1;height:calc(100vh - 57px);overflow:hidden}
-  .sidebar{border-right:1px solid var(--border);overflow-y:auto;background:var(--surface)}
-  .sh{padding:14px 18px 10px;border-bottom:1px solid var(--border);display:flex;justify-content:space-between;align-items:center}
-  .sh h2{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600}
-  .badge{background:var(--accent);color:#0d0f0e;font-size:10px;font-weight:700;border-radius:20px;padding:2px 8px}
-  .ci{padding:13px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s;position:relative}
-  .ci:hover{background:var(--surface2)}.ci.active{background:var(--surface2);border-left:2px solid var(--accent)}
-  .cn{font-weight:500;font-size:13px;margin-bottom:3px}
-  .ce{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-  .ct{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
-  .tag{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:500}
-  .tag.sim{background:#1a2e0f;color:#8adb4a;border:1px solid #2a4d15}
-  .tag.pot{background:#1a2410;color:var(--gold);border:1px solid #3d3210}
-  .tag.nao{background:#2a1510;color:var(--danger);border:1px solid #4a2010}
-  .tag.fat{background:#101820;color:var(--info);border:1px solid #1a2d40}
-  .ck{position:absolute;right:13px;top:50%;transform:translateY(-50%);color:var(--accent);display:none;font-size:15px}
-  .ci.approved .ck{display:block}
-  .ep{display:flex;flex-direction:column;overflow:hidden}
-  .empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;gap:10px;color:var(--muted);text-align:center;padding:40px}
-  .empty-icon{font-size:44px;opacity:.15}
-  .etop{padding:18px 26px 14px;border-bottom:1px solid var(--border);background:var(--surface)}
-  .ri{display:flex;align-items:center;gap:12px;margin-bottom:12px}
-  .av{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--accent-dim),#3a7a1a);display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:17px;color:#0d0f0e;flex-shrink:0}
-  .rn{font-weight:600;font-size:15px}.re{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace}
-  .sr{display:flex;align-items:center;gap:10px}
-  .sl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
-  .si{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 11px;color:var(--text);font-family:'Sora',sans-serif;font-size:13px;outline:none;transition:border-color .15s}
-  .si:focus{border-color:var(--accent)}
-  .ebody{flex:1;overflow-y:auto;padding:22px 26px}
-  .eta{width:100%;height:100%;min-height:280px;background:transparent;border:none;outline:none;resize:none;color:var(--text);font-family:'Sora',sans-serif;font-size:14px;line-height:1.8}
-  .efooter{padding:13px 26px;border-top:1px solid var(--border);display:flex;gap:9px;align-items:center;background:var(--surface)}
-  .btn{padding:8px 16px;border-radius:7px;border:none;cursor:pointer;font-family:'Sora',sans-serif;font-size:12px;font-weight:500;transition:all .15s}
-  .bp{background:var(--accent);color:#0d0f0e}.bp:hover{background:#b8e060}
-  .bg{background:var(--surface2);color:var(--text);border:1px solid var(--border)}.bg:hover{border-color:var(--accent);color:var(--accent)}
-  .bd{background:transparent;color:var(--danger);border:1px solid #3a1a10}.bd:hover{background:#2a1510}
-  .gi{display:none;align-items:center;gap:8px;color:var(--muted);font-size:12px;font-family:'DM Mono',monospace;padding:8px 0}
-  .gi.on{display:flex}
-  .dots span{display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--accent);margin:0 1px;animation:blink 1.2s infinite}
-  .dots span:nth-child(2){animation-delay:.2s}.dots span:nth-child(3){animation-delay:.4s}
-  @keyframes blink{0%,100%{opacity:.2}50%{opacity:1}}
-  .cp{border-left:1px solid var(--border);display:flex;flex-direction:column;background:var(--surface)}
-  .ch{padding:14px 18px 12px;border-bottom:1px solid var(--border);display:flex;align-items:center;gap:10px}
-  .cav{width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,#534AB7,#7F77DD);display:flex;align-items:center;justify-content:center;font-size:13px;flex-shrink:0}
-  .msgs{flex:1;overflow-y:auto;padding:14px;display:flex;flex-direction:column;gap:10px}
-  .msg{max-width:92%;border-radius:10px;padding:10px 13px;font-size:13px;line-height:1.6}
-  .msg.claude{background:var(--surface2);border:1px solid var(--border);align-self:flex-start}
-  .msg.user{background:var(--accent);color:#0d0f0e;align-self:flex-end;font-weight:500}
-  .mt{font-size:10px;color:var(--muted);margin-top:3px;font-family:'DM Mono',monospace}
-  .msg.user .mt{color:#4a6a20}
-  .cia{padding:10px 14px;border-top:1px solid var(--border)}
-  .qa{display:flex;gap:5px;margin-bottom:7px;flex-wrap:wrap}
-  .qb{font-size:11px;padding:3px 9px;border-radius:20px;background:var(--surface2);border:1px solid var(--border);color:var(--muted);cursor:pointer;transition:all .12s;font-family:'Sora',sans-serif}
-  .qb:hover{border-color:var(--accent);color:var(--accent)}
-  .cir{display:flex;gap:7px;align-items:flex-end}
-  .cta{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 11px;color:var(--text);font-family:'Sora',sans-serif;font-size:13px;resize:none;outline:none;min-height:38px;max-height:110px;line-height:1.5;transition:border-color .15s}
-  .cta:focus{border-color:var(--accent)}
-  .sb{width:36px;height:36px;border-radius:8px;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;flex-shrink:0}
-  .sb:hover{background:#b8e060}.sb svg{width:15px;height:15px}
-  /* PROMPT MODAL */
-  .mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;align-items:center;justify-content:center}
-  .mo.open{display:flex}
-  .mb{background:#151817;border:1px solid #2a2e2c;border-radius:16px;padding:40px;width:520px;max-width:94vw}
-  .ml{font-family:'DM Serif Display',serif;font-size:22px;color:var(--accent);margin-bottom:8px}
-  .ms{font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.7}
-  .prompt-box{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;line-height:1.7;min-height:160px;margin-bottom:14px;outline:none;resize:vertical}
-  .prompt-box:focus{border-color:var(--accent)}
-  .mbtn{background:var(--accent);color:#0d0f0e;border:none;border-radius:8px;padding:11px 20px;font-family:'Sora',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;margin-right:8px}
-  .mbtn:hover{background:#b8e060}
-  .mbtn2{background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:11px 20px;font-family:'Sora',sans-serif;font-size:13px;cursor:pointer;transition:all .15s}
-  .mbtn2:hover{border-color:var(--accent);color:var(--accent)}
-  .step-badge{display:inline-block;background:var(--accent);color:#0d0f0e;font-size:10px;font-weight:700;border-radius:20px;padding:2px 9px;margin-bottom:12px;font-family:'DM Mono',monospace}
-  .toast{position:fixed;bottom:22px;right:22px;background:var(--accent);color:#0d0f0e;padding:11px 18px;border-radius:8px;font-weight:500;font-size:13px;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;z-index:9998}
-  .toast.show{opacity:1;transform:translateY(0)}
-  ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
+*{box-sizing:border-box;margin:0;padding:0}
+:root{--bg:#0d0f0e;--sur:#151817;--sur2:#1c1f1d;--bor:#2a2e2c;--acc:#c8f57a;--txt:#e8ede9;--mut:#6b756d;--dan:#f5734a;--inf:#7ab8f5;--gol:#f5c842}
+body{background:var(--bg);color:var(--txt);font-family:'Sora',sans-serif;font-size:14px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+::-webkit-scrollbar{width:6px}::-webkit-scrollbar-track{background:var(--sur2)}::-webkit-scrollbar-thumb{background:var(--mut);border-radius:3px}::-webkit-scrollbar-thumb:hover{background:var(--acc)}
+header{padding:13px 24px;border-bottom:1px solid var(--bor);background:var(--sur);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.logo{font-family:'DM Serif Display',serif;font-size:20px;color:var(--acc)}.logo span{color:var(--mut);font-style:italic}
+.hm{display:flex;align-items:center;gap:10px;font-size:12px;color:var(--mut)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--acc);box-shadow:0 0 8px var(--acc);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.btn{padding:6px 13px;border-radius:7px;border:none;cursor:pointer;font-family:'Sora',sans-serif;font-size:12px;font-weight:500;transition:all .15s}
+.btn-p{background:var(--acc);color:#0d0f0e}.btn-p:hover{background:#b8e060}
+.btn-p:disabled{opacity:.5;cursor:not-allowed}
+.btn-g{background:var(--sur2);color:var(--txt);border:1px solid var(--bor)}.btn-g:hover{border-color:var(--acc);color:var(--acc)}
+.btn-d{background:transparent;color:var(--dan);border:1px solid #3a1a10}.btn-d:hover{background:#2a1510}
+.btn-sm{padding:5px 10px;font-size:11px}
+.btn-sync{background:var(--sur2);color:var(--acc);border:1px solid var(--acc);padding:5px 11px;font-size:11px;display:flex;align-items:center;gap:5px}
+.btn-sync:hover{background:#1a2e0f}
+.btn-sync.syncing .sync-icon{animation:spin .8s linear infinite}
+@keyframes spin{to{transform:rotate(360deg)}}
+.layout{display:grid;grid-template-columns:270px 1fr 330px;flex:1;min-height:0;overflow:hidden}
+.sidebar{border-right:1px solid var(--bor);background:var(--sur);display:flex;flex-direction:column;overflow:hidden}
+.sb-head{padding:12px 16px;border-bottom:1px solid var(--bor);display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.sb-head h2{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--mut);font-weight:600}
+.sb-meta{display:flex;align-items:center;gap:8px}
+.badge{background:var(--acc);color:#0d0f0e;font-size:10px;font-weight:700;border-radius:20px;padding:2px 8px}
+.sb-list{overflow-y:scroll;flex:1}
+.sync-bar{padding:8px 16px;font-size:11px;color:var(--mut);border-bottom:1px solid var(--bor);display:flex;align-items:center;gap:6px;flex-shrink:0;font-family:'DM Mono',monospace}
+.sync-bar .sync-dot{width:6px;height:6px;border-radius:50%;background:var(--acc);flex-shrink:0}
+.sync-bar.error .sync-dot{background:var(--dan)}
+.sync-bar.loading .sync-dot{background:var(--gol);animation:pulse .8s infinite}
+.ci{padding:12px 16px;border-bottom:1px solid var(--bor);cursor:pointer;transition:background .12s;border-left:2px solid transparent}
+.ci:hover{background:var(--sur2)}.ci.active{background:var(--sur2);border-left-color:var(--acc)}
+.ci-name{font-weight:500;font-size:13px;margin-bottom:2px;display:flex;justify-content:space-between;align-items:center}
+.ci-email{font-size:11px;color:var(--mut);font-family:'DM Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px}
+.tags{display:flex;gap:4px;flex-wrap:wrap}
+.tag{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:500}
+.t-sim{background:#1a2e0f;color:#8adb4a;border:1px solid #2a4d15}
+.t-pot{background:#1a2410;color:var(--gol);border:1px solid #3d3210}
+.t-nao{background:#2a1510;color:var(--dan);border:1px solid #4a2010}
+.t-fat{background:#101820;color:var(--inf);border:1px solid #1a2d40}
+.editor{display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--mut);text-align:center;gap:10px;padding:40px}
+.empty-icon{font-size:48px;opacity:.15}
+.ed-info{padding:14px 22px 12px;border-bottom:1px solid var(--bor);background:var(--sur);flex-shrink:0}
+.ed-recip{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#8ab34d,#3a7a1a);display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:16px;color:#0d0f0e;flex-shrink:0}
+.ed-name{font-weight:600;font-size:14px}.ed-email{font-size:11px;color:var(--mut);font-family:'DM Mono',monospace}
+.ed-subj{display:flex;align-items:center;gap:8px}
+.ed-subj label{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
+.ed-subj input{flex:1;background:var(--sur2);border:1px solid var(--bor);border-radius:6px;padding:6px 10px;color:var(--txt);font-family:'Sora',sans-serif;font-size:13px;outline:none}
+.ed-subj input:focus{border-color:var(--acc)}
+.ed-actions{padding:10px 22px;border-bottom:1px solid var(--bor);background:var(--sur);display:flex;gap:8px;align-items:center;flex-shrink:0}
+.ed-body{flex:1;padding:16px 22px;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.gen-ind{display:none;align-items:center;gap:8px;color:var(--mut);font-size:12px;font-family:'DM Mono',monospace;margin-bottom:8px;flex-shrink:0}
+.gen-ind.on{display:flex}
+.dots span{display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--acc);margin:0 1px;animation:blink 1.2s infinite}
+.dots span:nth-child(2){animation-delay:.2s}.dots span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,100%{opacity:.2}50%{opacity:1}}
+textarea.eta{flex:1;background:var(--sur2);border:1px solid var(--bor);border-radius:8px;padding:12px 14px;color:var(--txt);font-family:'Sora',sans-serif;font-size:14px;line-height:1.8;resize:none;outline:none;min-height:0}
+textarea.eta:focus{border-color:var(--acc)}
+.chat{border-left:1px solid var(--bor);background:var(--sur);display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.chat-head{padding:12px 16px;border-bottom:1px solid var(--bor);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.cav{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#534AB7,#7F77DD);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.msgs{flex:1;overflow-y:scroll;padding:12px;display:flex;flex-direction:column;gap:10px;min-height:0}
+.msg{max-width:92%;border-radius:10px;padding:9px 12px;font-size:13px;line-height:1.6;word-break:break-word}
+.msg.claude{background:var(--sur2);border:1px solid var(--bor);align-self:flex-start}
+.msg.user{background:var(--acc);color:#0d0f0e;align-self:flex-end;font-weight:500}
+.msg-loading{align-self:flex-start;background:var(--sur2);border:1px solid var(--bor);border-radius:10px;padding:9px 14px;color:var(--mut);font-size:13px}
+.chat-qa{padding:8px 12px 0;display:flex;gap:5px;flex-wrap:wrap;flex-shrink:0}
+.qb{font-size:11px;padding:3px 9px;border-radius:20px;background:var(--sur2);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-family:'Sora',sans-serif;transition:all .12s}
+.qb:hover{border-color:var(--acc);color:var(--acc)}
+.chat-inp{padding:10px 12px;display:flex;gap:8px;align-items:flex-end;flex-shrink:0}
+textarea.cta{flex:1;background:var(--sur2);border:1px solid var(--bor);border-radius:8px;padding:8px 10px;color:var(--txt);font-family:'Sora',sans-serif;font-size:13px;resize:none;outline:none;min-height:38px;max-height:100px;line-height:1.5}
+textarea.cta:focus{border-color:var(--acc)}
+.send-btn{width:34px;height:34px;border-radius:8px;background:var(--acc);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.send-btn:hover{background:#b8e060}
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9999;align-items:center;justify-content:center}
+.modal.open{display:flex}
+.modal-box{background:var(--sur);border:1px solid var(--bor);border-radius:16px;padding:36px;width:440px;max-width:92vw}
+.modal-logo{font-family:'DM Serif Display',serif;font-size:22px;color:var(--acc);margin-bottom:6px}
+.modal-sub{font-size:13px;color:var(--mut);margin-bottom:22px;line-height:1.6}
+.modal-label{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--mut);margin-bottom:7px;font-weight:600}
+.modal-inp{width:100%;background:var(--sur2);border:1px solid var(--bor);border-radius:8px;padding:10px 12px;color:var(--txt);font-family:'DM Mono',monospace;font-size:13px;outline:none;margin-bottom:6px}
+.modal-inp:focus{border-color:var(--acc)}
+.modal-err{display:none;font-size:12px;color:var(--dan);margin-bottom:10px}
+.modal-hint{font-size:12px;color:var(--mut);margin-bottom:18px;line-height:1.7}
+.modal-hint a{color:var(--inf);text-decoration:none;font-family:'DM Mono',monospace}
+.modal-btn{width:100%;background:var(--acc);color:#0d0f0e;border:none;border-radius:8px;padding:12px;font-family:'Sora',sans-serif;font-size:14px;font-weight:600;cursor:pointer}
+.modal-btn:hover{background:#b8e060}
+.toast{position:fixed;bottom:20px;right:20px;background:var(--acc);color:#0d0f0e;padding:10px 18px;border-radius:8px;font-weight:500;font-size:13px;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;z-index:9998}
+.toast.show{opacity:1;transform:translateY(0)}
 </style>
 </head>
 <body>
 
 <header>
-  <div class="logo">Matte IA <span>/ painel de disparos</span></div>
+  <div class="logo">Pedro Aranha Gestão de Tráfego <span>/ painel de disparos</span></div>
   <div class="hm">
     <div class="dot"></div>
-    <span id="approved-count">0 aprovados</span><span>·</span>
-    <span id="total-count">21 contatos</span><span>·</span>
-    <button class="btn bp" onclick="dispatchAll()" style="padding:5px 13px;font-size:12px">Disparar aprovados →</button>
+    <span id="hdr-count">carregando...</span>
+    <button class="btn btn-sync btn-sm" id="sync-btn" onclick="syncSheet()">
+      <span class="sync-icon">↻</span> Sincronizar
+    </button>
+    <button class="btn btn-g btn-sm" onclick="openModal()">⚙ API Key</button>
   </div>
 </header>
 
 <div class="layout">
+  <!-- SIDEBAR -->
   <div class="sidebar">
-    <div class="sh"><h2>Contatos</h2><span class="badge">21</span></div>
-    <div id="contact-list"></div>
+    <div class="sb-head">
+      <h2>Contatos</h2>
+      <div class="sb-meta">
+        <span class="badge" id="sb-badge">—</span>
+      </div>
+    </div>
+    <div class="sync-bar loading" id="sync-status">
+      <div class="sync-dot"></div>
+      <span id="sync-msg">Carregando planilha...</span>
+    </div>
+    <div class="sb-list" id="sb-list"></div>
   </div>
 
-  <div class="ep">
-    <div id="empty-state" class="empty">
+  <!-- EDITOR -->
+  <div class="editor" id="editor">
+    <div class="empty" id="empty-state">
       <div class="empty-icon">✉</div>
-      <p style="font-size:15px;font-weight:500;color:var(--text)">Selecione um contato</p>
-      <p style="font-size:13px;line-height:1.7">Clique para gerar e revisar<br>o e-mail antes de enviar.</p>
+      <p style="font-size:15px;font-weight:500;color:var(--txt)">Selecione um contato</p>
+      <p style="font-size:13px;line-height:1.7;color:var(--mut)">Os contatos são carregados<br>automaticamente do Google Sheets.</p>
     </div>
-    <div id="editor" style="display:none;flex-direction:column;height:100%">
-      <div class="etop">
-        <div class="ri">
-          <div class="av" id="av">R</div>
-          <div><div class="rn" id="rn">—</div><div class="re" id="re">—</div></div>
-          <div id="rt" class="ct" style="margin-left:auto;margin-top:0"></div>
+    <div id="ed-content" style="display:none;flex-direction:column;height:100%;min-height:0">
+      <div class="ed-info">
+        <div class="ed-recip">
+          <div class="av" id="ed-av">R</div>
+          <div style="flex:1;min-width:0">
+            <div class="ed-name" id="ed-name">—</div>
+            <div class="ed-email" id="ed-email">—</div>
+          </div>
+          <div id="ed-tags" class="tags"></div>
         </div>
-        <div class="sr"><span class="sl">Assunto</span><input class="si" id="subj" type="text"></div>
+        <div class="ed-subj">
+          <label>Assunto</label>
+          <input id="ed-subj" type="text">
+        </div>
       </div>
-      <div class="ebody">
-        <div class="gi" id="gi"><div class="dots"><span></span><span></span><span></span></div>Aguardando você colar a resposta...</div>
-        <textarea class="eta" id="body" placeholder="Cole aqui a resposta do Claude depois de copiar o prompt →"></textarea>
-      </div>
-      <div class="efooter">
-        <button class="btn bp" id="appbtn" onclick="approveEmail()">✓ Aprovar e-mail</button>
-        <button class="btn bg" onclick="openPromptModal()">⚡ Gerar com Claude</button>
+      <div class="ed-actions">
+        <button class="btn btn-p" id="approve-btn" onclick="approveEmail()">✓ Aprovar e-mail</button>
+        <button class="btn btn-g" id="gen-btn" onclick="generateEmail()">⚡ Gerar e-mail</button>
         <div style="flex:1"></div>
-        <button class="btn bd" onclick="skipContact()">Pular</button>
+        <button class="btn btn-d" onclick="skipContact()">Pular</button>
+      </div>
+      <div class="ed-body">
+        <div class="gen-ind" id="gen-ind">
+          <div class="dots"><span></span><span></span><span></span></div>
+          Claude está redigindo...
+        </div>
+        <textarea class="eta" id="ed-body" placeholder="O e-mail gerado aparecerá aqui..."></textarea>
       </div>
     </div>
   </div>
 
-  <div class="cp">
-    <div class="ch">
+  <!-- CHAT -->
+  <div class="chat">
+    <div class="chat-head">
       <div class="cav">✦</div>
-      <div><div style="font-weight:500;font-size:13px">Assistente Claude</div><div style="font-size:11px;color:var(--muted)">Peça ajustes ou tire dúvidas</div></div>
+      <div>
+        <div style="font-weight:500;font-size:13px">Assistente Claude</div>
+        <div style="font-size:11px;color:var(--mut)">Peça ajustes ou tire dúvidas</div>
+      </div>
     </div>
     <div class="msgs" id="msgs">
-      <div class="msg claude">Olá! Para usar, selecione um contato → clique em "⚡ Gerar com Claude" → copie o prompt → cole no Claude.ai → copie a resposta → cole no editor. 🚀<div class="mt">agora</div></div>
+      <div class="msg claude">Olá! Os contatos são carregados automaticamente do Google Sheets. Selecione um e clique em ⚡ para gerar o e-mail. Posso ajustar o tom, corrigir erros ou reescrever qualquer parte. 🚀</div>
     </div>
-    <div class="cia">
-      <div class="qa">
-        <button class="qb" onclick="qa('Deixe o e-mail mais formal e profissional')">+ formal</button>
-        <button class="qb" onclick="qa('Deixe o e-mail mais curto e direto')">+ curto</button>
-        <button class="qb" onclick="qa('Adicione mais urgência ao e-mail')">+ urgência</button>
-        <button class="qb" onclick="qa('Revise erros de português no e-mail')">revisar PT</button>
-        <button class="qb" onclick="qa('Reescreva focando em marcar uma reunião ou call')">marcar call</button>
-      </div>
-      <div class="cir">
-        <textarea class="cta" id="ci" placeholder="Cole aqui a resposta do Claude para ajustes..." rows="1" onkeydown="ckChat(event)"></textarea>
-        <button class="sb" onclick="sendChat()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="#0d0f0e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
-            <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
-          </svg>
-        </button>
-      </div>
+    <div class="chat-qa">
+      <button class="qb" onclick="quickAsk('Deixe o e-mail mais formal e profissional')">+ formal</button>
+      <button class="qb" onclick="quickAsk('Deixe o e-mail mais curto e direto')">+ curto</button>
+      <button class="qb" onclick="quickAsk('Adicione mais urgência ao e-mail')">+ urgência</button>
+      <button class="qb" onclick="quickAsk('Revise erros de português no e-mail')">revisar PT</button>
+      <button class="qb" onclick="quickAsk('Reescreva focando em marcar uma reunião ou call')">marcar call</button>
+    </div>
+    <div class="chat-inp">
+      <textarea class="cta" id="chat-inp" rows="2" placeholder="Peça uma alteração ou faça uma pergunta..." onkeydown="chatKey(event)"></textarea>
+      <button class="send-btn" onclick="sendChat()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0d0f0e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
     </div>
   </div>
 </div>
 
-<!-- MODAL: PROMPT PARA COPIAR -->
-<div class="mo" id="modal">
-  <div class="mb">
-    <div class="step-badge">PASSO 1 DE 2</div>
-    <div class="ml">Copie este prompt</div>
-    <div class="ms">Cole no <a href="https://claude.ai" target="_blank" style="color:var(--info);text-decoration:none">claude.ai</a>, copie a resposta completa e cole no editor do painel.</div>
-    <textarea class="prompt-box" id="prompt-text" readonly></textarea>
-    <button class="mbtn" onclick="copyPrompt()">📋 Copiar prompt</button>
-    <button class="mbtn2" onclick="openClaude()">Abrir Claude.ai →</button>
-    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
-      <div class="step-badge" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border)">PASSO 2 DE 2</div>
-      <p style="font-size:12px;color:var(--muted);margin-top:8px;line-height:1.7">Depois de copiar a resposta do Claude.ai, feche esta janela e <strong style="color:var(--text)">cole diretamente no editor</strong> (área de texto grande no centro do painel).</p>
-      <button class="mbtn2" style="margin-top:10px;width:100%" onclick="closeModal()">Já colei a resposta — fechar</button>
+<!-- API KEY MODAL -->
+<div class="modal" id="key-modal">
+  <div class="modal-box">
+    <div class="modal-logo">Pedro Aranha Gestão de Tráfego</div>
+    <div class="modal-sub">Insira sua chave da Claude API para ativar a geração automática de e-mails.</div>
+    <div class="modal-label">Chave da API (Claude)</div>
+    <input class="modal-inp" id="key-inp" type="password" placeholder="sk-ant-api03-...">
+    <div class="modal-err" id="key-err">A chave deve começar com "sk-ant-"</div>
+    <div class="modal-hint">
+      Obtenha em <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> → API Keys → Create Key.<br>
+      Sua chave fica salva no navegador.
     </div>
+    <button class="modal-btn" onclick="saveKey()">Salvar e entrar →</button>
   </div>
 </div>
 
 <div class="toast" id="toast"></div>
 
 <script>
-const contacts=[
-  {name:"Rafael",         email:"richardss.oab@gmail.com",                   empresa:"",             fat:"Entre R$ 10 mil e R$ 25 mil",   urg:"",      q:"com potencial"},
-  {name:"Bsm Advogados",  email:"georgemosilva@hotmail.com",                 empresa:"BSM Advogados",fat:"Entre R$ 26 mil e R$ 50 mil",   urg:"",      q:"sim"},
-  {name:"Ronaldo",        email:"rrmoura8@hotmail.com",                      empresa:"Advogado",     fat:"Entre R$ 10 mil e R$ 25 mil",   urg:"Agora", q:"com potencial"},
-  {name:"Ricardo",        email:"ricardo.lago15@gmail.com",                  empresa:"",             fat:"Entre R$ 10 mil e R$ 25 mil",   urg:"",      q:"com potencial"},
-  {name:"Lucas",          email:"lucascadastrosemsites@gmail.co.com",        empresa:"",             fat:"Entre R$ 10 mil e R$ 25 mil",   urg:"",      q:"com potencial"},
-  {name:"Ferdinando",     email:"fgn.adv@hotmail.com",                       empresa:"",             fat:"Entre R$ 10 mil e R$ 25 mil",   urg:"",      q:"com potencial"},
-  {name:"Rodrigo Parente",email:"rodrigoparente01@gmail.com",                empresa:"",             fat:"Acima de R$ 150 mil",           urg:"",      q:"sim"},
-  {name:"Fabio Paulista", email:"fabionandesss1@gmail.com",                  empresa:"",             fat:"Entre R$ 10 mil e R$ 25 mil",   urg:"",      q:"com potencial"},
-  {name:"Savas",          email:"savas.adv@gmail.com",                       empresa:"",             fat:"Entre R$ 10 mil e R$ 25 mil",   urg:"",      q:"com potencial"},
-  {name:"Jardson",        email:"adv.jardsongrigvgbeiro@gmail.com",          empresa:"",             fat:"Acima de R$ 150 mil",           urg:"",      q:"sim"},
-  {name:"José Aparecido", email:"drpascoaladv@gmail.com",                    empresa:"",             fat:"Acima de R$ 150 mil",           urg:"",      q:"sim"},
-  {name:"Ana",            email:"dhfg@iguf.com",                             empresa:"",             fat:"Acima de R$ 150 mil",           urg:"",      q:"sim"},
-  {name:"Bruno Gandarela",email:"atendimento@mmcmanutencaoindustrial.com.br",empresa:"",             fat:"Acima de R$ 150 mil",           urg:"",      q:"sim"},
-  {name:"Débora Vieira",  email:"deborabissiatto.vba@gmail.com",             empresa:"",             fat:"Entre R$ 26 mil e R$ 50 mil",   urg:"",      q:"sim"},
-  {name:"Jardel",         email:"jardel.castanheira@hotmail.com",            empresa:"",             fat:"Entre R$ 10 mil e R$ 25 mil",   urg:"",      q:"com potencial"},
-  {name:"Raul Pires",     email:"raul.pcamargo@hotmail.com",                 empresa:"",             fat:"Iniciando, menos de R$ 10 mil", urg:"",      q:"não"},
-  {name:"Hugo Oliveira",  email:"hugooadv@gmail.com",                        empresa:"",             fat:"Entre R$ 10 mil e R$ 25 mil",   urg:"",      q:"com potencial"},
-  {name:"Muchaelly",      email:"muchaelly.adv@hotmail.com",                 empresa:"",             fat:"Acima de R$ 150 mil",           urg:"",      q:"sim"},
-  {name:"Germano",        email:"upairbrasil@gmail.com",                     empresa:"",             fat:"Entre R$ 10 mil e R$ 25 mil",   urg:"",      q:"não"},
-  {name:"Laura Carolina", email:"lauracarolina_vm@hotmail.com",              empresa:"",             fat:"Iniciando, menos de R$ 10 mil", urg:"",      q:"não"},
-  {name:"Luiza",          email:"luizaaziulm@gmail.com",                     empresa:"",             fat:"Iniciando, menos de R$ 10 mil", urg:"",      q:"não"},
-];
+// ── CONFIG ────────────────────────────────────────────────────────
+const SHEET_ID = '1r7vob1TvEY8P9G6wm5NcfNFg_r1aUwqvBSS7mrSt9Oo';
+const SHEET_NAME = 'Sheet1'; // Nome da aba — ajuste se necessário
+const SYNC_INTERVAL = 60000; // Sincroniza a cada 60 segundos
 
-const S={sel:null,approved:new Set(),skipped:new Set(),emails:{},subjects:{}};
+// Mapeamento de colunas da sua planilha
+const COL = {
+  NOME: 0,      // First Name
+  EMAIL: 3,     // Email
+  EMPRESA: 4,   // Business Name
+  FAT: 12,      // Faturamento
+  URG: 13,      // Urgência
+  QUALIF: 14    // QUALIFICADO?
+};
 
-window.addEventListener('DOMContentLoaded',()=>{ renderList(); });
+// ── ESTADO ────────────────────────────────────────────────────────
+let CONTACTS = [];
+const S = { sel:null, approved:new Set(), skipped:new Set(), emails:{}, subjects:{}, history:[] };
+let API_KEY = localStorage.getItem('matte_key') || '';
+let syncTimer = null;
 
-function renderList(){
-  const el=document.getElementById('contact-list');
-  el.innerHTML='';
-  contacts.forEach((c,i)=>{
-    if(S.skipped.has(i))return;
-    const d=document.createElement('div');
-    d.className='ci'+(S.sel===i?' active':'')+(S.approved.has(i)?' approved':'');
-    d.onclick=()=>selectContact(i);
-    const qc=c.q==='sim'?'sim':c.q==='com potencial'?'pot':'nao';
-    const fs=c.fat.replace('Entre R$ ','R$').replace(' mil e ','-').replace(' mil','k').replace('Acima de R$ ','>R$').replace('Iniciando, menos de R$ ','<R$');
-    d.innerHTML=`<div class="cn">${c.name}</div><div class="ce">${c.email}</div>
-    <div class="ct"><span class="tag ${qc}">${c.q}</span><span class="tag fat">${fs}</span></div>
-    <div class="ck">✓</div>`;
+// ── INIT ──────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('key-inp').addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveKey();
+    document.getElementById('key-err').style.display = 'none';
+  });
+  if (!API_KEY) openModal();
+  loadSheet();
+  syncTimer = setInterval(loadSheet, SYNC_INTERVAL);
+});
+
+// ── GOOGLE SHEETS ─────────────────────────────────────────────────
+async function loadSheet() {
+  setSyncStatus('loading', 'Sincronizando com Google Sheets...');
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}`;
+  try {
+    const r = await fetch(url);
+    if (!r.ok) throw new Error('Planilha inacessível. Verifique se está pública.');
+    const csv = await r.text();
+    const rows = parseCSV(csv);
+    if (rows.length < 2) throw new Error('Planilha vazia ou sem dados.');
+
+    const prevSel = S.sel !== null ? CONTACTS[S.sel]?.email : null;
+    CONTACTS = rows.slice(1) // pula cabeçalho
+      .map(r => ({
+        name:    (r[COL.NOME]    || '').replace(/^"|"$/g,'').trim() || 'Sem nome',
+        email:   (r[COL.EMAIL]   || '').replace(/^"|"$/g,'').trim(),
+        empresa: (r[COL.EMPRESA] || '').replace(/^"|"$/g,'').trim(),
+        fat:     (r[COL.FAT]     || '').replace(/^"|"$/g,'').trim() || 'não informado',
+        urg:     (r[COL.URG]     || '').replace(/^"|"$/g,'').trim(),
+        q:       normQ((r[COL.QUALIF]||'').replace(/^"|"$/g,'').trim()),
+      }))
+      .filter(c => c.email && c.email.includes('@'));
+
+    renderList();
+
+    // Tenta restaurar seleção anterior
+    if (prevSel) {
+      const newIdx = CONTACTS.findIndex(c => c.email === prevSel);
+      if (newIdx >= 0 && newIdx !== S.sel) {
+        S.sel = newIdx;
+        renderList();
+      }
+    }
+
+    const now = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit',minute:'2-digit'});
+    setSyncStatus('ok', `${CONTACTS.length} contatos · Atualizado às ${now}`);
+  } catch(e) {
+    setSyncStatus('error', e.message);
+  }
+}
+
+async function syncSheet() {
+  const btn = document.getElementById('sync-btn');
+  btn.classList.add('syncing');
+  await loadSheet();
+  btn.classList.remove('syncing');
+  toast('Sincronizado! ✓');
+}
+
+function normQ(v) {
+  v = v.toLowerCase();
+  if (v === 'sim') return 'sim';
+  if (v.includes('potencial') || v.includes('potential')) return 'com potencial';
+  if (v === 'não' || v === 'nao' || v === 'no') return 'não';
+  return v || 'com potencial';
+}
+
+function parseCSV(text) {
+  const rows = [];
+  const lines = text.split('\n');
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const cols = [];
+    let cur = '', inQ = false;
+    for (let i = 0; i < line.length; i++) {
+      if (line[i] === '"') { inQ = !inQ; cur += '"'; }
+      else if (line[i] === ',' && !inQ) { cols.push(cur); cur = ''; }
+      else cur += line[i];
+    }
+    cols.push(cur);
+    rows.push(cols);
+  }
+  return rows;
+}
+
+function setSyncStatus(state, msg) {
+  const bar = document.getElementById('sync-status');
+  const txt = document.getElementById('sync-msg');
+  bar.className = 'sync-bar ' + state;
+  txt.textContent = msg;
+}
+
+// ── LISTA ─────────────────────────────────────────────────────────
+function fatShort(f) {
+  return f.replace('Entre R$ ','R$').replace(' mil e ','-').replace(' mil','k')
+          .replace('Acima de R$ ','>R$').replace('Iniciando, menos de R$ ','<R$');
+}
+function tagClass(q) { return q==='sim'?'t-sim':q==='com potencial'?'t-pot':'t-nao'; }
+
+function renderList() {
+  const el = document.getElementById('sb-list');
+  const prev = el.scrollTop;
+  el.innerHTML = '';
+  let visible = 0;
+  CONTACTS.forEach((c, i) => {
+    if (S.skipped.has(i)) return;
+    visible++;
+    const d = document.createElement('div');
+    d.className = 'ci' + (S.sel===i?' active':'');
+    d.onclick = () => selectContact(i);
+    d.innerHTML = `
+      <div class="ci-name">
+        <span>${esc(c.name)}</span>
+        ${S.approved.has(i) ? '<span style="color:var(--acc);font-size:13px">✓</span>' : ''}
+      </div>
+      <div class="ci-email">${esc(c.email)}</div>
+      <div class="tags">
+        <span class="tag ${tagClass(c.q)}">${esc(c.q)}</span>
+        <span class="tag t-fat">${esc(fatShort(c.fat))}</span>
+      </div>`;
     el.appendChild(d);
   });
+  el.scrollTop = prev;
+  document.getElementById('sb-badge').textContent = visible;
+  document.getElementById('hdr-count').textContent = `${S.approved.size} aprovados · ${visible} contatos`;
 }
 
-function selectContact(i){
-  S.sel=i; renderList();
-  const c=contacts[i];
-  document.getElementById('empty-state').style.display='none';
-  document.getElementById('editor').style.display='flex';
-  document.getElementById('av').textContent=c.name[0].toUpperCase();
-  document.getElementById('rn').textContent=c.name;
-  document.getElementById('re').textContent=c.email;
-  const qc=c.q==='sim'?'sim':c.q==='com potencial'?'pot':'nao';
-  document.getElementById('rt').innerHTML=`<span class="tag ${qc}">${c.q}</span><span class="tag fat">${c.fat}</span>`;
-  document.getElementById('subj').value=S.subjects[i]||getSubj(c.q);
-  document.getElementById('body').value=S.emails[i]||'';
-  document.getElementById('appbtn').textContent=S.approved.has(i)?'✓ Aprovado':'✓ Aprovar e-mail';
+function esc(s) { return String(s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── SELECIONAR ────────────────────────────────────────────────────
+function selectContact(i) {
+  S.sel = i; renderList();
+  const c = CONTACTS[i];
+  document.getElementById('empty-state').style.display = 'none';
+  const ec = document.getElementById('ed-content');
+  ec.style.display = 'flex';
+  document.getElementById('ed-av').textContent = c.name[0].toUpperCase();
+  document.getElementById('ed-name').textContent = c.name;
+  document.getElementById('ed-email').textContent = c.email;
+  document.getElementById('ed-tags').innerHTML = `
+    <span class="tag ${tagClass(c.q)}">${esc(c.q)}</span>
+    <span class="tag t-fat" style="margin-left:4px">${esc(c.fat)}</span>`;
+  document.getElementById('ed-subj').value = S.subjects[i] || getSubject(c.q);
+  document.getElementById('ed-body').value = S.emails[i] || '';
+  document.getElementById('approve-btn').textContent = S.approved.has(i) ? '✓ Aprovado' : '✓ Aprovar e-mail';
+  if (!S.emails[i]) generateEmail();
 }
 
-function getSubj(q){
-  if(q==='sim')return'Vamos marcar uma conversa? | Automação para advogados';
-  if(q==='com potencial')return'Como escritórios estão automatizando o atendimento | Matte IA';
-  return'Uma solução que pode transformar seu escritório';
+function getSubject(q) {
+  if (q==='sim') return 'Vamos marcar uma conversa? | Automação para advogados';
+  if (q==='com potencial') return 'Como escritórios estão automatizando o atendimento | Pedro Aranha Gestão de Tráfego';
+  return 'Uma solução que pode transformar seu escritório';
 }
 
-function buildPrompt(c){
-  const inst=c.q==='sim'
-    ?'Lead ALTAMENTE QUALIFICADO. Convide diretamente para reunião ou demonstração. Tom direto e confiante.'
-    :c.q==='com potencial'
-    ?'Lead com potencial. Reative o interesse, apresente a solução de IA para advogados e gere curiosidade.'
-    :'Lead não qualificado. Apresente levemente, sem pressão, deixe porta aberta.';
-  return `Você é especialista em vendas consultivas para o mercado jurídico. Escreva um e-mail profissional, caloroso e personalizado em português brasileiro.
+// ── CLAUDE API ────────────────────────────────────────────────────
+async function callClaude(messages, system='', maxTokens=600) {
+  const body = { model:'claude-haiku-4-5-20251001', max_tokens:maxTokens, messages };
+  if (system) body.system = system;
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': API_KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify(body)
+  });
+  const d = await r.json();
+  if (d.error) throw new Error(d.error.message);
+  return d.content[0].text;
+}
+
+// ── GERAR E-MAIL ──────────────────────────────────────────────────
+async function generateEmail() {
+  if (S.sel===null) return;
+  if (!API_KEY) { openModal(); return; }
+  const c = CONTACTS[S.sel];
+  const ind = document.getElementById('gen-ind');
+  const ta = document.getElementById('ed-body');
+  const btn = document.getElementById('gen-btn');
+  ind.classList.add('on'); ta.value=''; ta.style.display='none';
+  btn.disabled=true; btn.textContent='⏳ Gerando...';
+
+  const inst = c.q==='sim'
+    ? 'Lead ALTAMENTE QUALIFICADO. Convide diretamente para reunião ou demo. Tom direto e confiante.'
+    : c.q==='com potencial'
+    ? 'Lead com potencial. Reative o interesse, apresente IA para advogados e gere curiosidade.'
+    : 'Lead não qualificado. Apresente levemente, sem pressão, deixe porta aberta.';
+
+  const prompt = `Você é especialista em vendas consultivas para o mercado jurídico. Escreva um e-mail profissional, caloroso e personalizado em português brasileiro.
 
 Destinatário: ${c.name}
 Escritório: ${c.empresa||'não informado'}
@@ -267,109 +438,120 @@ Perfil: ${c.q}
 
 Instrução: ${inst}
 
-Regras: máximo 4 parágrafos curtos, tom humano, mencione o faturamento naturalmente se fizer sentido, termine com chamada para ação clara. Assine como: Equipe Matte IA
+Regras: máximo 4 parágrafos curtos, tom humano, mencione o faturamento naturalmente se fizer sentido, termine com chamada para ação clara. Assine como: Equipe Pedro Aranha Gestão de Tráfego
 
 Escreva APENAS o corpo do e-mail, sem assunto nem explicações.`;
+
+  try {
+    const text = await callClaude([{role:'user', content:prompt}]);
+    ta.value = text;
+    S.emails[S.sel] = text;
+    S.subjects[S.sel] = document.getElementById('ed-subj').value;
+  } catch(e) {
+    ta.value = '⚠ Erro: ' + e.message + '\n\nVerifique sua chave em ⚙ API Key.';
+  }
+  ind.classList.remove('on'); ta.style.display='block';
+  btn.disabled=false; btn.textContent='⚡ Gerar e-mail';
 }
 
-function openPromptModal(){
-  if(S.sel===null)return;
-  const c=contacts[S.sel];
-  document.getElementById('prompt-text').value=buildPrompt(c);
-  document.getElementById('modal').classList.add('open');
-}
-function closeModal(){ document.getElementById('modal').classList.remove('open'); }
-
-function copyPrompt(){
-  const t=document.getElementById('prompt-text');
-  navigator.clipboard.writeText(t.value).then(()=>showToast('Prompt copiado! ✓ Cole no Claude.ai'));
-}
-function openClaude(){ window.open('https://claude.ai','_blank'); }
-
-function approveEmail(){
-  if(S.sel===null)return;
-  S.emails[S.sel]=document.getElementById('body').value;
-  S.subjects[S.sel]=document.getElementById('subj').value;
+// ── APROVAR / PULAR ───────────────────────────────────────────────
+function approveEmail() {
+  if (S.sel===null) return;
+  S.emails[S.sel] = document.getElementById('ed-body').value;
+  S.subjects[S.sel] = document.getElementById('ed-subj').value;
   S.approved.add(S.sel);
-  document.getElementById('appbtn').textContent='✓ Aprovado';
-  document.getElementById('approved-count').textContent=S.approved.size+' aprovados';
-  renderList(); showToast('E-mail aprovado! ✓');
-  setTimeout(()=>{
-    const nxt=contacts.findIndex((_,i)=>i>S.sel&&!S.skipped.has(i)&&!S.approved.has(i));
-    if(nxt>=0)selectContact(nxt);
-  },500);
+  document.getElementById('approve-btn').textContent = '✓ Aprovado';
+  renderList(); toast('E-mail aprovado! ✓');
+  setTimeout(() => {
+    const nxt = CONTACTS.findIndex((_,i) => i>S.sel && !S.skipped.has(i) && !S.approved.has(i));
+    if (nxt>=0) selectContact(nxt);
+  }, 500);
 }
 
-function skipContact(){
-  if(S.sel===null)return;
-  S.skipped.add(S.sel);S.approved.delete(S.sel);
-  renderList();showToast('Contato pulado');
-  const nxt=contacts.findIndex((_,i)=>i>S.sel&&!S.skipped.has(i));
-  if(nxt>=0)selectContact(nxt);
+function skipContact() {
+  if (S.sel===null) return;
+  S.skipped.add(S.sel); S.approved.delete(S.sel);
+  renderList(); toast('Contato pulado');
+  const nxt = CONTACTS.findIndex((_,i) => i>S.sel && !S.skipped.has(i));
+  if (nxt>=0) selectContact(nxt);
 }
 
-function dispatchAll(){
-  if(S.approved.size===0){showToast('Nenhum e-mail aprovado ainda!');return;}
-  showToast(S.approved.size+' e-mails prontos para disparar! ✓');
+// ── CHAT ──────────────────────────────────────────────────────────
+async function sendChat() {
+  const inp = document.getElementById('chat-inp');
+  const msg = inp.value.trim();
+  if (!msg) return;
+  if (!API_KEY) { openModal(); return; }
+  inp.value = '';
+  addMsg(msg, 'user');
+  const c = S.sel!==null ? CONTACTS[S.sel] : null;
+  const emailAtual = document.getElementById('ed-body').value;
+  const sys = c
+    ? `Você é assistente da Pedro Aranha Gestão de Tráfego ajudando a revisar e-mails de prospecção para advogados.
+Contato: ${c.name}, faturamento: ${c.fat}, qualificação: ${c.q}.
+E-mail atual:\n\n${emailAtual}
+
+Se pedirem alterações, responda com o e-mail COMPLETO reescrito precedido pela linha: ===EMAIL===
+Caso contrário, responda normalmente.`
+    : 'Você é assistente da Pedro Aranha Gestão de Tráfego, ajudando com campanhas de e-mail para advogados.';
+
+  const load = document.createElement('div');
+  load.className = 'msg-loading'; load.textContent = '● ● ●';
+  document.getElementById('msgs').appendChild(load);
+  scrollMsgs();
+
+  S.history.push({role:'user', content:msg});
+  try {
+    const reply = await callClaude(S.history, sys, 800);
+    S.history.push({role:'assistant', content:reply});
+    load.remove();
+    if (reply.includes('===EMAIL===')) {
+      const parts = reply.split('===EMAIL===');
+      if (parts[0].trim()) addMsg(parts[0].trim(), 'claude');
+      const ne = parts[1].trim();
+      document.getElementById('ed-body').value = ne;
+      if (S.sel!==null) S.emails[S.sel] = ne;
+      addMsg('✓ E-mail atualizado no editor!', 'claude');
+    } else {
+      addMsg(reply, 'claude');
+    }
+  } catch(e) {
+    load.remove();
+    addMsg('⚠ Erro: ' + e.message, 'claude');
+  }
 }
 
-function qa(instrucao){
-  if(S.sel===null){showToast('Selecione um contato primeiro');return;}
-  const c=contacts[S.sel];
-  const emailAtual=document.getElementById('body').value;
-  const prompt=`Você está ajudando a revisar um e-mail de prospecção para advogados da Matte IA.
+function quickAsk(msg) { document.getElementById('chat-inp').value = msg; sendChat(); }
 
-Contato: ${c.name}, faturamento: ${c.fat}, qualificação: ${c.q}
+function addMsg(text, who) {
+  const d = document.createElement('div');
+  d.className = 'msg ' + who;
+  d.innerHTML = text.replace(/\n/g,'<br>');
+  document.getElementById('msgs').appendChild(d);
+  scrollMsgs();
+}
+function scrollMsgs() { const m = document.getElementById('msgs'); m.scrollTop = m.scrollHeight; }
+function chatKey(e) { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } }
 
-E-mail atual:
-${emailAtual}
-
-Instrução: ${instrucao}
-
-Reescreva o e-mail completo aplicando a instrução. Retorne APENAS o e-mail reescrito, sem explicações.`;
-  document.getElementById('prompt-text').value=prompt;
-  document.getElementById('modal').classList.add('open');
-  showToast('Prompt pronto! Copie e cole no Claude.ai');
+// ── API KEY ───────────────────────────────────────────────────────
+function openModal() {
+  document.getElementById('key-inp').value = API_KEY;
+  document.getElementById('key-modal').classList.add('open');
+  setTimeout(() => document.getElementById('key-inp').focus(), 100);
+}
+function saveKey() {
+  const v = document.getElementById('key-inp').value.trim();
+  if (!v.startsWith('sk-ant-')) { document.getElementById('key-err').style.display='block'; return; }
+  API_KEY = v; localStorage.setItem('matte_key', v);
+  document.getElementById('key-modal').classList.remove('open');
+  toast('Chave salva! ✓');
 }
 
-function sendChat(){
-  const v=document.getElementById('ci').value.trim();
-  if(!v)return;
-  document.getElementById('ci').value='';
-  if(S.sel===null){showToast('Selecione um contato primeiro');return;}
-  const c=contacts[S.sel];
-  const emailAtual=document.getElementById('body').value;
-  const prompt=`Você está ajudando a revisar um e-mail de prospecção para advogados da Matte IA.
-
-Contato: ${c.name}, faturamento: ${c.fat}, qualificação: ${c.q}
-
-E-mail atual:
-${emailAtual}
-
-Instrução do usuário: ${v}
-
-Reescreva o e-mail completo aplicando a instrução. Retorne APENAS o e-mail reescrito, sem explicações.`;
-  document.getElementById('prompt-text').value=prompt;
-  document.getElementById('modal').classList.add('open');
-  addMsg(v,'user');
-  addMsg('Prompt gerado! Copie e cole no Claude.ai, depois cole a resposta no editor.','claude');
-}
-
-function addMsg(text,who){
-  const d=document.createElement('div');
-  d.className='msg '+who;
-  const t=new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-  d.innerHTML=text.replace(/\n/g,'<br>')+`<div class="mt">${t}</div>`;
-  const m=document.getElementById('msgs');
-  m.appendChild(d);m.scrollTop=99999;
-}
-
-function ckChat(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();}}
-
-function showToast(msg){
-  const t=document.getElementById('toast');
-  t.textContent=msg;t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),2800);
+// ── TOAST ─────────────────────────────────────────────────────────
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2500);
 }
 </script>
 </body>
