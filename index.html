@@ -112,6 +112,23 @@ textarea.cta:focus{border-color:var(--acc)}
 /* TOAST */
 .toast{position:fixed;bottom:20px;right:20px;background:var(--acc);color:#0d0f0e;padding:10px 18px;border-radius:8px;font-weight:500;font-size:13px;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;z-index:9998}
 .toast.show{opacity:1;transform:translateY(0)}
+/* GMAIL SEND */
+.btn-gmail{background:#1a3a1a;color:#4ade80;border:1px solid #2d6a2d;display:none}
+.btn-gmail:hover{background:#1f4a1f;border-color:#4ade80}
+.btn-gmail.visible{display:inline-flex;align-items:center;gap:6px}
+.send-confirm{display:none;position:fixed;inset:0;background:rgba(0,0,0,.85);z-index:9999;align-items:center;justify-content:center}
+.send-confirm.open{display:flex}
+.sc-box{background:var(--sur);border:1px solid var(--bor);border-radius:14px;padding:28px;width:420px;max-width:92vw}
+.sc-title{font-family:'DM Serif Display',serif;font-size:18px;color:var(--acc);margin-bottom:14px;display:flex;align-items:center;gap:8px}
+.sc-row{display:flex;flex-direction:column;gap:4px;margin-bottom:12px}
+.sc-label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--mut);font-weight:600}
+.sc-val{font-size:13px;color:var(--txt);font-family:'DM Mono',monospace;background:var(--sur2);border:1px solid var(--bor);border-radius:6px;padding:7px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.sc-body{font-size:12px;color:var(--txt);background:var(--sur2);border:1px solid var(--bor);border-radius:6px;padding:10px;max-height:140px;overflow-y:auto;line-height:1.6;white-space:pre-wrap;margin-bottom:16px}
+.sc-btns{display:flex;gap:8px}
+.sc-send{flex:1;background:#166534;color:#4ade80;border:1px solid #166534;border-radius:8px;padding:10px;font-family:'Sora',sans-serif;font-size:13px;font-weight:600;cursor:pointer}
+.sc-send:hover{background:#15803d}
+.sc-cancel{background:transparent;color:var(--mut);border:1px solid var(--bor);border-radius:8px;padding:10px 16px;font-family:'Sora',sans-serif;font-size:13px;cursor:pointer}
+.sc-cancel:hover{border-color:var(--dan);color:var(--dan)}
 </style>
 </head>
 <body>
@@ -120,8 +137,7 @@ textarea.cta:focus{border-color:var(--acc)}
   <div class="logo">Pedro Aranha Gestão de Tráfego <span>/ painel de disparos</span></div>
   <div class="hm">
     <div class="dot"></div>
-    <span id="hdr-count">carregando...</span>
-    <button id="sync-btn" class="btn btn-g btn-sm" onclick="syncNow()" style="color:var(--acc);border-color:var(--acc)">↻ Sync</button>
+    <span id="hdr-count">0 aprovados · 21 contatos</span>
     <button class="btn btn-g btn-sm" onclick="openModal()">⚙ API Key</button>
   </div>
 </header>
@@ -132,9 +148,8 @@ textarea.cta:focus{border-color:var(--acc)}
   <div class="sidebar">
     <div class="sb-head">
       <h2>Contatos</h2>
-      <span class="badge" id="sb-badge">—</span>
+      <span class="badge" id="sb-badge">21</span>
     </div>
-    <div style="padding:6px 16px;border-bottom:1px solid var(--bor);font-size:11px;font-family:'DM Mono',monospace;flex-shrink:0" id="sync-status">⟳ Carregando...</div>
     <div class="sb-list" id="sb-list"></div>
   </div>
 
@@ -163,6 +178,7 @@ textarea.cta:focus{border-color:var(--acc)}
       <div class="ed-actions">
         <button class="btn btn-p" id="approve-btn" onclick="approveEmail()">✓ Aprovar e-mail</button>
         <button class="btn btn-g" id="gen-btn" onclick="generateEmail()">⚡ Gerar e-mail</button>
+        <button class="btn btn-gmail" id="gmail-btn" onclick="openSendConfirm()">📤 Enviar e-mail</button>
         <div style="flex:1"></div>
         <button class="btn btn-d" onclick="skipContact()">Pular</button>
       </div>
@@ -222,88 +238,54 @@ textarea.cta:focus{border-color:var(--acc)}
   </div>
 </div>
 
+<!-- SEND CONFIRM MODAL -->
+<div class="send-confirm" id="send-confirm">
+  <div class="sc-box">
+    <div class="sc-title">📤 Confirmar envio</div>
+    <div class="sc-row">
+      <span class="sc-label">Para</span>
+      <span class="sc-val" id="sc-to">—</span>
+    </div>
+    <div class="sc-row">
+      <span class="sc-label">Assunto</span>
+      <span class="sc-val" id="sc-subj">—</span>
+    </div>
+    <div class="sc-label" style="margin-bottom:6px">Corpo do e-mail</div>
+    <div class="sc-body" id="sc-body">—</div>
+    <div class="sc-btns">
+      <button class="sc-send" id="sc-send-btn" onclick="sendEmail()">📤 Confirmar e enviar</button>
+      <button class="sc-cancel" onclick="closeSendConfirm()">Cancelar</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
-// ── GOOGLE SHEETS CONFIG ─────────────────────────────────────────
-const SHEET_ID   = '1r7vob1TvEY8P9G6wm5NcfNFg_r1aUwqvBSS7mrSt9Oo';
-const SHEET_NAME = 'Sheet1';
-const SYNC_MS    = 60000; // auto-sync a cada 60s
-const COL = { NOME:0, EMAIL:3, EMPRESA:4, FAT:12, URG:13, QUALIF:14 };
-
-// Contatos carregados do Sheets (começa vazio, preenchido no init)
-let CONTACTS = [];
-
-function cleanCell(v) { return (v||'').replace(/^"|"$/g,'').trim(); }
-function normQ(v) {
-  const l = v.toLowerCase();
-  if (l === 'sim') return 'sim';
-  if (l.includes('potencial')) return 'com potencial';
-  if (l === 'não' || l === 'nao') return 'não';
-  return l || 'com potencial';
-}
-function parseCSV(text) {
-  const rows = [];
-  for (const line of text.split('\n')) {
-    if (!line.trim()) continue;
-    const cols = []; let cur = '', inQ = false;
-    for (const ch of line) {
-      if (ch === '"') { inQ = !inQ; cur += ch; }
-      else if (ch === ',' && !inQ) { cols.push(cur); cur = ''; }
-      else cur += ch;
-    }
-    cols.push(cur);
-    rows.push(cols);
-  }
-  return rows;
-}
-
-async function loadSheet(showStatus=true) {
-  if (showStatus) setSyncUI('loading', '⟳ Sincronizando...');
-  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}&t=${Date.now()}`;
-  try {
-    const r = await fetch(url, { cache: 'no-store' });
-    if (!r.ok) throw new Error('Planilha inacessível. Torne-a pública para leitura.');
-    const csv = await r.text();
-    const rows = parseCSV(csv);
-    if (rows.length < 2) throw new Error('Planilha sem dados.');
-    const prevEmail = S.sel !== null ? CONTACTS[S.sel]?.email : null;
-    CONTACTS = rows.slice(1)
-      .map(r => ({
-        name:  cleanCell(r[COL.NOME])    || 'Sem nome',
-        email: cleanCell(r[COL.EMAIL]),
-        emp:   cleanCell(r[COL.EMPRESA]),
-        fat:   cleanCell(r[COL.FAT])     || 'não informado',
-        urg:   cleanCell(r[COL.URG]),
-        q:     normQ(cleanCell(r[COL.QUALIF])),
-      }))
-      .filter(c => c.email && c.email.includes('@'));
-    renderList();
-    if (prevEmail) {
-      const idx = CONTACTS.findIndex(c => c.email === prevEmail);
-      if (idx >= 0 && idx !== S.sel) { S.sel = idx; renderList(); }
-    }
-    const t = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
-    setSyncUI('ok', `✓ ${CONTACTS.length} contatos · ${t}`);
-  } catch(e) {
-    setSyncUI('err', '⚠ ' + e.message);
-  }
-}
-
-function setSyncUI(state, msg) {
-  const el = document.getElementById('sync-status');
-  if (!el) return;
-  el.textContent = msg;
-  el.style.color = state === 'ok' ? 'var(--acc)' : state === 'err' ? 'var(--dan)' : 'var(--gol)';
-}
-
-async function syncNow() {
-  const btn = document.getElementById('sync-btn');
-  if (btn) btn.textContent = '⟳';
-  await loadSheet(true);
-  if (btn) btn.textContent = '↻ Sync';
-  toast('Sincronizado! ✓');
-}
+// ── DADOS ─────────────────────────────────────────────────────────
+const CONTACTS = [
+  {name:"Rafael",          email:"richardss.oab@gmail.com",                    emp:"",              fat:"Entre R$ 10 mil e R$ 25 mil",   urg:"",      q:"com potencial"},
+  {name:"Bsm Advogados",   email:"georgemosilva@hotmail.com",                  emp:"BSM Advogados", fat:"Entre R$ 26 mil e R$ 50 mil",   urg:"",      q:"sim"},
+  {name:"Ronaldo",         email:"rrmoura8@hotmail.com",                       emp:"Advogado",      fat:"Entre R$ 10 mil e R$ 25 mil",   urg:"Agora", q:"com potencial"},
+  {name:"Ricardo",         email:"ricardo.lago15@gmail.com",                   emp:"",              fat:"Entre R$ 10 mil e R$ 25 mil",   urg:"",      q:"com potencial"},
+  {name:"Lucas",           email:"lucascadastrosemsites@gmail.co.com",         emp:"",              fat:"Entre R$ 10 mil e R$ 25 mil",   urg:"",      q:"com potencial"},
+  {name:"Ferdinando",      email:"fgn.adv@hotmail.com",                        emp:"",              fat:"Entre R$ 10 mil e R$ 25 mil",   urg:"",      q:"com potencial"},
+  {name:"Rodrigo Parente", email:"rodrigoparente01@gmail.com",                 emp:"",              fat:"Acima de R$ 150 mil",           urg:"",      q:"sim"},
+  {name:"Fabio Paulista",  email:"fabionandesss1@gmail.com",                   emp:"",              fat:"Entre R$ 10 mil e R$ 25 mil",   urg:"",      q:"com potencial"},
+  {name:"Savas",           email:"savas.adv@gmail.com",                        emp:"",              fat:"Entre R$ 10 mil e R$ 25 mil",   urg:"",      q:"com potencial"},
+  {name:"Jardson",         email:"adv.jardsongrigvgbeiro@gmail.com",           emp:"",              fat:"Acima de R$ 150 mil",           urg:"",      q:"sim"},
+  {name:"José Aparecido",  email:"drpascoaladv@gmail.com",                     emp:"",              fat:"Acima de R$ 150 mil",           urg:"",      q:"sim"},
+  {name:"Ana",             email:"dhfg@iguf.com",                              emp:"",              fat:"Acima de R$ 150 mil",           urg:"",      q:"sim"},
+  {name:"Bruno Gandarela", email:"atendimento@mmcmanutencaoindustrial.com.br", emp:"",              fat:"Acima de R$ 150 mil",           urg:"",      q:"sim"},
+  {name:"Débora Vieira",   email:"deborabissiatto.vba@gmail.com",              emp:"",              fat:"Entre R$ 26 mil e R$ 50 mil",   urg:"",      q:"sim"},
+  {name:"Jardel",          email:"jardel.castanheira@hotmail.com",             emp:"",              fat:"Entre R$ 10 mil e R$ 25 mil",   urg:"",      q:"com potencial"},
+  {name:"Raul Pires",      email:"raul.pcamargo@hotmail.com",                  emp:"",              fat:"Iniciando, menos de R$ 10 mil", urg:"",      q:"não"},
+  {name:"Hugo Oliveira",   email:"hugooadv@gmail.com",                         emp:"",              fat:"Entre R$ 10 mil e R$ 25 mil",   urg:"",      q:"com potencial"},
+  {name:"Muchaelly",       email:"muchaelly.adv@hotmail.com",                  emp:"",              fat:"Acima de R$ 150 mil",           urg:"",      q:"sim"},
+  {name:"Germano",         email:"upairbrasil@gmail.com",                      emp:"",              fat:"Entre R$ 10 mil e R$ 25 mil",   urg:"",      q:"não"},
+  {name:"Laura Carolina",  email:"lauracarolina_vm@hotmail.com",               emp:"",              fat:"Iniciando, menos de R$ 10 mil", urg:"",      q:"não"},
+  {name:"Luiza",           email:"luizaaziulm@gmail.com",                      emp:"",              fat:"Iniciando, menos de R$ 10 mil", urg:"",      q:"não"},
+];
 
 // ── ESTADO ────────────────────────────────────────────────────────
 const S = { sel:null, approved:new Set(), skipped:new Set(), emails:{}, subjects:{}, history:[] };
@@ -311,13 +293,12 @@ let API_KEY = localStorage.getItem('matte_key') || '';
 
 // ── INIT ──────────────────────────────────────────────────────────
 window.addEventListener('DOMContentLoaded', () => {
+  renderList();
   document.getElementById('key-inp').addEventListener('keydown', e => {
     if (e.key === 'Enter') saveKey();
     document.getElementById('key-err').style.display = 'none';
   });
   if (!API_KEY) openModal();
-  loadSheet();
-  setInterval(() => loadSheet(false), SYNC_MS);
 });
 
 // ── API KEY ───────────────────────────────────────────────────────
@@ -390,6 +371,7 @@ function renderList() {
 // ── SELECIONAR ────────────────────────────────────────────────────
 function selectContact(i) {
   S.sel = i; renderList();
+  document.getElementById('gmail-btn')?.classList.remove('visible');
   const c = CONTACTS[i];
   document.getElementById('empty-state').style.display = 'none';
   const ec = document.getElementById('ed-content');
@@ -404,6 +386,7 @@ function selectContact(i) {
   document.getElementById('ed-body').value = S.emails[i] || '';
   document.getElementById('approve-btn').textContent = S.approved.has(i) ? '✓ Aprovado' : '✓ Aprovar e-mail';
   if (!S.emails[i]) generateEmail();
+  else showGmailBtn();
 }
 
 function getSubject(q) {
@@ -451,6 +434,7 @@ Escreva APENAS o corpo do e-mail, sem assunto nem explicações.`;
     ta.value = '⚠ Erro: ' + e.message + '\n\nVerifique sua chave em ⚙ API Key.';
   }
   ind.classList.remove('on'); ta.style.display='block'; btn.disabled=false; btn.textContent='⚡ Gerar e-mail';
+  if (S.emails[S.sel]) showGmailBtn();
 }
 
 // ── APROVAR / PULAR ───────────────────────────────────────────────
@@ -540,6 +524,90 @@ function scrollMsgs() {
 }
 
 function chatKey(e) { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } }
+
+// ── GMAIL SEND ────────────────────────────────────────────────────
+const GMAIL_MCP_URL = 'https://gmail.mcp.claude.com/mcp';
+
+function openSendConfirm() {
+  if (S.sel === null) return;
+  const c = CONTACTS[S.sel];
+  const body = document.getElementById('ed-body').value;
+  const subj = document.getElementById('ed-subj').value;
+  if (!body.trim()) { toast('Gere o e-mail primeiro!'); return; }
+  document.getElementById('sc-to').textContent   = c.email;
+  document.getElementById('sc-subj').textContent = subj;
+  document.getElementById('sc-body').textContent = body;
+  document.getElementById('send-confirm').classList.add('open');
+}
+
+function closeSendConfirm() {
+  document.getElementById('send-confirm').classList.remove('open');
+}
+
+async function sendEmail() {
+  if (S.sel === null) return;
+  const c    = CONTACTS[S.sel];
+  const body = document.getElementById('ed-body').value;
+  const subj = document.getElementById('ed-subj').value;
+  const btn  = document.getElementById('sc-send-btn');
+
+  btn.textContent = '⏳ Enviando...';
+  btn.disabled = true;
+
+  try {
+    // Call Gmail MCP via the Anthropic API with tool use
+    const r = await fetch('https://api.anthropic.com/v1/messages', {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json',
+        'x-api-key': API_KEY,
+        'anthropic-version': '2023-06-01',
+        'anthropic-dangerous-direct-browser-access': 'true'
+      },
+      body: JSON.stringify({
+        model: 'claude-haiku-4-5-20251001',
+        max_tokens: 1024,
+        mcp_servers: [{ type: 'url', url: GMAIL_MCP_URL, name: 'gmail' }],
+        messages: [{
+          role: 'user',
+          content: `Create a Gmail draft with:
+- to: "${c.email}"
+- subject: "${subj}"
+- body: ${JSON.stringify(body)}
+- contentType: "text/plain"
+
+Return ONLY the word "OK" after creating the draft, nothing else.`
+        }]
+      })
+    });
+
+    const d = await r.json();
+    if (d.error) throw new Error(d.error.message);
+
+    closeSendConfirm();
+    S.approved.add(S.sel);
+    document.getElementById('approve-btn').textContent = '✓ Aprovado';
+    renderList();
+    toast('✓ Rascunho criado no Gmail! Abra o Gmail para enviar.');
+
+    // Auto-advance to next contact
+    setTimeout(() => {
+      const nxt = CONTACTS.findIndex((_, i) => i > S.sel && !S.skipped.has(i) && !S.approved.has(i));
+      if (nxt >= 0) selectContact(nxt);
+    }, 1500);
+
+  } catch(e) {
+    toast('⚠ Erro ao criar rascunho: ' + e.message);
+  }
+
+  btn.textContent = '📤 Confirmar e enviar';
+  btn.disabled = false;
+}
+
+// Show gmail button after email is generated
+function showGmailBtn() {
+  document.getElementById('gmail-btn').classList.add('visible');
+}
 
 // ── TOAST ─────────────────────────────────────────────────────────
 function toast(msg) {
