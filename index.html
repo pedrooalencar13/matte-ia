@@ -119,6 +119,30 @@ textarea.cta:focus{border-color:var(--acc)}
 .sync-bar.ok{color:var(--acc)}.sync-bar.err{color:var(--dan)}.sync-bar.loading{color:var(--gol)}
 .btn-sync{color:var(--acc);border:1px solid var(--acc);background:transparent}
 .btn-sync:hover{background:#1a2e0f}
+.btn-bulk{background:#0d2b0d;color:#4ade80;border:1px solid #166534}
+.btn-bulk:hover{background:#14532d}
+.bulk-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;align-items:center;justify-content:center}
+.bulk-overlay.open{display:flex}
+.bulk-box{background:var(--sur);border:1px solid var(--bor);border-radius:16px;padding:28px;width:520px;max-width:94vw;max-height:80vh;display:flex;flex-direction:column}
+.bulk-title{font-family:'DM Serif Display',serif;font-size:20px;color:var(--acc);margin-bottom:6px}
+.bulk-sub{font-size:12px;color:var(--mut);margin-bottom:16px;line-height:1.6}
+.bulk-filters{display:flex;gap:6px;margin-bottom:12px;flex-wrap:wrap}
+.bf{font-size:11px;padding:4px 10px;border-radius:20px;background:var(--sur2);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-family:'Sora',sans-serif}
+.bf.on{background:#1a2e0f;color:var(--acc);border-color:var(--acc)}
+.bulk-list{flex:1;overflow-y:scroll;border:1px solid var(--bor);border-radius:8px;margin-bottom:14px}
+.bl-item{display:flex;align-items:center;gap:10px;padding:9px 12px;border-bottom:1px solid var(--bor);cursor:pointer;transition:background .1s}
+.bl-item:last-child{border-bottom:none}
+.bl-item:hover{background:var(--sur2)}
+.bl-item.selected{background:#0d1f0d}
+.bl-check{width:16px;height:16px;border-radius:4px;border:1px solid var(--bor);background:var(--sur2);flex-shrink:0;display:flex;align-items:center;justify-content:center;font-size:10px;transition:all .12s}
+.bl-item.selected .bl-check{background:var(--acc);border-color:var(--acc);color:#0d0f0e}
+.bl-name{font-size:13px;font-weight:500;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bl-email{font-size:11px;color:var(--mut);font-family:'DM Mono',monospace;flex:1;min-width:0;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bl-tag{font-size:10px;padding:1px 6px;border-radius:3px;flex-shrink:0}
+.bulk-footer{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.bulk-progress{flex:1;height:4px;background:var(--sur2);border-radius:2px;overflow:hidden;display:none}
+.bulk-progress-bar{height:100%;background:var(--acc);width:0%;transition:width .3s}
+.bulk-count{font-size:12px;color:var(--mut);font-family:'DM Mono',monospace;white-space:nowrap}
 </style>
 </head>
 <body>
@@ -129,6 +153,7 @@ textarea.cta:focus{border-color:var(--acc)}
     <div class="dot"></div>
     <span id="hdr-count">carregando...</span>
     <button class="btn btn-sync btn-sm" id="sync-btn" onclick="syncNow()">↻ Sync</button>
+    <button class="btn btn-bulk btn-sm" onclick="openBulk()">⚡ Disparo em massa</button>
     <button class="btn btn-g btn-sm" onclick="openModal()">⚙ API Key</button>
   </div>
 </header>
@@ -230,6 +255,33 @@ textarea.cta:focus{border-color:var(--acc)}
   </div>
 </div>
 
+<!-- BULK SEND MODAL -->
+<div class="bulk-overlay" id="bulk-overlay">
+  <div class="bulk-box">
+    <div class="bulk-title">⚡ Disparo em massa</div>
+    <div class="bulk-sub">Selecione os leads e dispare os e-mails de uma vez. Para advogados o template padrão é usado automaticamente; para os demais, o Claude gera um e-mail personalizado.</div>
+    <div class="bulk-filters">
+      <button class="bf on" onclick="bulkFilter('all',this)">Todos</button>
+      <button class="bf" onclick="bulkFilter('adv',this)">Só advogados</button>
+      <button class="bf" onclick="bulkFilter('sim',this)">Qualificados</button>
+      <button class="bf" onclick="bulkFilter('nao_enviados',this)">Não enviados</button>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;margin-bottom:8px">
+      <button onclick="bulkSelectAll()" style="font-size:11px;padding:3px 10px;border-radius:6px;background:transparent;border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-family:'Sora',sans-serif">Selecionar todos</button>
+      <button onclick="bulkDeselectAll()" style="font-size:11px;padding:3px 10px;border-radius:6px;background:transparent;border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-family:'Sora',sans-serif">Limpar seleção</button>
+      <span id="bulk-sel-count" style="font-size:11px;color:var(--mut);font-family:'DM Mono',monospace;margin-left:auto">0 selecionados</span>
+    </div>
+    <div class="bulk-list" id="bulk-list"></div>
+    <div class="bulk-footer">
+      <div class="bulk-progress" id="bulk-progress"><div class="bulk-progress-bar" id="bulk-bar"></div></div>
+      <span class="bulk-count" id="bulk-status"></span>
+      <div style="flex:1"></div>
+      <button class="btn btn-g btn-sm" onclick="closeBulk()">Cancelar</button>
+      <button class="btn btn-bulk" id="bulk-send-btn" onclick="startBulkSend()" style="padding:7px 16px;font-size:12px">⚡ Disparar selecionados</button>
+    </div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -237,17 +289,19 @@ textarea.cta:focus{border-color:var(--acc)}
 const SHEET_ID   = '1r7vob1TvEY8P9G6wm5NcfNFg_r1aUwqvBSS7mrSt9Oo';
 const SHEET_NAME = 'Sheet1';
 const SYNC_MS    = 60000;
-const COL        = { NOME:0, EMAIL:3, EMPRESA:4, CAMPAIGN:10, FAT:12, URG:13, QUALIF:14, TAGS:7 };
+const COL        = { NOME:0, EMAIL:3, EMPRESA:4, FAT:12, URG:13, QUALIF:14, TAGS:7 };
 
 // ── TEMPLATE FIXO PARA ADVOGADOS ──────────────────────────────────
 const TEMPLATE_ADV_SUBJ = 'O tipo de cliente que você atrai depende do que você fala no anúncio';
 const TEMPLATE_ADV_BODY = 'A maioria dos escritórios ainda erra na base da campanha.\n\nNão é o orçamento.\nNão é o criativo.\nNão é nem o tráfego.\n\nÉ a comunicação.\n\nVejo muitos anúncios genéricos tentando falar com todo mundo:\n\n"Teve seu direito negado?"\n"Precisa de ajuda jurídica?"\n\nIsso até gera volume.\nMas atrai o tipo errado de lead.\n\nGente curiosa.\nSem urgência.\nSem clareza do problema.\nQue entra na conversa só pra "entender melhor".\n\nE isso trava o comercial.\n\nAgora compara com uma comunicação direcionada:\n\n"Plano de saúde negou cirurgia ou medicamento de alto custo?"\n"Seu benefício do INSS foi cortado recentemente?"\n\nPercebe a diferença?\n\nAqui você não está chamando qualquer pessoa.\nVocê está falando diretamente com quem:\njá tem o problema\njá sentiu o impacto\njá está buscando solução\n\nEsse é o lead que chega diferente.\nEle não pergunta "isso funciona?"\nEle pergunta "como resolvemos isso?"\n\nE tem outro ponto importante:\nEsse tipo de comunicação não precisa ser agressiva.\nPelo contrário.\n\nFunciona muito melhor quando tem caráter descritivo e informativo, mostrando o cenário com clareza e deixando o próximo passo natural.\n\nSem pressão.\nCom CTAs neutros, como:\n\n"Fale com um advogado especialista"\n"Consulte um escritório especializado"\n\nIsso gera mais confiança…\ne atrai um cliente com nível de consciência muito mais alto.\n\nNo fim do dia, o jogo não é sobre gerar mais leads.\nÉ sobre atrair as pessoas certas, no momento certo.\n\nSe fizer sentido ajustar a comunicação dos seus anúncios para começar a atrair clientes já prontos para contratar,\nme chama no WhatsApp que eu te explico como estruturar isso no seu escritório:\n\n👉 (11) 99515-7048';
 
 function isAdvogado(c) {
-  // Detecta pela coluna K (utm_campaign): "Leads - Advogados" ou "Advogados"
-  const camp = (c.campaign||'').toLowerCase().trim();
-  return camp === 'leads - advogados' || camp === 'advogados'
-      || camp.includes('advogados');
+  const tags = (c.tags||'').toLowerCase();
+  const emp  = (c.emp||'').toLowerCase();
+  const name = (c.name||'').toLowerCase();
+  return tags.includes('adv') || emp.includes('adv') || name.includes('adv')
+      || tags.includes('jurídic') || emp.includes('jurídic')
+      || tags.includes('oab') || emp.includes('oab');
 }
 
 // ── STATE ─────────────────────────────────────────────────────────
@@ -308,9 +362,8 @@ async function loadSheet(showLoading=true) {
         emp:   cleanCell(r[COL.EMPRESA]),
         fat:   cleanCell(r[COL.FAT])     || 'não informado',
         urg:   cleanCell(r[COL.URG]),
-        q:        normQ(cleanCell(r[COL.QUALIF])),
-        tags:     cleanCell(r[COL.TAGS]),
-        campaign: cleanCell(r[COL.CAMPAIGN]),
+        q:     normQ(cleanCell(r[COL.QUALIF])),
+        tags:  cleanCell(r[COL.TAGS]),
       }))
       .filter(c => c.email && c.email.includes('@'));
     renderList();
@@ -622,6 +675,189 @@ function toast(msg) {
   const t = document.getElementById('toast');
   t.textContent = msg; t.classList.add('show');
   setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── BULK SEND ─────────────────────────────────────────────────────
+let bulkSelected = new Set();
+let bulkCurrentFilter = 'all';
+let bulkSending = false;
+
+function openBulk() {
+  bulkSelected = new Set();
+  bulkCurrentFilter = 'all';
+  renderBulkList();
+  document.getElementById('bulk-overlay').classList.add('open');
+  document.getElementById('bulk-status').textContent = '';
+  document.getElementById('bulk-progress').style.display = 'none';
+  document.getElementById('bulk-send-btn').disabled = false;
+  document.getElementById('bulk-send-btn').textContent = '⚡ Disparar selecionados';
+}
+
+function closeBulk() {
+  if (bulkSending) return;
+  document.getElementById('bulk-overlay').classList.remove('open');
+}
+
+function bulkFilter(f, btn) {
+  bulkCurrentFilter = f;
+  document.querySelectorAll('.bf').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderBulkList();
+}
+
+function getFilteredContacts() {
+  return CONTACTS.map((c, i) => ({...c, idx: i})).filter(c => {
+    if (S.skipped.has(c.idx)) return false;
+    if (bulkCurrentFilter === 'adv') return isAdvogado(c);
+    if (bulkCurrentFilter === 'sim') return c.q === 'sim';
+    if (bulkCurrentFilter === 'nao_enviados') return !S.approved.has(c.idx);
+    return true;
+  });
+}
+
+function renderBulkList() {
+  const list = document.getElementById('bulk-list');
+  const items = getFilteredContacts();
+  list.innerHTML = '';
+  items.forEach(c => {
+    const d = document.createElement('div');
+    const sel = bulkSelected.has(c.idx);
+    d.className = 'bl-item' + (sel ? ' selected' : '');
+    d.onclick = () => toggleBulkItem(c.idx);
+    const qc = c.q==='sim'?'t-sim':c.q==='com potencial'?'t-pot':'t-nao';
+    const advBadge = isAdvogado(c) ? '<span class="bl-tag" style="background:#0a1628;color:#7ab8f5;border:1px solid #1a2d40">ADV</span>' : '';
+    d.innerHTML = `
+      <div class="bl-check">${sel ? '✓' : ''}</div>
+      <span class="bl-name">${esc(c.name)}</span>
+      <span class="bl-email">${esc(c.email)}</span>
+      <span class="bl-tag ${qc}">${esc(c.q)}</span>
+      ${advBadge}
+      ${S.approved.has(c.idx) ? '<span class="bl-tag" style="background:#0d1f0d;color:var(--acc);border:1px solid #1a3a1a">enviado</span>' : ''}`;
+    list.appendChild(d);
+  });
+  updateBulkCount();
+}
+
+function toggleBulkItem(idx) {
+  if (bulkSelected.has(idx)) bulkSelected.delete(idx);
+  else bulkSelected.add(idx);
+  renderBulkList();
+}
+
+function bulkSelectAll() {
+  getFilteredContacts().forEach(c => bulkSelected.add(c.idx));
+  renderBulkList();
+}
+
+function bulkDeselectAll() {
+  bulkSelected.clear();
+  renderBulkList();
+}
+
+function updateBulkCount() {
+  document.getElementById('bulk-sel-count').textContent = bulkSelected.size + ' selecionados';
+}
+
+async function generateEmailBody(c) {
+  // Advogado: template fixo instantâneo
+  if (isAdvogado(c)) const s = (typeof ADV_SUBJ !== 'undefined' ? ADV_SUBJ : TEMPLATE_ADV_SUBJ); const b = (typeof ADV_BODY !== 'undefined' ? ADV_BODY : TEMPLATE_ADV_BODY); return { subj: s, body: b };
+
+  // Outros: gera via Claude
+  if (!API_KEY) throw new Error('Chave API não configurada');
+  const inst = c.q==='sim'
+    ? 'Lead ALTAMENTE QUALIFICADO. Convide diretamente para reunião. Tom direto e confiante.'
+    : c.q==='com potencial'
+    ? 'Lead com potencial. Reative o interesse, apresente gestão de tráfego pago e gere curiosidade.'
+    : 'Lead não qualificado. Apresente levemente, sem pressão.';
+
+  const prompt = `Você é especialista em vendas consultivas para gestão de tráfego pago. Escreva um e-mail profissional e personalizado em português brasileiro.
+
+Destinatário: ${c.name}
+Empresa: ${c.emp||'não informado'}
+Faturamento: ${c.fat}
+Perfil: ${c.q}
+
+Instrução: ${inst}
+Máximo 4 parágrafos curtos. Termine com WhatsApp (11) 99515-7048. Assine como: Equipe Pedro Aranha Gestão de Tráfego
+
+Escreva APENAS o corpo do e-mail.`;
+
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key':API_KEY,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:500,messages:[{role:'user',content:prompt}]})
+  });
+  const d = await r.json();
+  if (d.error) throw new Error(d.error.message);
+
+  const subj = c.q==='sim'
+    ? 'Vamos marcar uma conversa? | Pedro Aranha Gestão de Tráfego'
+    : c.q==='com potencial'
+    ? 'Como negócios estão crescendo com tráfego pago | Pedro Aranha'
+    : 'Uma solução que pode transformar seus resultados';
+
+  return { subj, body: d.content[0].text };
+}
+
+async function startBulkSend() {
+  if (bulkSelected.size === 0) { toast('Selecione ao menos um lead!'); return; }
+  if (bulkSending) return;
+
+  const toSend = [...bulkSelected].map(idx => CONTACTS[idx] ? {...CONTACTS[idx], idx} : null).filter(Boolean);
+  const total = toSend.length;
+
+  bulkSending = true;
+  document.getElementById('bulk-send-btn').disabled = true;
+  document.getElementById('bulk-send-btn').textContent = '⏳ Enviando...';
+  document.getElementById('bulk-progress').style.display = 'block';
+
+  let done = 0, errors = 0;
+
+  for (const c of toSend) {
+    try {
+      document.getElementById('bulk-status').textContent = `${done}/${total} — gerando para ${c.name}...`;
+
+      const { subj, body } = await generateEmailBody(c);
+
+      // Save email so it shows in the panel
+      S.emails[c.idx]   = body;
+      S.subjects[c.idx] = subj;
+
+      // Open Gmail compose in background tab
+      const url = 'https://mail.google.com/mail/?view=cm&fs=1'
+        + '&to=' + encodeURIComponent(c.email)
+        + '&su=' + encodeURIComponent(subj)
+        + '&body=' + encodeURIComponent(body);
+      window.open(url, '_blank');
+
+      S.approved.add(c.idx);
+      done++;
+    } catch(e) {
+      errors++;
+      console.error('Bulk send error for', c.name, e.message);
+    }
+
+    // Update progress
+    const pct = Math.round((done + errors) / total * 100);
+    document.getElementById('bulk-bar').style.width = pct + '%';
+    document.getElementById('bulk-status').textContent = `${done + errors}/${total} — ${done} ok, ${errors} erros`;
+
+    // Small delay to not overwhelm
+    if (toSend.indexOf(c) < toSend.length - 1) await new Promise(r => setTimeout(r, 800));
+  }
+
+  bulkSending = false;
+  renderList();
+  renderBulkList();
+  document.getElementById('bulk-send-btn').disabled = false;
+  document.getElementById('bulk-send-btn').textContent = '✓ Concluído';
+  document.getElementById('bulk-status').textContent = `✓ ${done} e-mails abertos no Gmail · ${errors} erros`;
+  toast(`✓ ${done} e-mails gerados e abertos no Gmail!`);
 }
 </script>
 </body>
