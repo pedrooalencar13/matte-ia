@@ -6,11 +6,7 @@
 <title>Matte IA — Painel de E-mails</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
 <style>
-  :root {
-    --bg:#0d0f0e;--surface:#151817;--surface2:#1c1f1d;--border:#2a2e2c;
-    --accent:#c8f57a;--accent-dim:#8ab34d;--text:#e8ede9;--muted:#6b756d;
-    --danger:#f5734a;--info:#7ab8f5;--gold:#f5c842;
-  }
+  :root{--bg:#0d0f0e;--surface:#151817;--surface2:#1c1f1d;--border:#2a2e2c;--accent:#c8f57a;--accent-dim:#8ab34d;--text:#e8ede9;--muted:#6b756d;--danger:#f5734a;--info:#7ab8f5;--gold:#f5c842}
   *{box-sizing:border-box;margin:0;padding:0}
   body{background:var(--bg);color:var(--text);font-family:'Sora',sans-serif;font-size:14px;min-height:100vh;display:flex;flex-direction:column}
   header{padding:16px 28px;border-bottom:1px solid var(--border);display:flex;align-items:center;justify-content:space-between;background:var(--surface)}
@@ -25,10 +21,9 @@
   .sh h2{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--muted);font-weight:600}
   .badge{background:var(--accent);color:#0d0f0e;font-size:10px;font-weight:700;border-radius:20px;padding:2px 8px}
   .ci{padding:13px 18px;border-bottom:1px solid var(--border);cursor:pointer;transition:background .12s;position:relative}
-  .ci:hover{background:var(--surface2)}
-  .ci.active{background:var(--surface2);border-left:2px solid var(--accent)}
-  .ci .cn{font-weight:500;font-size:13px;margin-bottom:3px}
-  .ci .ce{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+  .ci:hover{background:var(--surface2)}.ci.active{background:var(--surface2);border-left:2px solid var(--accent)}
+  .cn{font-weight:500;font-size:13px;margin-bottom:3px}
+  .ce{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
   .ct{display:flex;gap:5px;margin-top:6px;flex-wrap:wrap}
   .tag{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:500}
   .tag.sim{background:#1a2e0f;color:#8adb4a;border:1px solid #2a4d15}
@@ -43,8 +38,7 @@
   .etop{padding:18px 26px 14px;border-bottom:1px solid var(--border);background:var(--surface)}
   .ri{display:flex;align-items:center;gap:12px;margin-bottom:12px}
   .av{width:38px;height:38px;border-radius:50%;background:linear-gradient(135deg,var(--accent-dim),#3a7a1a);display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:17px;color:#0d0f0e;flex-shrink:0}
-  .rn{font-weight:600;font-size:15px}
-  .re{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace}
+  .rn{font-weight:600;font-size:15px}.re{font-size:11px;color:var(--muted);font-family:'DM Mono',monospace}
   .sr{display:flex;align-items:center;gap:10px}
   .sl{font-size:10px;color:var(--muted);text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
   .si{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:6px;padding:7px 11px;color:var(--text);font-family:'Sora',sans-serif;font-size:13px;outline:none;transition:border-color .15s}
@@ -78,22 +72,20 @@
   .cta{flex:1;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:9px 11px;color:var(--text);font-family:'Sora',sans-serif;font-size:13px;resize:none;outline:none;min-height:38px;max-height:110px;line-height:1.5;transition:border-color .15s}
   .cta:focus{border-color:var(--accent)}
   .sb{width:36px;height:36px;border-radius:8px;background:var(--accent);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;transition:background .15s;flex-shrink:0}
-  .sb:hover{background:#b8e060}
-  .sb svg{width:15px;height:15px}
-  /* MODAL */
+  .sb:hover{background:#b8e060}.sb svg{width:15px;height:15px}
+  /* PROMPT MODAL */
   .mo{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;align-items:center;justify-content:center}
   .mo.open{display:flex}
-  .mb{background:#151817;border:1px solid #2a2e2c;border-radius:16px;padding:40px;width:460px;max-width:92vw}
-  .ml{font-family:'DM Serif Display',serif;font-size:24px;color:var(--accent);margin-bottom:5px}
-  .ms{font-size:13px;color:var(--muted);margin-bottom:24px;line-height:1.6}
-  .mlab{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--muted);margin-bottom:7px;font-weight:600}
-  .mi{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:11px 13px;color:var(--text);font-family:'DM Mono',monospace;font-size:13px;outline:none;margin-bottom:5px;transition:border-color .15s}
-  .mi:focus{border-color:var(--accent)}
-  .merr{display:none;font-size:12px;color:var(--danger);margin-bottom:10px}
-  .mhint{font-size:12px;color:var(--muted);margin-bottom:20px;line-height:1.7}
-  .mhint a{color:var(--info);text-decoration:none;font-family:'DM Mono',monospace}
-  .mbtn{width:100%;background:var(--accent);color:#0d0f0e;border:none;border-radius:8px;padding:12px;font-family:'Sora',sans-serif;font-size:14px;font-weight:600;cursor:pointer;transition:background .15s}
+  .mb{background:#151817;border:1px solid #2a2e2c;border-radius:16px;padding:40px;width:520px;max-width:94vw}
+  .ml{font-family:'DM Serif Display',serif;font-size:22px;color:var(--accent);margin-bottom:8px}
+  .ms{font-size:13px;color:var(--muted);margin-bottom:20px;line-height:1.7}
+  .prompt-box{width:100%;background:var(--surface2);border:1px solid var(--border);border-radius:8px;padding:14px;color:var(--text);font-family:'DM Mono',monospace;font-size:12px;line-height:1.7;min-height:160px;margin-bottom:14px;outline:none;resize:vertical}
+  .prompt-box:focus{border-color:var(--accent)}
+  .mbtn{background:var(--accent);color:#0d0f0e;border:none;border-radius:8px;padding:11px 20px;font-family:'Sora',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s;margin-right:8px}
   .mbtn:hover{background:#b8e060}
+  .mbtn2{background:transparent;color:var(--muted);border:1px solid var(--border);border-radius:8px;padding:11px 20px;font-family:'Sora',sans-serif;font-size:13px;cursor:pointer;transition:all .15s}
+  .mbtn2:hover{border-color:var(--accent);color:var(--accent)}
+  .step-badge{display:inline-block;background:var(--accent);color:#0d0f0e;font-size:10px;font-weight:700;border-radius:20px;padding:2px 9px;margin-bottom:12px;font-family:'DM Mono',monospace}
   .toast{position:fixed;bottom:22px;right:22px;background:var(--accent);color:#0d0f0e;padding:11px 18px;border-radius:8px;font-weight:500;font-size:13px;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;z-index:9998}
   .toast.show{opacity:1;transform:translateY(0)}
   ::-webkit-scrollbar{width:3px}::-webkit-scrollbar-thumb{background:var(--border);border-radius:2px}
@@ -105,12 +97,9 @@
   <div class="logo">Matte IA <span>/ painel de disparos</span></div>
   <div class="hm">
     <div class="dot"></div>
-    <span id="approved-count">0 aprovados</span>
-    <span>·</span>
-    <span id="total-count">21 contatos</span>
-    <span>·</span>
+    <span id="approved-count">0 aprovados</span><span>·</span>
+    <span id="total-count">21 contatos</span><span>·</span>
     <button class="btn bp" onclick="dispatchAll()" style="padding:5px 13px;font-size:12px">Disparar aprovados →</button>
-    <button class="btn bg" onclick="openModal()" style="padding:5px 11px;font-size:11px;opacity:.8">⚙ API Key</button>
   </div>
 </header>
 
@@ -133,19 +122,15 @@
           <div><div class="rn" id="rn">—</div><div class="re" id="re">—</div></div>
           <div id="rt" class="ct" style="margin-left:auto;margin-top:0"></div>
         </div>
-        <div class="sr">
-          <span class="sl">Assunto</span>
-          <input class="si" id="subj" type="text">
-        </div>
+        <div class="sr"><span class="sl">Assunto</span><input class="si" id="subj" type="text"></div>
       </div>
       <div class="ebody">
-        <div class="gi" id="gi"><div class="dots"><span></span><span></span><span></span></div>Claude está redigindo...</div>
-        <textarea class="eta" id="body" placeholder="O e-mail aparecerá aqui..."></textarea>
+        <div class="gi" id="gi"><div class="dots"><span></span><span></span><span></span></div>Aguardando você colar a resposta...</div>
+        <textarea class="eta" id="body" placeholder="Cole aqui a resposta do Claude depois de copiar o prompt →"></textarea>
       </div>
       <div class="efooter">
         <button class="btn bp" id="appbtn" onclick="approveEmail()">✓ Aprovar e-mail</button>
-        <button class="btn bg" onclick="regen()">↺ Regenerar</button>
-        <button class="btn bg" onclick="genEmail()">⚡ Gerar agora</button>
+        <button class="btn bg" onclick="openPromptModal()">⚡ Gerar com Claude</button>
         <div style="flex:1"></div>
         <button class="btn bd" onclick="skipContact()">Pular</button>
       </div>
@@ -158,7 +143,7 @@
       <div><div style="font-weight:500;font-size:13px">Assistente Claude</div><div style="font-size:11px;color:var(--muted)">Peça ajustes ou tire dúvidas</div></div>
     </div>
     <div class="msgs" id="msgs">
-      <div class="msg claude">Olá! Selecione um contato e posso ajudar a revisar o e-mail, ajustar o tom, corrigir informações ou responder dúvidas sobre a campanha. 🚀<div class="mt">agora</div></div>
+      <div class="msg claude">Olá! Para usar, selecione um contato → clique em "⚡ Gerar com Claude" → copie o prompt → cole no Claude.ai → copie a resposta → cole no editor. 🚀<div class="mt">agora</div></div>
     </div>
     <div class="cia">
       <div class="qa">
@@ -169,8 +154,8 @@
         <button class="qb" onclick="qa('Reescreva focando em marcar uma reunião ou call')">marcar call</button>
       </div>
       <div class="cir">
-        <textarea class="cta" id="ci" placeholder="Peça uma alteração ou faça uma pergunta..." rows="1" onkeydown="ck(event)"></textarea>
-        <button class="sb" onclick="send()">
+        <textarea class="cta" id="ci" placeholder="Cole aqui a resposta do Claude para ajustes..." rows="1" onkeydown="ckChat(event)"></textarea>
+        <button class="sb" onclick="sendChat()">
           <svg viewBox="0 0 24 24" fill="none" stroke="#0d0f0e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
             <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
           </svg>
@@ -180,16 +165,20 @@
   </div>
 </div>
 
-<!-- MODAL API KEY -->
+<!-- MODAL: PROMPT PARA COPIAR -->
 <div class="mo" id="modal">
   <div class="mb">
-    <div class="ml">Matte IA</div>
-    <div class="ms">Insira sua chave da Claude API para ativar a geração de e-mails com inteligência artificial.</div>
-    <div class="mlab">Chave da API (Claude)</div>
-    <input class="mi" id="ki" type="password" placeholder="sk-ant-api03-...">
-    <div class="merr" id="kerr">A chave deve começar com "sk-ant-"</div>
-    <div class="mhint">Obtenha em <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> → API Keys → Create Key.<br>Sua chave fica salva no navegador.</div>
-    <button class="mbtn" onclick="saveKey()">Salvar e entrar →</button>
+    <div class="step-badge">PASSO 1 DE 2</div>
+    <div class="ml">Copie este prompt</div>
+    <div class="ms">Cole no <a href="https://claude.ai" target="_blank" style="color:var(--info);text-decoration:none">claude.ai</a>, copie a resposta completa e cole no editor do painel.</div>
+    <textarea class="prompt-box" id="prompt-text" readonly></textarea>
+    <button class="mbtn" onclick="copyPrompt()">📋 Copiar prompt</button>
+    <button class="mbtn2" onclick="openClaude()">Abrir Claude.ai →</button>
+    <div style="margin-top:14px;padding-top:14px;border-top:1px solid var(--border)">
+      <div class="step-badge" style="background:var(--surface2);color:var(--muted);border:1px solid var(--border)">PASSO 2 DE 2</div>
+      <p style="font-size:12px;color:var(--muted);margin-top:8px;line-height:1.7">Depois de copiar a resposta do Claude.ai, feche esta janela e <strong style="color:var(--text)">cole diretamente no editor</strong> (área de texto grande no centro do painel).</p>
+      <button class="mbtn2" style="margin-top:10px;width:100%" onclick="closeModal()">Já colei a resposta — fechar</button>
+    </div>
   </div>
 </div>
 
@@ -220,56 +209,10 @@ const contacts=[
   {name:"Luiza",          email:"luizaaziulm@gmail.com",                     empresa:"",             fat:"Iniciando, menos de R$ 10 mil", urg:"",      q:"não"},
 ];
 
-const S={sel:null,approved:new Set(),skipped:new Set(),emails:{},subjects:{},history:[]};
-let KEY='';
+const S={sel:null,approved:new Set(),skipped:new Set(),emails:{},subjects:{}};
 
-// ── INIT ─────────────────────────────
-window.addEventListener('DOMContentLoaded',()=>{
-  KEY=localStorage.getItem('matte_key')||'';
-  renderList();
-  document.getElementById('ki').addEventListener('keydown',e=>{
-    if(e.key==='Enter')saveKey();
-    document.getElementById('kerr').style.display='none';
-  });
-  if(!KEY)openModal();
-});
+window.addEventListener('DOMContentLoaded',()=>{ renderList(); });
 
-// ── API KEY ───────────────────────────
-function openModal(){
-  document.getElementById('ki').value=KEY;
-  document.getElementById('modal').classList.add('open');
-  setTimeout(()=>document.getElementById('ki').focus(),100);
-}
-function saveKey(){
-  const v=document.getElementById('ki').value.trim();
-  if(!v.startsWith('sk-ant-')){document.getElementById('kerr').style.display='block';return;}
-  KEY=v;
-  localStorage.setItem('matte_key',v);
-  document.getElementById('modal').classList.remove('open');
-  showToast('Chave salva! ✓');
-}
-
-// ── API CALL ──────────────────────────
-async function callClaude(messages,system='',maxTokens=600){
-  if(!KEY){openModal();throw new Error('Sem chave');}
-  const body={model:'claude-haiku-4-5-20251001',max_tokens:maxTokens,messages};
-  if(system)body.system=system;
-  const r=await fetch('https://api.anthropic.com/v1/messages',{
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'x-api-key':KEY,
-      'anthropic-version':'2023-06-01',
-      'anthropic-dangerous-direct-browser-access':'true'
-    },
-    body:JSON.stringify(body)
-  });
-  const d=await r.json();
-  if(d.error)throw new Error(d.error.message);
-  return d.content[0].text;
-}
-
-// ── RENDER LIST ───────────────────────
 function renderList(){
   const el=document.getElementById('contact-list');
   el.innerHTML='';
@@ -287,7 +230,6 @@ function renderList(){
   });
 }
 
-// ── SELECT ────────────────────────────
 function selectContact(i){
   S.sel=i; renderList();
   const c=contacts[i];
@@ -301,7 +243,6 @@ function selectContact(i){
   document.getElementById('subj').value=S.subjects[i]||getSubj(c.q);
   document.getElementById('body').value=S.emails[i]||'';
   document.getElementById('appbtn').textContent=S.approved.has(i)?'✓ Aprovado':'✓ Aprovar e-mail';
-  if(!S.emails[i])genEmail();
 }
 
 function getSubj(q){
@@ -310,21 +251,13 @@ function getSubj(q){
   return'Uma solução que pode transformar seu escritório';
 }
 
-// ── GENERATE EMAIL ────────────────────
-async function genEmail(){
-  if(S.sel===null)return;
-  const c=contacts[S.sel];
-  const gi=document.getElementById('gi');
-  const ta=document.getElementById('body');
-  gi.classList.add('on'); ta.value=''; ta.style.display='none';
-
+function buildPrompt(c){
   const inst=c.q==='sim'
     ?'Lead ALTAMENTE QUALIFICADO. Convide diretamente para reunião ou demonstração. Tom direto e confiante.'
     :c.q==='com potencial'
-    ?'Lead com potencial. Reative o interesse, apresente a solução de IA para advogados e gere curiosidade para uma próxima conversa.'
-    :'Lead não qualificado no momento. Apresente levemente, sem pressão, deixe porta aberta para o futuro.';
-
-  const prompt=`Você é especialista em vendas consultivas para o mercado jurídico. Escreva um e-mail profissional, caloroso e personalizado em português brasileiro.
+    ?'Lead com potencial. Reative o interesse, apresente a solução de IA para advogados e gere curiosidade.'
+    :'Lead não qualificado. Apresente levemente, sem pressão, deixe porta aberta.';
+  return `Você é especialista em vendas consultivas para o mercado jurídico. Escreva um e-mail profissional, caloroso e personalizado em português brasileiro.
 
 Destinatário: ${c.name}
 Escritório: ${c.empresa||'não informado'}
@@ -337,21 +270,22 @@ Instrução: ${inst}
 Regras: máximo 4 parágrafos curtos, tom humano, mencione o faturamento naturalmente se fizer sentido, termine com chamada para ação clara. Assine como: Equipe Matte IA
 
 Escreva APENAS o corpo do e-mail, sem assunto nem explicações.`;
-
-  try{
-    const text=await callClaude([{role:'user',content:prompt}]);
-    S.emails[S.sel]=text;
-    S.subjects[S.sel]=document.getElementById('subj').value;
-    ta.value=text;
-  }catch(e){
-    ta.value='⚠ Erro: '+e.message+'\n\nClique em ⚙ API Key no topo e verifique sua chave.';
-  }
-  gi.classList.remove('on'); ta.style.display='block';
 }
 
-function regen(){if(S.sel===null)return;delete S.emails[S.sel];genEmail();}
+function openPromptModal(){
+  if(S.sel===null)return;
+  const c=contacts[S.sel];
+  document.getElementById('prompt-text').value=buildPrompt(c);
+  document.getElementById('modal').classList.add('open');
+}
+function closeModal(){ document.getElementById('modal').classList.remove('open'); }
 
-// ── APPROVE / SKIP ────────────────────
+function copyPrompt(){
+  const t=document.getElementById('prompt-text');
+  navigator.clipboard.writeText(t.value).then(()=>showToast('Prompt copiado! ✓ Cole no Claude.ai'));
+}
+function openClaude(){ window.open('https://claude.ai','_blank'); }
+
 function approveEmail(){
   if(S.sel===null)return;
   S.emails[S.sel]=document.getElementById('body').value;
@@ -365,6 +299,7 @@ function approveEmail(){
     if(nxt>=0)selectContact(nxt);
   },500);
 }
+
 function skipContact(){
   if(S.sel===null)return;
   S.skipped.add(S.sel);S.approved.delete(S.sel);
@@ -372,49 +307,54 @@ function skipContact(){
   const nxt=contacts.findIndex((_,i)=>i>S.sel&&!S.skipped.has(i));
   if(nxt>=0)selectContact(nxt);
 }
+
 function dispatchAll(){
   if(S.approved.size===0){showToast('Nenhum e-mail aprovado ainda!');return;}
   showToast(S.approved.size+' e-mails prontos para disparar! ✓');
 }
 
-// ── CHAT ──────────────────────────────
-async function send(){
-  const inp=document.getElementById('ci');
-  const msg=inp.value.trim();
-  if(!msg)return;
-  inp.value='';
-  addMsg(msg,'user');
-  const c=S.sel!==null?contacts[S.sel]:null;
+function qa(instrucao){
+  if(S.sel===null){showToast('Selecione um contato primeiro');return;}
+  const c=contacts[S.sel];
   const emailAtual=document.getElementById('body').value;
-  const sys=c
-    ?`Você é assistente da Matte IA ajudando a revisar e-mails de prospecção para advogados.
-Contato: ${c.name}, email: ${c.email}, faturamento: ${c.fat}, qualificação: ${c.q}.
-E-mail atual:\n\n${emailAtual}
+  const prompt=`Você está ajudando a revisar um e-mail de prospecção para advogados da Matte IA.
 
-Se pedirem alterações no e-mail, responda com o e-mail COMPLETO reescrito, precedido pela linha exata: ===EMAIL===
-Caso contrário, responda normalmente.`
-    :'Você é assistente da Matte IA, ajudando com campanhas de e-mail para advogados.';
+Contato: ${c.name}, faturamento: ${c.fat}, qualificação: ${c.q}
 
-  S.history.push({role:'user',content:msg});
-  try{
-    const reply=await callClaude(S.history,sys,800);
-    S.history.push({role:'assistant',content:reply});
-    if(reply.includes('===EMAIL===')){
-      const parts=reply.split('===EMAIL===');
-      if(parts[0].trim())addMsg(parts[0].trim(),'claude');
-      const ne=parts[1].trim();
-      document.getElementById('body').value=ne;
-      if(S.sel!==null)S.emails[S.sel]=ne;
-      addMsg('✓ E-mail atualizado no editor!','claude');
-    }else{
-      addMsg(reply,'claude');
-    }
-  }catch(e){
-    addMsg('⚠ Erro: '+e.message,'claude');
-  }
+E-mail atual:
+${emailAtual}
+
+Instrução: ${instrucao}
+
+Reescreva o e-mail completo aplicando a instrução. Retorne APENAS o e-mail reescrito, sem explicações.`;
+  document.getElementById('prompt-text').value=prompt;
+  document.getElementById('modal').classList.add('open');
+  showToast('Prompt pronto! Copie e cole no Claude.ai');
 }
 
-function qa(msg){document.getElementById('ci').value=msg;send();}
+function sendChat(){
+  const v=document.getElementById('ci').value.trim();
+  if(!v)return;
+  document.getElementById('ci').value='';
+  if(S.sel===null){showToast('Selecione um contato primeiro');return;}
+  const c=contacts[S.sel];
+  const emailAtual=document.getElementById('body').value;
+  const prompt=`Você está ajudando a revisar um e-mail de prospecção para advogados da Matte IA.
+
+Contato: ${c.name}, faturamento: ${c.fat}, qualificação: ${c.q}
+
+E-mail atual:
+${emailAtual}
+
+Instrução do usuário: ${v}
+
+Reescreva o e-mail completo aplicando a instrução. Retorne APENAS o e-mail reescrito, sem explicações.`;
+  document.getElementById('prompt-text').value=prompt;
+  document.getElementById('modal').classList.add('open');
+  addMsg(v,'user');
+  addMsg('Prompt gerado! Copie e cole no Claude.ai, depois cole a resposta no editor.','claude');
+}
+
 function addMsg(text,who){
   const d=document.createElement('div');
   d.className='msg '+who;
@@ -423,12 +363,13 @@ function addMsg(text,who){
   const m=document.getElementById('msgs');
   m.appendChild(d);m.scrollTop=99999;
 }
-function ck(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();send();}}
+
+function ckChat(e){if(e.key==='Enter'&&!e.shiftKey){e.preventDefault();sendChat();}}
 
 function showToast(msg){
   const t=document.getElementById('toast');
   t.textContent=msg;t.classList.add('show');
-  setTimeout(()=>t.classList.remove('show'),2500);
+  setTimeout(()=>t.classList.remove('show'),2800);
 }
 </script>
 </body>
