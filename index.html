@@ -237,19 +237,17 @@ textarea.cta:focus{border-color:var(--acc)}
 const SHEET_ID   = '1r7vob1TvEY8P9G6wm5NcfNFg_r1aUwqvBSS7mrSt9Oo';
 const SHEET_NAME = 'Sheet1';
 const SYNC_MS    = 60000;
-const COL        = { NOME:0, EMAIL:3, EMPRESA:4, FAT:12, URG:13, QUALIF:14, TAGS:7 };
+const COL        = { NOME:0, EMAIL:3, EMPRESA:4, CAMPAIGN:10, FAT:12, URG:13, QUALIF:14, TAGS:7 };
 
 // ── TEMPLATE FIXO PARA ADVOGADOS ──────────────────────────────────
 const TEMPLATE_ADV_SUBJ = 'O tipo de cliente que você atrai depende do que você fala no anúncio';
 const TEMPLATE_ADV_BODY = 'A maioria dos escritórios ainda erra na base da campanha.\n\nNão é o orçamento.\nNão é o criativo.\nNão é nem o tráfego.\n\nÉ a comunicação.\n\nVejo muitos anúncios genéricos tentando falar com todo mundo:\n\n"Teve seu direito negado?"\n"Precisa de ajuda jurídica?"\n\nIsso até gera volume.\nMas atrai o tipo errado de lead.\n\nGente curiosa.\nSem urgência.\nSem clareza do problema.\nQue entra na conversa só pra "entender melhor".\n\nE isso trava o comercial.\n\nAgora compara com uma comunicação direcionada:\n\n"Plano de saúde negou cirurgia ou medicamento de alto custo?"\n"Seu benefício do INSS foi cortado recentemente?"\n\nPercebe a diferença?\n\nAqui você não está chamando qualquer pessoa.\nVocê está falando diretamente com quem:\njá tem o problema\njá sentiu o impacto\njá está buscando solução\n\nEsse é o lead que chega diferente.\nEle não pergunta "isso funciona?"\nEle pergunta "como resolvemos isso?"\n\nE tem outro ponto importante:\nEsse tipo de comunicação não precisa ser agressiva.\nPelo contrário.\n\nFunciona muito melhor quando tem caráter descritivo e informativo, mostrando o cenário com clareza e deixando o próximo passo natural.\n\nSem pressão.\nCom CTAs neutros, como:\n\n"Fale com um advogado especialista"\n"Consulte um escritório especializado"\n\nIsso gera mais confiança…\ne atrai um cliente com nível de consciência muito mais alto.\n\nNo fim do dia, o jogo não é sobre gerar mais leads.\nÉ sobre atrair as pessoas certas, no momento certo.\n\nSe fizer sentido ajustar a comunicação dos seus anúncios para começar a atrair clientes já prontos para contratar,\nme chama no WhatsApp que eu te explico como estruturar isso no seu escritório:\n\n👉 (11) 99515-7048';
 
 function isAdvogado(c) {
-  const tags = (c.tags||'').toLowerCase();
-  const emp  = (c.emp||'').toLowerCase();
-  const name = (c.name||'').toLowerCase();
-  return tags.includes('adv') || emp.includes('adv') || name.includes('adv')
-      || tags.includes('jurídic') || emp.includes('jurídic')
-      || tags.includes('oab') || emp.includes('oab');
+  // Detecta pela coluna K (utm_campaign): "Leads - Advogados" ou "Advogados"
+  const camp = (c.campaign||'').toLowerCase().trim();
+  return camp === 'leads - advogados' || camp === 'advogados'
+      || camp.includes('advogados');
 }
 
 // ── STATE ─────────────────────────────────────────────────────────
@@ -310,8 +308,9 @@ async function loadSheet(showLoading=true) {
         emp:   cleanCell(r[COL.EMPRESA]),
         fat:   cleanCell(r[COL.FAT])     || 'não informado',
         urg:   cleanCell(r[COL.URG]),
-        q:     normQ(cleanCell(r[COL.QUALIF])),
-        tags:  cleanCell(r[COL.TAGS]),
+        q:        normQ(cleanCell(r[COL.QUALIF])),
+        tags:     cleanCell(r[COL.TAGS]),
+        campaign: cleanCell(r[COL.CAMPAIGN]),
       }))
       .filter(c => c.email && c.email.includes('@'));
     renderList();
