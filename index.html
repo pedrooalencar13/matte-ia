@@ -1,0 +1,850 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pedro Aranha — Painel de E-mails</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0f0e;--sur:#151817;--sur2:#1c1f1d;--bor:#2a2e2c;
+  --acc:#c8f57a;--txt:#e8ede9;--mut:#6b756d;
+  --dan:#f5734a;--inf:#7ab8f5;--gol:#f5c842;
+}
+body{background:var(--bg);color:var(--txt);font-family:'Sora',sans-serif;font-size:14px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--sur2)}
+::-webkit-scrollbar-thumb{background:var(--mut);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--acc)}
+
+/* HEADER */
+header{padding:13px 24px;border-bottom:1px solid var(--bor);background:var(--sur);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.logo{font-family:'DM Serif Display',serif;font-size:20px;color:var(--acc)}
+.logo span{color:var(--mut);font-style:italic}
+.hm{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--mut)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--acc);box-shadow:0 0 8px var(--acc);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.btn{padding:6px 13px;border-radius:7px;border:none;cursor:pointer;font-family:'Sora',sans-serif;font-size:12px;font-weight:500;transition:all .15s}
+.btn-p{background:var(--acc);color:#0d0f0e}.btn-p:hover{background:#b8e060}
+.btn-g{background:var(--sur2);color:var(--txt);border:1px solid var(--bor)}.btn-g:hover{border-color:var(--acc);color:var(--acc)}
+.btn-d{background:transparent;color:var(--dan);border:1px solid #3a1a10}.btn-d:hover{background:#2a1510}
+.btn-sm{padding:5px 10px;font-size:11px;opacity:.8}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:270px 1fr 330px;flex:1;min-height:0;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{border-right:1px solid var(--bor);background:var(--sur);display:flex;flex-direction:column;overflow:hidden}
+.sb-head{padding:12px 16px;border-bottom:1px solid var(--bor);display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.sb-head h2{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--mut);font-weight:600}
+.badge{background:var(--acc);color:#0d0f0e;font-size:10px;font-weight:700;border-radius:20px;padding:2px 8px}
+.sb-list{overflow-y:scroll;flex:1}
+.ci{padding:12px 16px;border-bottom:1px solid var(--bor);cursor:pointer;transition:background .12s;border-left:2px solid transparent;position:relative}
+.ci:hover{background:var(--sur2)}
+.ci.active{background:var(--sur2);border-left-color:var(--acc)}
+.ci-name{font-weight:500;font-size:13px;margin-bottom:2px;display:flex;justify-content:space-between;align-items:center}
+.ci-email{font-size:11px;color:var(--mut);font-family:'DM Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px}
+.tags{display:flex;gap:4px;flex-wrap:wrap}
+.tag{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:500}
+.t-sim{background:#1a2e0f;color:#8adb4a;border:1px solid #2a4d15}
+.t-pot{background:#1a2410;color:var(--gol);border:1px solid #3d3210}
+.t-nao{background:#2a1510;color:var(--dan);border:1px solid #4a2010}
+.t-fat{background:#101820;color:var(--inf);border:1px solid #1a2d40}
+.ci-check{color:var(--acc);font-size:13px}
+
+/* EDITOR */
+.editor{display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--mut);text-align:center;gap:10px;padding:40px}
+.empty-icon{font-size:48px;opacity:.15}
+.ed-info{padding:14px 22px 12px;border-bottom:1px solid var(--bor);background:var(--sur);flex-shrink:0}
+.ed-recip{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#8ab34d,#3a7a1a);display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:16px;color:#0d0f0e;flex-shrink:0}
+.ed-name{font-weight:600;font-size:14px}
+.ed-email{font-size:11px;color:var(--mut);font-family:'DM Mono',monospace}
+.ed-subj{display:flex;align-items:center;gap:8px}
+.ed-subj label{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
+.ed-subj input{flex:1;background:var(--sur2);border:1px solid var(--bor);border-radius:6px;padding:6px 10px;color:var(--txt);font-family:'Sora',sans-serif;font-size:13px;outline:none}
+.ed-subj input:focus{border-color:var(--acc)}
+.ed-actions{padding:10px 22px;border-bottom:1px solid var(--bor);background:var(--sur);display:flex;gap:8px;align-items:center;flex-shrink:0}
+.ed-body{flex:1;padding:16px 22px;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.gen-ind{display:none;align-items:center;gap:8px;color:var(--mut);font-size:12px;font-family:'DM Mono',monospace;margin-bottom:8px;flex-shrink:0}
+.gen-ind.on{display:flex}
+.dots span{display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--acc);margin:0 1px;animation:blink 1.2s infinite}
+.dots span:nth-child(2){animation-delay:.2s}.dots span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,100%{opacity:.2}50%{opacity:1}}
+textarea.eta{flex:1;background:var(--sur2);border:1px solid var(--bor);border-radius:8px;padding:12px 14px;color:var(--txt);font-family:'Sora',sans-serif;font-size:14px;line-height:1.8;resize:none;outline:none;min-height:0}
+textarea.eta:focus{border-color:var(--acc)}
+
+/* CHAT */
+.chat{border-left:1px solid var(--bor);background:var(--sur);display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.chat-head{padding:12px 16px;border-bottom:1px solid var(--bor);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.cav{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#534AB7,#7F77DD);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.msgs{flex:1;overflow-y:scroll;padding:12px;display:flex;flex-direction:column;gap:10px;min-height:0}
+.msg{max-width:92%;border-radius:10px;padding:9px 12px;font-size:13px;line-height:1.6;word-break:break-word}
+.msg.claude{background:var(--sur2);border:1px solid var(--bor);align-self:flex-start}
+.msg.user{background:var(--acc);color:#0d0f0e;align-self:flex-end;font-weight:500}
+.msg-loading{align-self:flex-start;background:var(--sur2);border:1px solid var(--bor);border-radius:10px;padding:9px 14px;color:var(--mut);font-size:13px}
+.chat-qa{padding:8px 12px 0;display:flex;gap:5px;flex-wrap:wrap;flex-shrink:0}
+.qb{font-size:11px;padding:3px 9px;border-radius:20px;background:var(--sur2);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-family:'Sora',sans-serif;transition:all .12s}
+.qb:hover{border-color:var(--acc);color:var(--acc)}
+.chat-inp{padding:10px 12px;display:flex;gap:8px;align-items:flex-end;flex-shrink:0}
+textarea.cta{flex:1;background:var(--sur2);border:1px solid var(--bor);border-radius:8px;padding:8px 10px;color:var(--txt);font-family:'Sora',sans-serif;font-size:13px;resize:none;outline:none;min-height:38px;max-height:100px;line-height:1.5}
+textarea.cta:focus{border-color:var(--acc)}
+.send-btn{width:34px;height:34px;border-radius:8px;background:var(--acc);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.send-btn:hover{background:#b8e060}
+
+/* MODAL */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9999;align-items:center;justify-content:center}
+.modal.open{display:flex}
+.modal-box{background:var(--sur);border:1px solid var(--bor);border-radius:16px;padding:36px;width:440px;max-width:92vw}
+.modal-logo{font-family:'DM Serif Display',serif;font-size:22px;color:var(--acc);margin-bottom:6px}
+.modal-sub{font-size:13px;color:var(--mut);margin-bottom:22px;line-height:1.6}
+.modal-label{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--mut);margin-bottom:7px;font-weight:600}
+.modal-inp{width:100%;background:var(--sur2);border:1px solid var(--bor);border-radius:8px;padding:10px 12px;color:var(--txt);font-family:'DM Mono',monospace;font-size:13px;outline:none;margin-bottom:6px}
+.modal-inp:focus{border-color:var(--acc)}
+.modal-err{display:none;font-size:12px;color:var(--dan);margin-bottom:10px}
+.modal-hint{font-size:12px;color:var(--mut);margin-bottom:18px;line-height:1.7}
+.modal-hint a{color:var(--inf);text-decoration:none;font-family:'DM Mono',monospace}
+.modal-btn{width:100%;background:var(--acc);color:#0d0f0e;border:none;border-radius:8px;padding:12px;font-family:'Sora',sans-serif;font-size:14px;font-weight:600;cursor:pointer}
+.modal-btn:hover{background:#b8e060}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--acc);color:#0d0f0e;padding:10px 18px;border-radius:8px;font-weight:500;font-size:13px;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;z-index:9998}
+.toast.show{opacity:1;transform:translateY(0)}
+.btn-gmail{background:#0d2b0d;color:#4ade80;border:1px solid #166534;display:none}
+.btn-gmail:hover{background:#14532d}
+.btn-gmail.visible{display:inline-flex;align-items:center;gap:5px}
+.sync-bar{padding:6px 16px;font-size:11px;font-family:'DM Mono',monospace;border-bottom:1px solid var(--bor);flex-shrink:0;color:var(--mut)}
+.sync-bar.ok{color:var(--acc)}.sync-bar.err{color:var(--dan)}.sync-bar.loading{color:var(--gol)}
+.btn-sync{color:var(--acc);border:1px solid var(--acc);background:transparent}
+.btn-sync:hover{background:#1a2e0f}
+.btn-bulk{background:#0d2b0d;color:#4ade80;border:1px solid #166534}
+.btn-bulk:hover{background:#14532d}
+.bulk-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;align-items:center;justify-content:center}
+.bulk-overlay.open{display:flex}
+.bulk-box{background:var(--sur);border:1px solid var(--bor);border-radius:16px;padding:28px;width:540px;max-width:94vw;max-height:82vh;display:flex;flex-direction:column;gap:0}
+.bulk-title{font-family:'DM Serif Display',serif;font-size:20px;color:var(--acc);margin-bottom:4px}
+.bulk-sub{font-size:12px;color:var(--mut);margin-bottom:14px;line-height:1.6}
+.bulk-filters{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.bf{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--sur2);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-family:'Sora',sans-serif;transition:all .12s}
+.bf.on{background:#1a2e0f;color:var(--acc);border-color:var(--acc)}
+.bulk-sel-bar{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.bulk-sel-btn{font-size:11px;padding:3px 10px;border-radius:6px;background:transparent;border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-family:'Sora',sans-serif}
+.bulk-sel-btn:hover{border-color:var(--acc);color:var(--acc)}
+.bulk-list{flex:1;overflow-y:scroll;border:1px solid var(--bor);border-radius:8px;margin-bottom:14px;min-height:0}
+.bl-item{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--bor);cursor:pointer;transition:background .1s;user-select:none}
+.bl-item:last-child{border-bottom:none}
+.bl-item:hover{background:var(--sur2)}
+.bl-item.selected{background:#0d1f0d}
+.bl-check{width:16px;height:16px;border-radius:4px;border:1px solid var(--bor);background:var(--sur2);display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;transition:all .12s;color:#0d0f0e}
+.bl-item.selected .bl-check{background:var(--acc);border-color:var(--acc)}
+.bl-name{font-size:12px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bl-email{font-size:11px;color:var(--mut);font-family:'DM Mono',monospace;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bl-qtag{font-size:10px;padding:1px 6px;border-radius:3px;flex-shrink:0}
+.bulk-footer{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.bulk-prog-wrap{flex:1;height:4px;background:var(--sur2);border-radius:2px;overflow:hidden;display:none}
+.bulk-prog-bar{height:100%;background:var(--acc);width:0%;transition:width .3s}
+.bulk-status{font-size:11px;color:var(--mut);font-family:'DM Mono',monospace;white-space:nowrap}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Pedro Aranha Gestão de Tráfego <span>/ painel de disparos</span></div>
+  <div class="hm">
+    <div class="dot"></div>
+    <span id="hdr-count">carregando...</span>
+    <button class="btn btn-sync btn-sm" id="sync-btn" onclick="syncNow()">↻ Sync</button>
+    <button class="btn btn-bulk btn-sm" onclick="openBulk()">⚡ Disparo em massa</button>
+    <button class="btn btn-g btn-sm" onclick="openModal()">⚙ API Key</button>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sb-head">
+      <h2>Contatos</h2>
+      <span class="badge" id="sb-badge">—</span>
+    </div>
+    <div class="sync-bar loading" id="sync-bar">⟳ Carregando Google Sheets...</div>
+    <div class="sb-list" id="sb-list"></div>
+  </div>
+
+  <!-- EDITOR -->
+  <div class="editor" id="editor">
+    <div class="empty" id="empty-state">
+      <div class="empty-icon">✉</div>
+      <p style="font-size:15px;font-weight:500;color:var(--txt)">Selecione um contato</p>
+      <p style="font-size:13px;line-height:1.7;color:var(--mut)">Clique para gerar e revisar<br>o e-mail antes de enviar.</p>
+    </div>
+    <div id="ed-content" style="display:none;flex-direction:column;height:100%;min-height:0">
+      <div class="ed-info">
+        <div class="ed-recip">
+          <div class="av" id="ed-av">R</div>
+          <div style="flex:1;min-width:0">
+            <div class="ed-name" id="ed-name">—</div>
+            <div class="ed-email" id="ed-email">—</div>
+          </div>
+          <div id="ed-tags" class="tags"></div>
+        </div>
+        <div class="ed-subj">
+          <label>Assunto</label>
+          <input id="ed-subj" type="text">
+        </div>
+      </div>
+      <div class="ed-actions">
+        <button class="btn btn-p" id="approve-btn" onclick="approveEmail()">✓ Aprovar e-mail</button>
+        <button class="btn btn-g" id="gen-btn" onclick="generateEmail()">⚡ Gerar e-mail</button>
+        <button class="btn btn-gmail" id="gmail-btn" onclick="enviarEmail()">📤 Enviar e-mail</button>
+        <div style="flex:1"></div>
+        <button class="btn btn-d" onclick="skipContact()">Pular</button>
+      </div>
+      <div class="ed-body">
+        <div class="gen-ind" id="gen-ind">
+          <div class="dots"><span></span><span></span><span></span></div>
+          Claude está redigindo...
+        </div>
+        <textarea class="eta" id="ed-body" placeholder="O e-mail gerado aparecerá aqui..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHAT -->
+  <div class="chat">
+    <div class="chat-head">
+      <div class="cav">✦</div>
+      <div>
+        <div style="font-weight:500;font-size:13px">Assistente Claude</div>
+        <div style="font-size:11px;color:var(--mut)">Peça ajustes ou tire dúvidas</div>
+      </div>
+    </div>
+    <div class="msgs" id="msgs">
+      <div class="msg claude">Olá! Selecione um contato e clique em ⚡ para gerar o e-mail automaticamente. Posso ajustar o tom, corrigir erros ou reescrever qualquer parte. 🚀</div>
+    </div>
+    <div class="chat-qa" id="chat-qa">
+      <button class="qb" onclick="quickAsk('Deixe o e-mail mais formal e profissional')">+ formal</button>
+      <button class="qb" onclick="quickAsk('Deixe o e-mail mais curto e direto')">+ curto</button>
+      <button class="qb" onclick="quickAsk('Adicione mais urgência ao e-mail')">+ urgência</button>
+      <button class="qb" onclick="quickAsk('Revise erros de português no e-mail')">revisar PT</button>
+      <button class="qb" onclick="quickAsk('Reescreva focando em marcar uma reunião ou call')">marcar call</button>
+    </div>
+    <div class="chat-inp">
+      <textarea class="cta" id="chat-inp" rows="2" placeholder="Peça uma alteração ou faça uma pergunta..." onkeydown="chatKey(event)"></textarea>
+      <button class="send-btn" onclick="sendChat()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0d0f0e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- API KEY MODAL -->
+<div class="modal" id="key-modal">
+  <div class="modal-box">
+    <div class="modal-logo">Pedro Aranha Gestão de Tráfego</div>
+    <div class="modal-sub">Insira sua chave da Claude API para ativar a geração automática de e-mails.</div>
+    <div class="modal-label">Chave da API (Claude)</div>
+    <input class="modal-inp" id="key-inp" type="password" placeholder="sk-ant-api03-...">
+    <div class="modal-err" id="key-err">A chave deve começar com "sk-ant-"</div>
+    <div class="modal-hint">
+      Obtenha em <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> → API Keys → Create Key.<br>
+      Sua chave fica salva no navegador. Não precisa reinserir.
+    </div>
+    <button class="modal-btn" onclick="saveKey()">Salvar e entrar →</button>
+  </div>
+</div>
+
+<!-- BULK SEND MODAL -->
+<div class="bulk-overlay" id="bulk-overlay">
+  <div class="bulk-box">
+    <div class="bulk-title">⚡ Disparo em massa</div>
+    <div class="bulk-sub">
+      Cada e-mail é enviado <strong style="color:var(--txt)">individualmente</strong> para cada lead.
+      Nenhum cliente vê outros destinatários — privacidade total garantida.
+    </div>
+    <div class="bulk-filters">
+      <button class="bf on" onclick="bulkFilter('all',this)">Todos</button>
+      <button class="bf" onclick="bulkFilter('adv',this)">Advogados</button>
+      <button class="bf" onclick="bulkFilter('sim',this)">Qualificados</button>
+      <button class="bf" onclick="bulkFilter('nao_enviados',this)">Não enviados</button>
+    </div>
+    <div class="bulk-sel-bar">
+      <button class="bulk-sel-btn" onclick="bulkSelAll()">Selecionar todos</button>
+      <button class="bulk-sel-btn" onclick="bulkDeselAll()">Limpar</button>
+      <span id="bulk-sel-count" style="font-size:11px;color:var(--mut);margin-left:auto;font-family:'DM Mono',monospace">0 selecionados</span>
+    </div>
+    <div class="bulk-list" id="bulk-list"></div>
+    <div class="bulk-footer">
+      <div class="bulk-prog-wrap" id="bulk-prog-wrap"><div class="bulk-prog-bar" id="bulk-prog-bar"></div></div>
+      <span class="bulk-status" id="bulk-status"></span>
+      <div style="flex:1"></div>
+      <button class="btn btn-g btn-sm" onclick="closeBulk()">Cancelar</button>
+      <button class="btn btn-bulk" id="bulk-btn" onclick="startBulkSend()" style="padding:7px 16px;font-size:12px">⚡ Disparar selecionados</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── GOOGLE SHEETS CONFIG ──────────────────────────────────────────
+const SHEET_ID   = '1r7vob1TvEY8P9G6wm5NcfNFg_r1aUwqvBSS7mrSt9Oo';
+const SHEET_NAME = 'Sheet1';
+const SYNC_MS    = 60000;
+const COL        = { NOME:0, EMAIL:3, EMPRESA:4, FAT:12, URG:13, QUALIF:14, TAGS:7 };
+
+// ── TEMPLATE FIXO PARA ADVOGADOS ──────────────────────────────────
+const TEMPLATE_ADV_SUBJ = 'O tipo de cliente que você atrai depende do que você fala no anúncio';
+const TEMPLATE_ADV_BODY = 'A maioria dos escritórios ainda erra na base da campanha.\n\nNão é o orçamento.\nNão é o criativo.\nNão é nem o tráfego.\n\nÉ a comunicação.\n\nVejo muitos anúncios genéricos tentando falar com todo mundo:\n\n"Teve seu direito negado?"\n"Precisa de ajuda jurídica?"\n\nIsso até gera volume.\nMas atrai o tipo errado de lead.\n\nGente curiosa.\nSem urgência.\nSem clareza do problema.\nQue entra na conversa só pra "entender melhor".\n\nE isso trava o comercial.\n\nAgora compara com uma comunicação direcionada:\n\n"Plano de saúde negou cirurgia ou medicamento de alto custo?"\n"Seu benefício do INSS foi cortado recentemente?"\n\nPercebe a diferença?\n\nAqui você não está chamando qualquer pessoa.\nVocê está falando diretamente com quem:\njá tem o problema\njá sentiu o impacto\njá está buscando solução\n\nEsse é o lead que chega diferente.\nEle não pergunta "isso funciona?"\nEle pergunta "como resolvemos isso?"\n\nE tem outro ponto importante:\nEsse tipo de comunicação não precisa ser agressiva.\nPelo contrário.\n\nFunciona muito melhor quando tem caráter descritivo e informativo, mostrando o cenário com clareza e deixando o próximo passo natural.\n\nSem pressão.\nCom CTAs neutros, como:\n\n"Fale com um advogado especialista"\n"Consulte um escritório especializado"\n\nIsso gera mais confiança…\ne atrai um cliente com nível de consciência muito mais alto.\n\nNo fim do dia, o jogo não é sobre gerar mais leads.\nÉ sobre atrair as pessoas certas, no momento certo.\n\nSe fizer sentido ajustar a comunicação dos seus anúncios para começar a atrair clientes já prontos para contratar,\nme chama no WhatsApp que eu te explico como estruturar isso no seu escritório:\n\n👉 (11) 99515-7048';
+
+function isAdvogado(c) {
+  const tags = (c.tags||'').toLowerCase();
+  const emp  = (c.emp||'').toLowerCase();
+  const name = (c.name||'').toLowerCase();
+  return tags.includes('adv') || emp.includes('adv') || name.includes('adv')
+      || tags.includes('jurídic') || emp.includes('jurídic')
+      || tags.includes('oab') || emp.includes('oab');
+}
+
+// ── STATE ─────────────────────────────────────────────────────────
+let CONTACTS = [];
+const S = { sel:null, approved:new Set(), skipped:new Set(), emails:{}, subjects:{}, history:[] };
+let API_KEY = localStorage.getItem('matte_key') || '';
+
+// ── INIT ──────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('key-inp').addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveKey();
+    document.getElementById('key-err').style.display = 'none';
+  });
+  if (!API_KEY) openModal();
+  loadSheet();
+  setInterval(() => loadSheet(false), SYNC_MS);
+});
+
+// ── GOOGLE SHEETS SYNC ────────────────────────────────────────────
+function cleanCell(v) { return (v||'').replace(/^"|"$/g,'').trim(); }
+function normQ(v) {
+  const l = (v||'').toLowerCase();
+  if (l === 'sim') return 'sim';
+  if (l.includes('potencial')) return 'com potencial';
+  if (l === 'não' || l === 'nao') return 'não';
+  return l || 'com potencial';
+}
+function parseCSV(text) {
+  const rows = [];
+  for (const line of text.split('\n')) {
+    if (!line.trim()) continue;
+    const cols = []; let cur = '', inQ = false;
+    for (const ch of line) {
+      if (ch === '"') { inQ = !inQ; cur += ch; }
+      else if (ch === ',' && !inQ) { cols.push(cur); cur = ''; }
+      else cur += ch;
+    }
+    cols.push(cur);
+    rows.push(cols);
+  }
+  return rows;
+}
+
+async function loadSheet(showLoading=true) {
+  if (showLoading) setSyncBar('loading', '⟳ Sincronizando...');
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}&t=${Date.now()}`;
+  try {
+    const r = await fetch(url, { cache: 'no-store' });
+    if (!r.ok) throw new Error('Planilha inacessível — torne-a pública para leitura.');
+    const csv  = await r.text();
+    const rows = parseCSV(csv);
+    if (rows.length < 2) throw new Error('Planilha sem dados.');
+    const prevEmail = S.sel !== null ? CONTACTS[S.sel]?.email : null;
+    CONTACTS = rows.slice(1)
+      .map(r => ({
+        name:  cleanCell(r[COL.NOME])    || 'Sem nome',
+        email: cleanCell(r[COL.EMAIL]),
+        emp:   cleanCell(r[COL.EMPRESA]),
+        fat:   cleanCell(r[COL.FAT])     || 'não informado',
+        urg:   cleanCell(r[COL.URG]),
+        q:     normQ(cleanCell(r[COL.QUALIF])),
+        tags:  cleanCell(r[COL.TAGS]),
+      }))
+      .filter(c => c.email && c.email.includes('@'));
+    renderList();
+    if (prevEmail) {
+      const idx = CONTACTS.findIndex(c => c.email === prevEmail);
+      if (idx >= 0 && idx !== S.sel) { S.sel = idx; renderList(); }
+    }
+    const t = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    setSyncBar('ok', `✓ ${CONTACTS.length} contatos · ${t}`);
+  } catch(e) {
+    setSyncBar('err', '⚠ ' + e.message);
+  }
+}
+
+async function syncNow() {
+  const btn = document.getElementById('sync-btn');
+  if (btn) { btn.textContent = '⟳'; btn.disabled = true; }
+  await loadSheet(true);
+  if (btn) { btn.textContent = '↻ Sync'; btn.disabled = false; }
+  toast('Sincronizado! ✓');
+}
+
+function setSyncBar(state, msg) {
+  const el = document.getElementById('sync-bar');
+  if (!el) return;
+  el.className = 'sync-bar ' + state;
+  el.textContent = msg;
+}
+
+// ── API KEY ───────────────────────────────────────────────────────
+function openModal() {
+  document.getElementById('key-inp').value = API_KEY;
+  document.getElementById('key-modal').classList.add('open');
+  setTimeout(() => document.getElementById('key-inp').focus(), 100);
+}
+function saveKey() {
+  const v = document.getElementById('key-inp').value.trim();
+  if (!v.startsWith('sk-ant-')) { document.getElementById('key-err').style.display = 'block'; return; }
+  API_KEY = v;
+  localStorage.setItem('matte_key', v);
+  document.getElementById('key-modal').classList.remove('open');
+  toast('Chave salva! ✓');
+}
+
+// ── CLAUDE API ────────────────────────────────────────────────────
+async function callClaude(messages, system='', maxTokens=600) {
+  const body = { model:'claude-haiku-4-5-20251001', max_tokens:maxTokens, messages };
+  if (system) body.system = system;
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': API_KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify(body)
+  });
+  const d = await r.json();
+  if (d.error) throw new Error(d.error.message);
+  return d.content[0].text;
+}
+
+// ── RENDER LIST ───────────────────────────────────────────────────
+function fatShort(f) {
+  return f.replace('Entre R$ ','R$').replace(' mil e ','-').replace(' mil','k')
+          .replace('Acima de R$ ','>R$').replace('Iniciando, menos de R$ ','<R$');
+}
+function tagClass(q) { return q==='sim'?'t-sim':q==='com potencial'?'t-pot':'t-nao'; }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+function renderList() {
+  const el = document.getElementById('sb-list');
+  const st = el.scrollTop;
+  el.innerHTML = '';
+  let visible = 0;
+  CONTACTS.forEach((c, i) => {
+    if (S.skipped.has(i)) return;
+    visible++;
+    const d = document.createElement('div');
+    d.className = 'ci' + (S.sel===i?' active':'');
+    d.onclick = () => selectContact(i);
+    const advBadge = isAdvogado(c) ? '<span class="tag" style="background:#101820;color:#7ab8f5;border:1px solid #1a2d40;font-size:9px">ADV</span>' : '';
+    d.innerHTML = `
+      <div class="ci-name">
+        <span>${esc(c.name)}</span>
+        ${S.approved.has(i) ? '<span class="ci-check">✓</span>' : ''}
+      </div>
+      <div class="ci-email">${esc(c.email)}</div>
+      <div class="tags">
+        <span class="tag ${tagClass(c.q)}">${esc(c.q)}</span>
+        <span class="tag t-fat">${esc(fatShort(c.fat))}</span>
+        ${advBadge}
+      </div>`;
+    el.appendChild(d);
+  });
+  el.scrollTop = st;
+  document.getElementById('sb-badge').textContent = visible;
+  document.getElementById('hdr-count').textContent = `${S.approved.size} aprovados · ${visible} contatos`;
+}
+
+// ── SELECT CONTACT ────────────────────────────────────────────────
+function selectContact(i) {
+  S.sel = i;
+  document.getElementById('gmail-btn').classList.remove('visible');
+  renderList();
+  const c = CONTACTS[i];
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('ed-content').style.display = 'flex';
+  document.getElementById('ed-av').textContent = c.name[0].toUpperCase();
+  document.getElementById('ed-name').textContent = c.name;
+  document.getElementById('ed-email').textContent = c.email;
+  document.getElementById('ed-tags').innerHTML = `
+    <span class="tag ${tagClass(c.q)}">${esc(c.q)}</span>
+    <span class="tag t-fat" style="margin-left:4px">${esc(c.fat)}</span>
+    ${isAdvogado(c) ? '<span class="tag" style="background:#101820;color:#7ab8f5;border:1px solid #1a2d40;font-size:9px;margin-left:4px">ADV</span>' : ''}`;
+  document.getElementById('ed-subj').value = S.subjects[i] || getSubject(c);
+  document.getElementById('ed-body').value = S.emails[i] || '';
+  document.getElementById('approve-btn').textContent = S.approved.has(i) ? '✓ Aprovado' : '✓ Aprovar e-mail';
+  if (!S.emails[i]) generateEmail();
+  else document.getElementById('gmail-btn').classList.add('visible');
+}
+
+function getSubject(c) {
+  if (isAdvogado(c)) return TEMPLATE_ADV_SUBJ;
+  if (c.q==='sim') return 'Vamos marcar uma conversa? | Pedro Aranha Gestão de Tráfego';
+  if (c.q==='com potencial') return 'Como negócios estão crescendo com tráfego pago | Pedro Aranha';
+  return 'Uma solução que pode transformar seus resultados';
+}
+
+// ── GENERATE EMAIL ────────────────────────────────────────────────
+async function generateEmail() {
+  if (S.sel===null) return;
+  const c    = CONTACTS[S.sel];
+  const ind  = document.getElementById('gen-ind');
+  const ta   = document.getElementById('ed-body');
+  const btn  = document.getElementById('gen-btn');
+  const gbtn = document.getElementById('gmail-btn');
+  ind.classList.add('on'); ta.value=''; ta.style.display='none';
+  btn.disabled=true; btn.textContent='⏳ Gerando...';
+  gbtn.classList.remove('visible');
+
+  // Se for advogado, usa template fixo direto — sem chamar a API
+  if (isAdvogado(c)) {
+    ta.value = TEMPLATE_ADV_BODY;
+    S.emails[S.sel] = TEMPLATE_ADV_BODY;
+    S.subjects[S.sel] = TEMPLATE_ADV_SUBJ;
+    document.getElementById('ed-subj').value = TEMPLATE_ADV_SUBJ;
+    ind.classList.remove('on'); ta.style.display='block';
+    btn.disabled=false; btn.textContent='⚡ Gerar e-mail';
+    gbtn.classList.add('visible');
+    return;
+  }
+
+  if (!API_KEY) { openModal(); ind.classList.remove('on'); ta.style.display='block'; btn.disabled=false; btn.textContent='⚡ Gerar e-mail'; return; }
+
+  const inst = c.q==='sim'
+    ? 'Lead ALTAMENTE QUALIFICADO. Convide diretamente para reunião ou demo. Tom direto e confiante.'
+    : c.q==='com potencial'
+    ? 'Lead com potencial. Reative o interesse, apresente os serviços de gestão de tráfego pago e gere curiosidade.'
+    : 'Lead não qualificado. Apresente levemente, sem pressão, deixe porta aberta.';
+
+  const prompt = `Você é especialista em vendas consultivas para gestão de tráfego pago. Escreva um e-mail profissional, caloroso e personalizado em português brasileiro.
+
+Destinatário: ${c.name}
+Empresa: ${c.emp||'não informado'}
+Faturamento mensal: ${c.fat}
+Urgência: ${c.urg||'não informada'}
+Perfil: ${c.q}
+
+Instrução: ${inst}
+
+Regras: máximo 4 parágrafos curtos, tom humano, termine com chamada para ação clara. Assine como: Equipe Pedro Aranha Gestão de Tráfego
+
+Escreva APENAS o corpo do e-mail, sem assunto nem explicações.`;
+
+  try {
+    const text = await callClaude([{role:'user', content:prompt}]);
+    ta.value = text;
+    S.emails[S.sel] = text;
+    S.subjects[S.sel] = document.getElementById('ed-subj').value;
+    gbtn.classList.add('visible');
+  } catch(e) {
+    ta.value = '⚠ Erro: ' + e.message + '\n\nVerifique sua chave em ⚙ API Key.';
+  }
+  ind.classList.remove('on'); ta.style.display='block';
+  btn.disabled=false; btn.textContent='⚡ Gerar e-mail';
+}
+
+// ── APPROVE / SKIP ────────────────────────────────────────────────
+function approveEmail() {
+  if (S.sel===null) return;
+  S.emails[S.sel]   = document.getElementById('ed-body').value;
+  S.subjects[S.sel] = document.getElementById('ed-subj').value;
+  S.approved.add(S.sel);
+  document.getElementById('approve-btn').textContent = '✓ Aprovado';
+  renderList(); toast('E-mail aprovado! ✓');
+  setTimeout(() => {
+    const nxt = CONTACTS.findIndex((_,i) => i>S.sel && !S.skipped.has(i) && !S.approved.has(i));
+    if (nxt>=0) selectContact(nxt);
+  }, 500);
+}
+
+function skipContact() {
+  if (S.sel===null) return;
+  S.skipped.add(S.sel); S.approved.delete(S.sel);
+  renderList(); toast('Contato pulado');
+  const nxt = CONTACTS.findIndex((_,i) => i>S.sel && !S.skipped.has(i));
+  if (nxt>=0) selectContact(nxt);
+}
+
+// ── ENVIAR EMAIL ──────────────────────────────────────────────────
+// Usa sendPrompt quando dentro do Claude.ai (integração direta com Gmail MCP)
+// Fallback: abre Gmail Compose preenchido quando no GitHub Pages
+function enviarEmail() {
+  if (S.sel===null) return;
+  const body = document.getElementById('ed-body').value.trim();
+  if (!body) { toast('Gere o e-mail primeiro!'); return; }
+  const c    = CONTACTS[S.sel];
+  const subj = document.getElementById('ed-subj').value;
+
+  S.approved.add(S.sel);
+  S.emails[S.sel]   = body;
+  S.subjects[S.sel] = subj;
+  document.getElementById('approve-btn').textContent = '✓ Aprovado';
+  renderList();
+
+  if (typeof sendPrompt === 'function') {
+    // Dentro do Claude.ai — envia via MCP diretamente
+    sendPrompt('GMAIL_ENVIAR||PARA:' + c.email + '||ASSUNTO:' + subj + '||CORPO:' + body);
+    toast('📤 Enviando via Gmail...');
+  } else {
+    // GitHub Pages — abre Gmail Compose já preenchido
+    const url = 'https://mail.google.com/mail/?view=cm&fs=1'
+      + '&to=' + encodeURIComponent(c.email)
+      + '&su=' + encodeURIComponent(subj)
+      + '&body=' + encodeURIComponent(body);
+    window.open(url, '_blank');
+    toast('📤 Gmail aberto com e-mail pronto!');
+  }
+
+  setTimeout(() => {
+    const nxt = CONTACTS.findIndex((_,i) => i>S.sel && !S.skipped.has(i) && !S.approved.has(i));
+    if (nxt>=0) selectContact(nxt);
+  }, 1200);
+}
+
+// ── CHAT ──────────────────────────────────────────────────────────
+async function sendChat() {
+  const inp = document.getElementById('chat-inp');
+  const msg = inp.value.trim();
+  if (!msg) return;
+  if (!API_KEY) { openModal(); return; }
+  inp.value = '';
+  addMsg(msg, 'user');
+  const c = S.sel!==null ? CONTACTS[S.sel] : null;
+  const emailAtual = document.getElementById('ed-body').value;
+  const sys = c
+    ? `Você é assistente de Pedro Aranha Gestão de Tráfego ajudando a revisar e-mails de prospecção.
+Contato: ${c.name}, faturamento: ${c.fat}, qualificação: ${c.q}.
+E-mail atual no editor:\n\n${emailAtual}
+
+Se pedirem alterações no e-mail, responda com o e-mail COMPLETO reescrito precedido pela linha exata: ===EMAIL===
+Caso contrário, responda normalmente.`
+    : 'Você é assistente de Pedro Aranha Gestão de Tráfego, ajudando com campanhas de e-mail.';
+
+  const loadEl = document.createElement('div');
+  loadEl.className = 'msg-loading'; loadEl.textContent = '● ● ●';
+  document.getElementById('msgs').appendChild(loadEl);
+  scrollMsgs();
+
+  S.history.push({role:'user', content:msg});
+  try {
+    const reply = await callClaude(S.history, sys, 800);
+    S.history.push({role:'assistant', content:reply});
+    loadEl.remove();
+    if (reply.includes('===EMAIL===')) {
+      const parts = reply.split('===EMAIL===');
+      if (parts[0].trim()) addMsg(parts[0].trim(), 'claude');
+      const ne = parts[1].trim();
+      document.getElementById('ed-body').value = ne;
+      if (S.sel!==null) {
+        S.emails[S.sel] = ne;
+        document.getElementById('gmail-btn').classList.add('visible');
+      }
+      addMsg('✓ E-mail atualizado no editor!', 'claude');
+    } else {
+      addMsg(reply, 'claude');
+    }
+  } catch(e) {
+    loadEl.remove();
+    addMsg('⚠ Erro: ' + e.message, 'claude');
+  }
+}
+
+function quickAsk(msg) { document.getElementById('chat-inp').value = msg; sendChat(); }
+function addMsg(text, who) {
+  const d = document.createElement('div');
+  d.className = 'msg ' + who;
+  d.innerHTML = text.replace(/\n/g,'<br>');
+  document.getElementById('msgs').appendChild(d);
+  scrollMsgs();
+}
+function scrollMsgs() { const m = document.getElementById('msgs'); m.scrollTop = m.scrollHeight; }
+function chatKey(e) { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } }
+
+// ── TOAST ─────────────────────────────────────────────────────────
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── BULK SEND ─────────────────────────────────────────────────────
+let bulkSel = new Set();
+let bulkFilter_ = 'all';
+let bulkRunning = false;
+
+function openBulk() {
+  if (!CONTACTS.length) { toast('Aguarde os contatos carregarem'); return; }
+  bulkSel = new Set();
+  bulkFilter_ = 'all';
+  document.querySelectorAll('.bf').forEach((b,i)=>b.classList.toggle('on',i===0));
+  document.getElementById('bulk-status').textContent = '';
+  document.getElementById('bulk-prog-wrap').style.display = 'none';
+  document.getElementById('bulk-prog-bar').style.width = '0%';
+  document.getElementById('bulk-btn').disabled = false;
+  document.getElementById('bulk-btn').textContent = '⚡ Disparar selecionados';
+  renderBulkList();
+  document.getElementById('bulk-overlay').classList.add('open');
+}
+
+function closeBulk() {
+  if (bulkRunning) return;
+  document.getElementById('bulk-overlay').classList.remove('open');
+}
+
+function bulkFilter(f, btn) {
+  bulkFilter_ = f;
+  document.querySelectorAll('.bf').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderBulkList();
+}
+
+function bulkFiltered() {
+  return CONTACTS.map((c,i)=>({...c,idx:i})).filter(c => {
+    if (S.skipped.has(c.idx)) return false;
+    if (bulkFilter_ === 'adv')         return isAdvogado(c);
+    if (bulkFilter_ === 'sim')         return c.q === 'sim';
+    if (bulkFilter_ === 'nao_enviados') return !S.approved.has(c.idx);
+    return true;
+  });
+}
+
+function renderBulkList() {
+  const el = document.getElementById('bulk-list');
+  el.innerHTML = '';
+  bulkFiltered().forEach(c => {
+    const d = document.createElement('div');
+    const on = bulkSel.has(c.idx);
+    d.className = 'bl-item' + (on?' selected':'');
+    d.onclick = () => { on ? bulkSel.delete(c.idx) : bulkSel.add(c.idx); renderBulkList(); };
+    const qc = c.q==='sim'?'t-sim':c.q==='com potencial'?'t-pot':'t-nao';
+    d.innerHTML = `
+      <div class="bl-check">${on?'✓':''}</div>
+      <span class="bl-name">${esc(c.name)}</span>
+      <span class="bl-email">${esc(c.email)}</span>
+      <span class="bl-qtag ${qc}">${esc(c.q)}</span>
+      ${isAdvogado(c)?'<span class="bl-qtag" style="background:#0a1628;color:#7ab8f5;border:1px solid #1a2d40">ADV</span>':''}
+      ${S.approved.has(c.idx)?'<span class="bl-qtag" style="background:#0d1f0d;color:var(--acc);border:1px solid #1a3a1a">✓</span>':''}`;
+    el.appendChild(d);
+  });
+  document.getElementById('bulk-sel-count').textContent = bulkSel.size + ' selecionados';
+}
+
+function bulkSelAll()   { bulkFiltered().forEach(c => bulkSel.add(c.idx)); renderBulkList(); }
+function bulkDeselAll() { bulkSel.clear(); renderBulkList(); }
+
+async function gerarCorpoEmail(c) {
+  // Advogados: template fixo instantâneo — sem API
+  if (isAdvogado(c)) {
+    return { subj: TEMPLATE_ADV_SUBJ, body: TEMPLATE_ADV_BODY };
+  }
+  // Demais: gera personalizado via Claude
+  if (!API_KEY) throw new Error('Configure a chave da API primeiro (⚙ API Key)');
+  const inst = c.q==='sim'
+    ? 'Lead ALTAMENTE QUALIFICADO. Convide diretamente para reunião. Tom direto e confiante.'
+    : c.q==='com potencial'
+    ? 'Lead com potencial. Reative o interesse, apresente gestão de tráfego pago e gere curiosidade.'
+    : 'Lead não qualificado. Apresente levemente, sem pressão, deixe porta aberta.';
+  const prompt = `Você é especialista em vendas consultivas para gestão de tráfego pago. Escreva um e-mail profissional e personalizado em português brasileiro.
+
+Destinatário: ${c.name}
+Empresa: ${c.emp||'não informado'}
+Faturamento: ${c.fat}
+Perfil: ${c.q}
+
+Instrução: ${inst}
+Máximo 4 parágrafos curtos. Termine com WhatsApp (11) 99515-7048. Assine como: Equipe Pedro Aranha Gestão de Tráfego.
+Escreva APENAS o corpo do e-mail.`;
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key':API_KEY,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:500,messages:[{role:'user',content:prompt}]})
+  });
+  const d = await r.json();
+  if (d.error) throw new Error(d.error.message);
+  const subj = c.q==='sim'
+    ? 'Vamos marcar uma conversa? | Pedro Aranha Gestão de Tráfego'
+    : c.q==='com potencial'
+    ? 'Como negócios estão crescendo com tráfego pago | Pedro Aranha'
+    : 'Uma solução que pode transformar seus resultados';
+  return { subj, body: d.content[0].text };
+}
+
+async function startBulkSend() {
+  if (bulkSel.size === 0) { toast('Selecione ao menos um lead!'); return; }
+  if (bulkRunning) return;
+
+  const lista = [...bulkSel].map(idx => CONTACTS[idx] ? {...CONTACTS[idx], idx} : null).filter(Boolean);
+  const total = lista.length;
+
+  // Confirm
+  if (!confirm(`Confirmar envio individual para ${total} lead(s)?
+
+Cada e-mail será enviado separadamente — nenhum lead verá os outros.`)) return;
+
+  bulkRunning = true;
+  document.getElementById('bulk-btn').disabled = true;
+  document.getElementById('bulk-btn').textContent = '⏳ Enviando...';
+  document.getElementById('bulk-prog-wrap').style.display = 'block';
+
+  let ok = 0, erros = 0;
+
+  for (let i = 0; i < lista.length; i++) {
+    const c = lista[i];
+    document.getElementById('bulk-status').textContent = `${i+1}/${total} — ${c.name}`;
+    document.getElementById('bulk-prog-bar').style.width = Math.round((i/total)*100) + '%';
+
+    try {
+      const { subj, body } = await gerarCorpoEmail(c);
+
+      // Abre Gmail Compose individual — cada um em aba separada, sem expor outros destinatários
+      const url = 'https://mail.google.com/mail/?view=cm&fs=1'
+        + '&to='   + encodeURIComponent(c.email)
+        + '&su='   + encodeURIComponent(subj)
+        + '&body=' + encodeURIComponent(body);
+      window.open(url, '_blank');
+
+      S.emails[c.idx]   = body;
+      S.subjects[c.idx] = subj;
+      S.approved.add(c.idx);
+      ok++;
+    } catch(e) {
+      erros++;
+      console.error('Bulk erro para', c.name, ':', e.message);
+    }
+
+    // Pausa entre envios para não sobrecarregar
+    if (i < lista.length - 1) await new Promise(r => setTimeout(r, 600));
+  }
+
+  document.getElementById('bulk-prog-bar').style.width = '100%';
+  document.getElementById('bulk-status').textContent = `✓ ${ok} enviados · ${erros} erros`;
+  document.getElementById('bulk-btn').textContent = '✓ Concluído';
+  renderList();
+  renderBulkList();
+  bulkRunning = false;
+  toast(`✓ ${ok} e-mails gerados! Confirme o envio em cada aba do Gmail.`);
+}
+</script>
+</body>
+</html>
