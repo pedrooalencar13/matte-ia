@@ -128,7 +128,7 @@ textarea.cta:focus{border-color:var(--acc)}
 .sc-val{font-size:13px;color:var(--txt);background:var(--sur2);border:1px solid var(--bor);border-radius:6px;padding:7px 10px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap;font-family:'DM Mono',monospace}
 .sc-body-preview{font-size:12px;color:var(--txt);background:var(--sur2);border:1px solid var(--bor);border-radius:6px;padding:10px;max-height:150px;overflow-y:auto;line-height:1.6;white-space:pre-wrap;margin-bottom:16px}
 .sc-btns{display:flex;gap:8px}
-.sc-confirm{flex:1;background:#166534;color:#4ade80;border:1px solid #166534;border-radius:8px;padding:10px;font-family:'Sora',sans-serif;font-size:13px;font-weight:600;cursor:pointer;transition:background .15s}
+.sc-confirm{flex:1;background:#166534;color:#4ade80;border:1px solid #166534;border-radius:8px;padding:10px;font-family:'Sora',sans-serif;font-size:13px;font-weight:600;cursor:pointer}
 .sc-confirm:hover{background:#15803d}.sc-confirm:disabled{opacity:.5;cursor:not-allowed}
 .sc-cancel{background:transparent;color:var(--mut);border:1px solid var(--bor);border-radius:8px;padding:10px 16px;font-family:'Sora',sans-serif;font-size:13px;cursor:pointer}
 .sc-cancel:hover{border-color:var(--dan);color:var(--dan)}
@@ -270,9 +270,9 @@ textarea.cta:focus{border-color:var(--acc)}
 const SHEET_ID   = '1r7vob1TvEY8P9G6wm5NcfNFg_r1aUwqvBSS7mrSt9Oo';
 const SHEET_NAME = 'Sheet1';
 const SYNC_MS    = 60000;
-const COL = { NOME:0, EMAIL:3, EMPRESA:4, FAT:12, URG:13, QUALIF:14 };
+const COL        = { NOME:0, EMAIL:3, EMPRESA:4, FAT:12, URG:13, QUALIF:14 };
 
-// ── ESTADO ────────────────────────────────────────────────────────
+// ── STATE ─────────────────────────────────────────────────────────
 let CONTACTS = [];
 const S = { sel:null, approved:new Set(), skipped:new Set(), emails:{}, subjects:{}, history:[] };
 let API_KEY = localStorage.getItem('matte_key') || '';
@@ -290,6 +290,7 @@ window.addEventListener('DOMContentLoaded', () => {
 
 // ── GOOGLE SHEETS SYNC ────────────────────────────────────────────
 function cleanCell(v) { return (v||'').replace(/^"|"$/g,'').trim(); }
+
 function normQ(v) {
   const l = (v||'').toLowerCase();
   if (l === 'sim') return 'sim';
@@ -297,6 +298,7 @@ function normQ(v) {
   if (l === 'não' || l === 'nao') return 'não';
   return l || 'com potencial';
 }
+
 function parseCSV(text) {
   const rows = [];
   for (const line of text.split('\n')) {
@@ -314,15 +316,17 @@ function parseCSV(text) {
 }
 
 async function loadSheet(showLoading=true) {
-  if (showLoading) setSyncBar('loading', '⟳ Carregando Google Sheets...');
+  if (showLoading) setSyncBar('loading', '⟳ Sincronizando...');
   const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}&t=${Date.now()}`;
   try {
     const r = await fetch(url, { cache: 'no-store' });
-    if (!r.ok) throw new Error('Planilha inacessível. Verifique se está pública para leitura.');
-    const csv = await r.text();
+    if (!r.ok) throw new Error('Planilha inacessível — certifique-se que está pública para leitura.');
+    const csv  = await r.text();
     const rows = parseCSV(csv);
     if (rows.length < 2) throw new Error('Planilha sem dados.');
+
     const prevEmail = S.sel !== null ? CONTACTS[S.sel]?.email : null;
+
     CONTACTS = rows.slice(1)
       .map(r => ({
         name:  cleanCell(r[COL.NOME])    || 'Sem nome',
@@ -333,12 +337,15 @@ async function loadSheet(showLoading=true) {
         q:     normQ(cleanCell(r[COL.QUALIF])),
       }))
       .filter(c => c.email && c.email.includes('@'));
+
     renderList();
+
     if (prevEmail) {
       const idx = CONTACTS.findIndex(c => c.email === prevEmail);
       if (idx >= 0 && idx !== S.sel) { S.sel = idx; renderList(); }
     }
-    const t = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+
+    const t = new Date().toLocaleTimeString('pt-BR', {hour:'2-digit', minute:'2-digit'});
     setSyncBar('ok', `✓ ${CONTACTS.length} contatos · ${t}`);
   } catch(e) {
     setSyncBar('err', '⚠ ' + e.message);
@@ -366,6 +373,7 @@ function openModal() {
   document.getElementById('key-modal').classList.add('open');
   setTimeout(() => document.getElementById('key-inp').focus(), 100);
 }
+
 function saveKey() {
   const v = document.getElementById('key-inp').value.trim();
   if (!v.startsWith('sk-ant-')) { document.getElementById('key-err').style.display = 'block'; return; }
@@ -394,7 +402,7 @@ async function callClaude(messages, system='', maxTokens=600) {
   return d.content[0].text;
 }
 
-// ── LISTA ─────────────────────────────────────────────────────────
+// ── RENDER LIST ───────────────────────────────────────────────────
 function fatShort(f) {
   return f.replace('Entre R$ ','R$').replace(' mil e ','-').replace(' mil','k')
           .replace('Acima de R$ ','>R$').replace('Iniciando, menos de R$ ','<R$');
@@ -430,7 +438,7 @@ function renderList() {
   document.getElementById('hdr-count').textContent = `${S.approved.size} aprovados · ${visible} contatos`;
 }
 
-// ── SELECIONAR ────────────────────────────────────────────────────
+// ── SELECT CONTACT ────────────────────────────────────────────────
 function selectContact(i) {
   S.sel = i;
   document.getElementById('gmail-btn').classList.remove('visible');
@@ -458,15 +466,16 @@ function getSubject(q) {
   return 'Uma solução que pode transformar seus resultados';
 }
 
-// ── GERAR E-MAIL ──────────────────────────────────────────────────
+// ── GENERATE EMAIL ────────────────────────────────────────────────
 async function generateEmail() {
   if (S.sel===null) return;
   if (!API_KEY) { openModal(); return; }
-  const c = CONTACTS[S.sel];
-  const ind = document.getElementById('gen-ind');
-  const ta  = document.getElementById('ed-body');
-  const btn = document.getElementById('gen-btn');
+  const c    = CONTACTS[S.sel];
+  const ind  = document.getElementById('gen-ind');
+  const ta   = document.getElementById('ed-body');
+  const btn  = document.getElementById('gen-btn');
   const gbtn = document.getElementById('gmail-btn');
+
   ind.classList.add('on'); ta.value=''; ta.style.display='none';
   btn.disabled=true; btn.textContent='⏳ Gerando...';
   gbtn.classList.remove('visible');
@@ -474,7 +483,7 @@ async function generateEmail() {
   const inst = c.q==='sim'
     ? 'Lead ALTAMENTE QUALIFICADO. Convide diretamente para reunião ou demo. Tom direto e confiante.'
     : c.q==='com potencial'
-    ? 'Lead com potencial. Reative o interesse, apresente os serviços de gestão de tráfego e gere curiosidade.'
+    ? 'Lead com potencial. Reative o interesse, apresente os serviços de gestão de tráfego pago e gere curiosidade.'
     : 'Lead não qualificado. Apresente levemente, sem pressão, deixe porta aberta.';
 
   const prompt = `Você é especialista em vendas consultivas para gestão de tráfego pago. Escreva um e-mail profissional, caloroso e personalizado em português brasileiro.
@@ -504,7 +513,7 @@ Escreva APENAS o corpo do e-mail, sem assunto nem explicações.`;
   btn.disabled=false; btn.textContent='⚡ Gerar e-mail';
 }
 
-// ── APROVAR / PULAR ───────────────────────────────────────────────
+// ── APPROVE / SKIP ────────────────────────────────────────────────
 function approveEmail() {
   if (S.sel===null) return;
   S.emails[S.sel]   = document.getElementById('ed-body').value;
@@ -542,67 +551,38 @@ function closeSendModal() {
   document.getElementById('sc-overlay').classList.remove('open');
 }
 
-async function confirmSend() {
+function confirmSend() {
   if (S.sel===null) return;
   const c    = CONTACTS[S.sel];
   const body = document.getElementById('ed-body').value;
   const subj = document.getElementById('ed-subj').value;
-  const btn  = document.getElementById('sc-confirm-btn');
-  btn.textContent = '⏳ Enviando...'; btn.disabled = true;
 
-  try {
-    const r = await fetch('https://api.anthropic.com/v1/messages', {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-        'x-api-key': API_KEY,
-        'anthropic-version': '2023-06-01',
-        'anthropic-dangerous-direct-browser-access': 'true'
-      },
-      body: JSON.stringify({
-        model: 'claude-haiku-4-5-20251001',
-        max_tokens: 512,
-        mcp_servers: [{ type: 'url', url: 'https://gmail.mcp.claude.com/mcp', name: 'gmail' }],
-        messages: [{
-          role: 'user',
-          content: `Use the gmail_create_draft tool to create an email draft with exactly these parameters:
-- to: "${c.email}"
-- subject: "${subj.replace(/"/g, '\"')}"
-- body: ${JSON.stringify(body)}
-- contentType: "text/plain"
+  // Save to localStorage so Claude can read it
+  localStorage.setItem('pg_send', JSON.stringify({ to: c.email, subject: subj, body, name: c.name, ts: Date.now() }));
 
-After creating the draft, respond with only: DRAFT_CREATED`
-        }]
-      })
-    });
+  closeSendModal();
 
-    const d = await r.json();
-    if (d.error) throw new Error(d.error.message);
-
-    const responseText = (d.content||[]).map(b => b.text||'').join('');
-    const success = responseText.includes('DRAFT_CREATED') ||
-                    d.content.some(b => b.type === 'tool_use' && b.name === 'gmail_create_draft') ||
-                    d.content.some(b => b.type === 'tool_result');
-
-    if (!success && d.stop_reason !== 'end_turn') {
-      throw new Error('Rascunho não foi criado. Verifique se o Gmail está conectado.');
-    }
-
-    closeSendModal();
-    S.approved.add(S.sel);
-    S.emails[S.sel]   = body;
-    S.subjects[S.sel] = subj;
-    document.getElementById('approve-btn').textContent = '✓ Aprovado';
-    renderList();
-    toast('✓ Rascunho criado no Gmail! Abra o Gmail para enviar.');
-    setTimeout(() => {
-      const nxt = CONTACTS.findIndex((_,i) => i>S.sel && !S.skipped.has(i) && !S.approved.has(i));
-      if (nxt>=0) selectContact(nxt);
-    }, 1500);
-  } catch(e) {
-    toast('⚠ Erro: ' + e.message);
+  // Trigger Claude via sendPrompt (works inside claude.ai artifact/panel)
+  if (typeof sendPrompt === 'function') {
+    sendPrompt(`CRIAR_RASCUNHO_GMAIL | Para: ${c.email} | Assunto: ${subj} | Corpo: ${body}`);
+    toast('📤 Solicitando criação do rascunho...');
+  } else {
+    // Fallback: open Gmail compose with prefilled data
+    const gmailUrl = `https://mail.google.com/mail/?view=cm&fs=1&to=${encodeURIComponent(c.email)}&su=${encodeURIComponent(subj)}&body=${encodeURIComponent(body)}`;
+    window.open(gmailUrl, '_blank');
+    toast('📤 Gmail aberto com o e-mail pronto!');
   }
-  btn.textContent = '📤 Enviar agora'; btn.disabled = false;
+
+  S.approved.add(S.sel);
+  S.emails[S.sel]   = body;
+  S.subjects[S.sel] = subj;
+  document.getElementById('approve-btn').textContent = '✓ Aprovado';
+  renderList();
+
+  setTimeout(() => {
+    const nxt = CONTACTS.findIndex((_,i) => i>S.sel && !S.skipped.has(i) && !S.approved.has(i));
+    if (nxt>=0) selectContact(nxt);
+  }, 1500);
 }
 
 // ── CHAT ──────────────────────────────────────────────────────────
@@ -670,7 +650,9 @@ function scrollMsgs() {
   m.scrollTop = m.scrollHeight;
 }
 
-function chatKey(e) { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } }
+function chatKey(e) {
+  if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); }
+}
 
 // ── TOAST ─────────────────────────────────────────────────────────
 function toast(msg) {
