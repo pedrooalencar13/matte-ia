@@ -1,41 +1,58 @@
 const { google } = require('googleapis');
 const { logger } = require('../utils/logger');
 
-// Mapeamento real da planilha (0-indexed)
+// ── Mapeamento de colunas (0-indexed) ────────────────────────────────────────
 // A=0  First Name
 // B=1  Last Name
-// C=2  Phone        ← telefone aqui
+// C=2  Phone
 // D=3  Email
 // E=4  Business Name
-// F=5  Created      ← deixar vazio (preenchido pelo sistema)
-// G=6  Last Activity← deixar vazio
+// F=5  Created        ← deixar vazio (preenchido pelo sistema)
+// G=6  Last Activity  ← cidade
 // H=7  Tags
 // I=8  utm_source
-// J=9  utm_medium
-// K=10 utm_campaign
-// L=11 utm_content
-// M=12 (faturamento no frontend)
-// N=13 (urgencia no frontend)
-// O=14 (qualificacao no frontend)
+// J=9  utm_medium     ← especialidade
+// K=10 utm_campaign   ← 'advogados' (ativa template fixo no frontend)
+// L=11 utm_content    ← site
+// M=12 faturamento
+// N=13 urgencia
+// O=14 qualificacao
+// P=15 cadencia_status    ← 'ativa' | 'pausada' | 'concluida' | 'respondeu'
+// Q=16 cadencia_etapa     ← 0-5
+// R=17 cadencia_proximo   ← ISO date do próximo envio
+// S=18 email_aberto       ← 'sim' | ''
+// T=19 email_respondido   ← 'sim' | ''
+// U=20 data_resposta      ← ISO date
 
 const COL = {
-  NOME:     0,  // A - First Name
-  SOBRENOME:1,  // B - Last Name
-  TELEFONE: 2,  // C - Phone ← CORRIGIDO
-  EMAIL:    3,  // D - Email
-  EMPRESA:  4,  // E - Business Name
-  CREATED:  5,  // F - Created (deixar vazio)
-  ACTIVITY: 6,  // G - Last Activity (cidade vai aqui para aparecer no painel)
-  TAGS:     7,  // H - Tags
-  SOURCE:   8,  // I - utm_source
-  MEDIUM:   9,  // J - utm_medium
-  CAMPAIGN: 10, // K - utm_campaign
-  CONTENT:  11, // L - utm_content
-  FAT:      12, // M - faturamento
-  URG:      13, // N - urgencia
-  QUALIF:   14, // O - qualificacao
+  NOME:       0,
+  SOBRENOME:  1,
+  TELEFONE:   2,
+  EMAIL:      3,
+  EMPRESA:    4,
+  CREATED:    5,
+  ACTIVITY:   6,  // cidade
+  TAGS:       7,
+  SOURCE:     8,
+  MEDIUM:     9,  // especialidade
+  CAMPAIGN:   10,
+  CONTENT:    11, // site
+  FAT:        12,
+  URG:        13,
+  QUALIF:     14,
+  // Cadence + tracking
+  CAD_STATUS: 15,
+  CAD_ETAPA:  16,
+  CAD_PROXIMO:17,
+  ABERTO:     18,
+  RESPONDIDO: 19,
+  DT_RESPOSTA:20,
 };
 
+const SHEET_RANGE_READ  = 'A2:U';
+const SHEET_RANGE_WRITE = 'A1';
+
+// ── Auth ──────────────────────────────────────────────────────────────────────
 function getAuth() {
   const privateKey = (process.env.GOOGLE_PRIVATE_KEY || '').replace(/\\n/g, '\n');
   return new google.auth.JWT(
@@ -52,94 +69,155 @@ async function getSheetsClient() {
   return google.sheets({ version: 'v4', auth });
 }
 
-/**
- * Lê todos os contatos da planilha.
- */
+function tab() {
+  return process.env.SHEET_TAB || 'Página1';
+}
+
+// ── Leitura ───────────────────────────────────────────────────────────────────
 async function pullFromSheets() {
-  const sheets = await getSheetsClient();
+  const sheets  = await getSheetsClient();
   const sheetId = process.env.SHEET_ID;
-  const tab = process.env.SHEET_TAB || 'Página1';
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: `${tab}!A2:O`,
+    range: `${tab()}!${SHEET_RANGE_READ}`,
   });
 
   const rows = res.data.values || [];
+
   const contacts = rows.map((row, i) => ({
-    index:       i + 2,
-    nome:        row[COL.NOME]     || '',
-    email:       row[COL.EMAIL]    || '',
-    empresa:     row[COL.EMPRESA]  || '',
-    telefone:    row[COL.TELEFONE] || '',
-    cidade:      row[COL.ACTIVITY] || '', // cidade mapeada em Last Activity
-    tags:        row[COL.TAGS]     || '',
-    campaign:    row[COL.CAMPAIGN] || '',
-    faturamento: row[COL.FAT]      || '',
-    urgencia:    row[COL.URG]      || '',
-    qualificacao:row[COL.QUALIF]   || '',
+    rowIndex:         i + 2, // linha real na planilha (começa em 2 pois linha 1 é header)
+    nome:             row[COL.NOME]        || '',
+    sobrenome:        row[COL.SOBRENOME]   || '',
+    telefone:         row[COL.TELEFONE]    || '',
+    email:            row[COL.EMAIL]       || '',
+    empresa:          row[COL.EMPRESA]     || '',
+    cidade:           row[COL.ACTIVITY]    || '',
+    tags:             row[COL.TAGS]        || '',
+    source:           row[COL.SOURCE]      || '',
+    medium:           row[COL.MEDIUM]      || '',   // especialidade
+    campaign:         row[COL.CAMPAIGN]    || '',
+    site:             row[COL.CONTENT]     || '',
+    faturamento:      row[COL.FAT]         || '',
+    urgencia:         row[COL.URG]         || '',
+    qualificacao:     row[COL.QUALIF]      || '',
+    cadenciaStatus:   row[COL.CAD_STATUS]  || '',
+    cadenciaEtapa:    row[COL.CAD_ETAPA]   || '0',
+    cadenciaProximo:  row[COL.CAD_PROXIMO] || '',
+    emailAberto:      row[COL.ABERTO]      || '',
+    emailRespondido:  row[COL.RESPONDIDO]  || '',
+    dataResposta:     row[COL.DT_RESPOSTA] || '',
   })).filter(c => c.email && c.email.includes('@'));
 
-  logger.info(`[SHEETS] ${contacts.length} contatos lidos da planilha`);
+  logger.info(`[SHEETS] ${contacts.length} contatos lidos`);
   return contacts;
 }
 
-/**
- * Insere leads na planilha com mapeamento correto de colunas.
- */
+// ── Escrita (novos leads) ─────────────────────────────────────────────────────
 async function pushToSheets(leads) {
   if (!leads || leads.length === 0) return { pushed: 0, skipped: 0 };
 
-  const sheets = await getSheetsClient();
+  const sheets  = await getSheetsClient();
   const sheetId = process.env.SHEET_ID;
-  const tab = process.env.SHEET_TAB || 'Página1';
-
-  // Valida e filtra leads com e-mail válido
-  const valid = leads.filter(l => l.email && l.email.includes('@'));
+  const valid   = leads.filter(l => l.email && l.email.includes('@'));
   const skipped = leads.length - valid.length;
 
   const rows = valid.map(lead => {
-    const row = new Array(15).fill('');
+    const row = new Array(21).fill('');
 
-    // Extrai primeiro e último nome do escritório
-    const partes = (lead.nome || '').trim().split(/\s+/);
+    const partes       = (lead.nome || '').trim().split(/\s+/);
     const primeiroNome = partes[0] || lead.nome || '';
-    const resto = partes.slice(1).join(' ');
+    const resto        = partes.slice(1).join(' ');
 
-    row[COL.NOME]     = primeiroNome;                    // A - First Name
-    row[COL.SOBRENOME]= resto;                           // B - Last Name
-    row[COL.TELEFONE] = formatPhone(lead.telefone || '');// C - Phone ← CORRIGIDO
-    row[COL.EMAIL]    = (lead.email || '').toLowerCase().trim(); // D - Email
-    row[COL.EMPRESA]  = lead.nome || '';                 // E - Business Name
-    row[COL.CREATED]  = '';                              // F - Created (deixar vazio)
-    row[COL.ACTIVITY] = lead.cidade || '';               // G - Last Activity (cidade)
-    row[COL.TAGS]     = 'captado-auto';                  // H - Tags
-    row[COL.SOURCE]   = 'google-maps';                   // I - utm_source
-    row[COL.MEDIUM]   = lead.especialidade || '';        // J - utm_medium (especialidade)
-    row[COL.CAMPAIGN] = 'advogados';                     // K - utm_campaign (ativa template)
-    row[COL.CONTENT]  = lead.site || '';                 // L - utm_content (site)
-    row[COL.FAT]      = 'não informado';                 // M - faturamento
-    row[COL.URG]      = '';                              // N - urgencia
-    row[COL.QUALIF]   = 'com potencial';                 // O - qualificacao
+    row[COL.NOME]       = primeiroNome;
+    row[COL.SOBRENOME]  = resto;
+    row[COL.TELEFONE]   = formatPhone(lead.telefone || '');
+    row[COL.EMAIL]      = (lead.email || '').toLowerCase().trim();
+    row[COL.EMPRESA]    = lead.nome || '';
+    row[COL.CREATED]    = '';
+    row[COL.ACTIVITY]   = lead.cidade || '';
+    row[COL.TAGS]       = 'captado-auto';
+    row[COL.SOURCE]     = 'google-maps';
+    row[COL.MEDIUM]     = lead.especialidade || '';
+    row[COL.CAMPAIGN]   = 'advogados';
+    row[COL.CONTENT]    = lead.site || '';
+    row[COL.FAT]        = 'não informado';
+    row[COL.URG]        = '';
+    row[COL.QUALIF]     = 'com potencial';
+    // Inicia cadência automaticamente
+    row[COL.CAD_STATUS] = 'ativa';
+    row[COL.CAD_ETAPA]  = '0';
+    row[COL.CAD_PROXIMO]= new Date().toISOString(); // envia primeiro e-mail imediatamente
+    row[COL.ABERTO]     = '';
+    row[COL.RESPONDIDO] = '';
+    row[COL.DT_RESPOSTA]= '';
 
     return row;
   });
 
   await sheets.spreadsheets.values.append({
     spreadsheetId: sheetId,
-    range: `${tab}!A1`,
+    range: `${tab()}!${SHEET_RANGE_WRITE}`,
     valueInputOption: 'RAW',
     insertDataOption: 'INSERT_ROWS',
     resource: { values: rows },
   });
 
-  logger.success(`[SHEETS] ${rows.length} leads inseridos | ${skipped} ignorados (sem e-mail)`);
+  logger.success(`[SHEETS] ${rows.length} leads inseridos | ${skipped} ignorados`);
   return { pushed: rows.length, skipped };
 }
 
+// ── Update de cadência / tracking de uma linha específica ─────────────────────
 /**
- * Retorna e-mails já existentes na planilha (para deduplicação).
+ * Atualiza colunas P-U de um lead específico (localizado pelo e-mail).
+ * @param {string} email
+ * @param {object} updates - pode conter: cadenciaStatus, cadenciaEtapa, cadenciaProximo,
+ *                           emailAberto, emailRespondido, dataResposta
  */
+async function updateCadenceRow(email, updates) {
+  const sheets  = await getSheetsClient();
+  const sheetId = process.env.SHEET_ID;
+  const t       = tab();
+
+  // Busca linha do lead pelo e-mail
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: `${t}!D2:D`,  // coluna D = email
+  });
+
+  const emailRows = res.data.values || [];
+  const rowIndex  = emailRows.findIndex(r =>
+    (r[0] || '').toLowerCase().trim() === email.toLowerCase().trim()
+  );
+
+  if (rowIndex === -1) {
+    logger.warn(`[SHEETS] updateCadenceRow: e-mail não encontrado — ${email}`);
+    return false;
+  }
+
+  const sheetRow = rowIndex + 2; // +2 por causa do header + base 1
+
+  // Monta array de atualização para P-U (índices 15-20)
+  const cadRow = new Array(6).fill('');
+  if (updates.cadenciaStatus  !== undefined) cadRow[0] = updates.cadenciaStatus;
+  if (updates.cadenciaEtapa   !== undefined) cadRow[1] = updates.cadenciaEtapa;
+  if (updates.cadenciaProximo !== undefined) cadRow[2] = updates.cadenciaProximo;
+  if (updates.emailAberto     !== undefined) cadRow[3] = updates.emailAberto;
+  if (updates.emailRespondido !== undefined) cadRow[4] = updates.emailRespondido;
+  if (updates.dataResposta    !== undefined) cadRow[5] = updates.dataResposta;
+
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: sheetId,
+    range: `${t}!P${sheetRow}:U${sheetRow}`,
+    valueInputOption: 'RAW',
+    resource: { values: [cadRow] },
+  });
+
+  logger.info(`[SHEETS] Cadência/tracking atualizado para ${email} (linha ${sheetRow})`);
+  return true;
+}
+
+// ── E-mails existentes (deduplicação) ─────────────────────────────────────────
 async function getExistingEmails() {
   try {
     const contacts = await pullFromSheets();
@@ -150,23 +228,17 @@ async function getExistingEmails() {
   }
 }
 
-/**
- * Formata telefone para padrão legível.
- * Ex: +5511994567890 → (11) 99456-7890
- */
+// ── Formatação de telefone ────────────────────────────────────────────────────
 function formatPhone(raw) {
   if (!raw) return '';
-  // Remove tudo que não é dígito
   const digits = raw.replace(/\D/g, '');
-  // Brasil: +55 + DDD(2) + número(8 ou 9)
   if (digits.startsWith('55') && digits.length >= 12) {
     const ddd = digits.slice(2, 4);
     const num = digits.slice(4);
-    if (num.length === 9) return `(${ddd}) ${num.slice(0,5)}-${num.slice(5)}`;
-    if (num.length === 8) return `(${ddd}) ${num.slice(0,4)}-${num.slice(4)}`;
+    if (num.length === 9) return `(${ddd}) ${num.slice(0, 5)}-${num.slice(5)}`;
+    if (num.length === 8) return `(${ddd}) ${num.slice(0, 4)}-${num.slice(4)}`;
   }
-  // Se não conseguir formatar, retorna como veio
   return raw;
 }
 
-module.exports = { pullFromSheets, pushToSheets, getExistingEmails };
+module.exports = { pullFromSheets, pushToSheets, getExistingEmails, updateCadenceRow };
