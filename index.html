@@ -156,6 +156,8 @@ textarea.cta:focus{border-color:var(--acc)}
     <div class="dot"></div>
     <span id="hdr-count">carregando...</span>
     <button class="btn btn-sync btn-sm" id="sync-btn" onclick="syncNow()">↻ Sync</button>
+    <button class="btn btn-g btn-sm" onclick="startCapture()">🔍 Captar</button>
+    <button class="btn btn-sync btn-sm" onclick="pushLeadsToSheet()">⬆ Sync leads</button>
     <button class="btn btn-bulk btn-sm" onclick="openBulk()">⚡ Disparo em massa</button>
     <button class="btn btn-g btn-sm" onclick="openModal()">⚙ API Key</button>
   </div>
@@ -296,6 +298,7 @@ const SHEET_ID   = '1r7vob1TvEY8P9G6wm5NcfNFg_r1aUwqvBSS7mrSt9Oo';
 const SHEET_NAME = 'Sheet1';
 const SYNC_MS    = 60000;
 const COL        = { NOME:0, EMAIL:3, EMPRESA:4, FAT:12, URG:13, QUALIF:14, TAGS:7 };
+const BACKEND_URL = 'https://matte-ia-production.up.railway.app';
 
 // ── TEMPLATE FIXO PARA ADVOGADOS ──────────────────────────────────
 const TEMPLATE_ADV_SUBJ = 'O tipo de cliente que você atrai depende do que você fala no anúncio';
@@ -844,6 +847,42 @@ Cada e-mail será enviado separadamente — nenhum lead verá os outros.`)) retu
   renderBulkList();
   bulkRunning = false;
   toast(`✓ ${ok} e-mails gerados! Confirme o envio em cada aba do Gmail.`);
+}
+
+// ── CAPTAÇÃO DE LEADS (BACKEND) ───────────────────────────────────
+async function startCapture() {
+  try {
+    const r = await fetch(`${BACKEND_URL}/scraper/start`, {method:'POST'});
+    const d = await r.json();
+    if (r.status === 409) { toast('Captação já está rodando!'); return; }
+    toast('🔍 Captação iniciada! Novos leads em ~2 min.');
+    setTimeout(() => checkCaptureStatus(), 5000);
+  } catch(e) { toast('Erro ao conectar ao backend. Verifique se está no ar.'); }
+}
+
+async function checkCaptureStatus() {
+  try {
+    const r = await fetch(`${BACKEND_URL}/scraper/status`);
+    const d = await r.json();
+    if (d.running) {
+      document.getElementById('hdr-count').textContent = `🔍 captando... ${d.valid} novos`;
+      setTimeout(() => checkCaptureStatus(), 5000);
+    } else if (d.valid > 0) {
+      toast(`✓ ${d.valid} leads captados! Clique em ⬆ Sync leads para enviar à planilha.`);
+      loadSheet();
+    }
+  } catch(e) {}
+}
+
+async function pushLeadsToSheet() {
+  try {
+    toast('⏳ Enviando leads para a planilha...');
+    const r = await fetch(`${BACKEND_URL}/sheets/push`, {method:'POST'});
+    const d = await r.json();
+    if (d.pushed === 0) { toast('Nenhum lead novo para enviar.'); return; }
+    toast(`✓ ${d.pushed} leads enviados para a planilha!`);
+    setTimeout(() => loadSheet(), 2000);
+  } catch(e) { toast('Erro ao sincronizar leads com a planilha.'); }
 }
 </script>
 </body>
