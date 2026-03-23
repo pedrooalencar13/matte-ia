@@ -1,23 +1,39 @@
 const { google } = require('googleapis');
 const { logger } = require('../utils/logger');
 
-// Mapeamento de colunas (0-indexed)
+// Mapeamento real da planilha (0-indexed)
+// A=0  First Name
+// B=1  Last Name
+// C=2  Phone        ← telefone aqui
+// D=3  Email
+// E=4  Business Name
+// F=5  Created      ← deixar vazio (preenchido pelo sistema)
+// G=6  Last Activity← deixar vazio
+// H=7  Tags
+// I=8  utm_source
+// J=9  utm_medium
+// K=10 utm_campaign
+// L=11 utm_content
+// M=12 (faturamento no frontend)
+// N=13 (urgencia no frontend)
+// O=14 (qualificacao no frontend)
+
 const COL = {
-  NOME: 0,
-  B: 1,
-  C: 2,
-  EMAIL: 3,
-  EMPRESA: 4,
-  TELEFONE: 5,
-  CIDADE: 6,
-  TAGS: 7,
-  I: 8,
-  SITE: 9,
-  CAMPAIGN: 10,
-  L: 11,
-  FAT: 12,
-  URG: 13,
-  QUALIF: 14,
+  NOME:     0,  // A - First Name
+  SOBRENOME:1,  // B - Last Name
+  TELEFONE: 2,  // C - Phone ← CORRIGIDO
+  EMAIL:    3,  // D - Email
+  EMPRESA:  4,  // E - Business Name
+  CREATED:  5,  // F - Created (deixar vazio)
+  ACTIVITY: 6,  // G - Last Activity (cidade vai aqui para aparecer no painel)
+  TAGS:     7,  // H - Tags
+  SOURCE:   8,  // I - utm_source
+  MEDIUM:   9,  // J - utm_medium
+  CAMPAIGN: 10, // K - utm_campaign
+  CONTENT:  11, // L - utm_content
+  FAT:      12, // M - faturamento
+  URG:      13, // N - urgencia
+  QUALIF:   14, // O - qualificacao
 };
 
 function getAuth() {
@@ -38,12 +54,11 @@ async function getSheetsClient() {
 
 /**
  * Lê todos os contatos da planilha.
- * Retorna array de objetos com as colunas mapeadas.
  */
 async function pullFromSheets() {
   const sheets = await getSheetsClient();
   const sheetId = process.env.SHEET_ID;
-  const tab = process.env.SHEET_TAB || 'Sheet1';
+  const tab = process.env.SHEET_TAB || 'Página1';
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
@@ -52,49 +67,61 @@ async function pullFromSheets() {
 
   const rows = res.data.values || [];
   const contacts = rows.map((row, i) => ({
-    index: i + 2,
-    nome: row[COL.NOME] || '',
-    email: row[COL.EMAIL] || '',
-    empresa: row[COL.EMPRESA] || '',
-    telefone: row[COL.TELEFONE] || '',
-    cidade: row[COL.CIDADE] || '',
-    tags: row[COL.TAGS] || '',
-    site: row[COL.SITE] || '',
-    campaign: row[COL.CAMPAIGN] || '',
-    faturamento: row[COL.FAT] || '',
-    urgencia: row[COL.URG] || '',
-    qualificacao: row[COL.QUALIF] || '',
-  })).filter(c => c.email);
+    index:       i + 2,
+    nome:        row[COL.NOME]     || '',
+    email:       row[COL.EMAIL]    || '',
+    empresa:     row[COL.EMPRESA]  || '',
+    telefone:    row[COL.TELEFONE] || '',
+    cidade:      row[COL.ACTIVITY] || '', // cidade mapeada em Last Activity
+    tags:        row[COL.TAGS]     || '',
+    campaign:    row[COL.CAMPAIGN] || '',
+    faturamento: row[COL.FAT]      || '',
+    urgencia:    row[COL.URG]      || '',
+    qualificacao:row[COL.QUALIF]   || '',
+  })).filter(c => c.email && c.email.includes('@'));
 
   logger.info(`[SHEETS] ${contacts.length} contatos lidos da planilha`);
   return contacts;
 }
 
 /**
- * Insere um array de leads na planilha.
- * Cada lead vira uma linha nova ao final da aba.
+ * Insere leads na planilha com mapeamento correto de colunas.
  */
 async function pushToSheets(leads) {
   if (!leads || leads.length === 0) return { pushed: 0, skipped: 0 };
 
   const sheets = await getSheetsClient();
   const sheetId = process.env.SHEET_ID;
-  const tab = process.env.SHEET_TAB || 'Sheet1';
+  const tab = process.env.SHEET_TAB || 'Página1';
 
-  // Monta as linhas na ordem correta das colunas A-O
-  const rows = leads.map(lead => {
+  // Valida e filtra leads com e-mail válido
+  const valid = leads.filter(l => l.email && l.email.includes('@'));
+  const skipped = leads.length - valid.length;
+
+  const rows = valid.map(lead => {
     const row = new Array(15).fill('');
-    row[COL.NOME] = lead.nome || '';
-    row[COL.EMAIL] = lead.email || '';
-    row[COL.EMPRESA] = lead.nome || '';          // empresa = nome do escritório
-    row[COL.TELEFONE] = lead.telefone || '';
-    row[COL.CIDADE] = lead.cidade || '';
-    row[COL.TAGS] = 'captado-auto';
-    row[COL.SITE] = lead.site || '';
-    row[COL.CAMPAIGN] = 'advogados';             // ESSENCIAL: ativa template fixo no frontend
-    row[COL.FAT] = 'nao informado';
-    row[COL.URG] = '';
-    row[COL.QUALIF] = 'com potencial';
+
+    // Extrai primeiro e último nome do escritório
+    const partes = (lead.nome || '').trim().split(/\s+/);
+    const primeiroNome = partes[0] || lead.nome || '';
+    const resto = partes.slice(1).join(' ');
+
+    row[COL.NOME]     = primeiroNome;                    // A - First Name
+    row[COL.SOBRENOME]= resto;                           // B - Last Name
+    row[COL.TELEFONE] = formatPhone(lead.telefone || '');// C - Phone ← CORRIGIDO
+    row[COL.EMAIL]    = (lead.email || '').toLowerCase().trim(); // D - Email
+    row[COL.EMPRESA]  = lead.nome || '';                 // E - Business Name
+    row[COL.CREATED]  = '';                              // F - Created (deixar vazio)
+    row[COL.ACTIVITY] = lead.cidade || '';               // G - Last Activity (cidade)
+    row[COL.TAGS]     = 'captado-auto';                  // H - Tags
+    row[COL.SOURCE]   = 'google-maps';                   // I - utm_source
+    row[COL.MEDIUM]   = lead.especialidade || '';        // J - utm_medium (especialidade)
+    row[COL.CAMPAIGN] = 'advogados';                     // K - utm_campaign (ativa template)
+    row[COL.CONTENT]  = lead.site || '';                 // L - utm_content (site)
+    row[COL.FAT]      = 'não informado';                 // M - faturamento
+    row[COL.URG]      = '';                              // N - urgencia
+    row[COL.QUALIF]   = 'com potencial';                 // O - qualificacao
+
     return row;
   });
 
@@ -106,12 +133,12 @@ async function pushToSheets(leads) {
     resource: { values: rows },
   });
 
-  logger.success(`[SHEETS] ${rows.length} leads inseridos na planilha`);
-  return { pushed: rows.length, skipped: 0 };
+  logger.success(`[SHEETS] ${rows.length} leads inseridos | ${skipped} ignorados (sem e-mail)`);
+  return { pushed: rows.length, skipped };
 }
 
 /**
- * Retorna todos os e-mails já existentes na planilha (para deduplicação).
+ * Retorna e-mails já existentes na planilha (para deduplicação).
  */
 async function getExistingEmails() {
   try {
@@ -121,6 +148,25 @@ async function getExistingEmails() {
     logger.warn('[SHEETS] Não foi possível ler e-mails existentes:', err.message);
     return [];
   }
+}
+
+/**
+ * Formata telefone para padrão legível.
+ * Ex: +5511994567890 → (11) 99456-7890
+ */
+function formatPhone(raw) {
+  if (!raw) return '';
+  // Remove tudo que não é dígito
+  const digits = raw.replace(/\D/g, '');
+  // Brasil: +55 + DDD(2) + número(8 ou 9)
+  if (digits.startsWith('55') && digits.length >= 12) {
+    const ddd = digits.slice(2, 4);
+    const num = digits.slice(4);
+    if (num.length === 9) return `(${ddd}) ${num.slice(0,5)}-${num.slice(5)}`;
+    if (num.length === 8) return `(${ddd}) ${num.slice(0,4)}-${num.slice(4)}`;
+  }
+  // Se não conseguir formatar, retorna como veio
+  return raw;
 }
 
 module.exports = { pullFromSheets, pushToSheets, getExistingEmails };
