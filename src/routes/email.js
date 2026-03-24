@@ -57,4 +57,41 @@ router.get('/status', (req, res) => {
   res.json(getBulkStatus());
 });
 
+// ─── GET /email/test ──────────────────────────────────────────────────────────
+// Testa se as credenciais Gmail OAuth2 estão configuradas e válidas
+router.get('/test', async (req, res) => {
+  try {
+    const { google } = require('googleapis');
+    if (!process.env.GMAIL_CLIENT_ID || !process.env.GMAIL_CLIENT_SECRET || !process.env.GMAIL_REFRESH_TOKEN) {
+      return res.status(500).json({
+        status: 'error',
+        gmail_configured: false,
+        token_valid: false,
+        hint: 'Configure GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET e GMAIL_REFRESH_TOKEN no Railway',
+      });
+    }
+    const oauth2Client = new google.auth.OAuth2(
+      process.env.GMAIL_CLIENT_ID,
+      process.env.GMAIL_CLIENT_SECRET
+    );
+    oauth2Client.setCredentials({ refresh_token: process.env.GMAIL_REFRESH_TOKEN });
+    const { token } = await oauth2Client.getAccessToken();
+    res.json({
+      status: 'ok',
+      gmail_configured: true,
+      token_valid: !!token,
+      user: process.env.GMAIL_USER,
+    });
+  } catch(e) {
+    logger.error('[EMAIL] Erro no teste OAuth2:', e.message);
+    res.status(500).json({
+      status: 'error',
+      gmail_configured: false,
+      token_valid: false,
+      error: e.message,
+      hint: 'Verifique GMAIL_CLIENT_ID, GMAIL_CLIENT_SECRET e GMAIL_REFRESH_TOKEN no Railway',
+    });
+  }
+});
+
 module.exports = router;

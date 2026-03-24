@@ -37,15 +37,22 @@ router.post('/push', async (req, res) => {
 });
 
 // ─── GET /sheets/pull ─────────────────────────────────────────────────────────
-// Puxa todos os contatos da planilha
+// Puxa todos os contatos da planilha com meta-dados para o dashboard
 router.get('/pull', async (req, res) => {
   try {
     const contacts = await pullFromSheets();
-    res.json({
-      contacts,
-      total: contacts.length,
-      syncedAt: new Date().toISOString(),
-    });
+    const meta = {
+      total:       contacts.length,
+      emCadencia:  contacts.filter(c => c.cadenciaStatus === 'ativa').length,
+      abriram:     contacts.filter(c => c.emailAberto === 'sim').length,
+      responderam: contacts.filter(c => c.emailRespondido === 'sim').length,
+      concluidos:  contacts.filter(c => c.cadenciaStatus === 'concluida').length,
+      pausados:    contacts.filter(c => c.cadenciaStatus === 'pausada').length,
+      respondeu:   contacts.filter(c => c.cadenciaStatus === 'respondeu').length,
+      ultimoSync:  new Date().toISOString(),
+    };
+    logger.info(`[SHEETS] Pull: ${contacts.length} contatos, ${meta.emCadencia} em cadência`);
+    res.json({ contacts, meta });
   } catch (err) {
     logger.error('[SHEETS] Erro ao fazer pull:', err.message);
     res.status(500).json({ error: 'Erro ao ler Google Sheets', detail: err.message });

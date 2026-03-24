@@ -9,11 +9,14 @@ const sheetsRouter  = require('./src/routes/sheets');
 const emailRouter   = require('./src/routes/email');
 const cadenceRouter = require('./src/routes/cadence');
 const trackRouter   = require('./src/routes/track');
+const inboxRouter   = require('./src/routes/inbox');
+const tasksRouter   = require('./src/routes/tasks');
 
 // Cron jobs em background
 require('./src/jobs/scraperJob');
 require('./src/jobs/cadenceJob');
 require('./src/jobs/replyCheckerJob');
+require('./src/jobs/inboxJob');
 
 const app  = express();
 const PORT = process.env.PORT || 3001;
@@ -55,6 +58,8 @@ app.use('/sheets',  sheetsRouter);
 app.use('/email',   emailRouter);
 app.use('/cadence', cadenceRouter);
 app.use('/track',   trackRouter);
+app.use('/inbox',   inboxRouter);
+app.use('/tasks',   tasksRouter);
 
 // ── 404 ─────────────────────────────────────────────────────────────────────
 app.use((req, res) => {
@@ -70,4 +75,26 @@ app.use((err, req, res, next) => {
 app.listen(PORT, () => {
   logger.info(`[SERVER] Matte Backend rodando na porta ${PORT}`);
   logger.info(`[SERVER] Origins permitidas: ${ALLOWED_ORIGINS.join(', ')}`);
+
+  // ── Verificação de credenciais na inicialização ──────────────────
+  console.log('\n═══ VERIFICAÇÃO DE CREDENCIAIS MATTE ═══');
+  const creds = [
+    ['SERP_API_KEY',               'SerpAPI'],
+    ['GOOGLE_SERVICE_ACCOUNT_EMAIL','Google Sheets'],
+    ['GOOGLE_PRIVATE_KEY',         'Google Sheets Key'],
+    ['GMAIL_CLIENT_ID',            'Gmail OAuth ClientID'],
+    ['GMAIL_CLIENT_SECRET',        'Gmail OAuth Secret'],
+    ['GMAIL_REFRESH_TOKEN',        'Gmail Refresh Token'],
+    ['CLAUDE_API_KEY',             'Claude API'],
+  ];
+  creds.forEach(([key, label]) => {
+    const val = process.env[key];
+    if (val) {
+      console.log(`  ✓ ${label}`);
+    } else {
+      console.warn(`  ✗ FALTANDO: ${label} (${key})`);
+      console.warn(`    → Configure ${key} no Railway Environment Variables`);
+    }
+  });
+  console.log('═════════════════════════════════════════\n');
 });

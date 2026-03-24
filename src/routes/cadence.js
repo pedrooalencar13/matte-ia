@@ -70,6 +70,30 @@ router.post('/reset/:email', async (req, res) => {
   }
 });
 
+// ─── POST /cadence/activate-all ───────────────────────────────────────────────
+// Ativa a cadência para todos os leads que ainda não têm cadência configurada
+router.post('/activate-all', async (req, res) => {
+  try {
+    const contacts = await pullFromSheets();
+    const semCadencia = contacts.filter(c => !c.cadenciaStatus || c.cadenciaStatus === '');
+    let activated = 0;
+    for (const c of semCadencia) {
+      if (!c.email) continue;
+      await updateCadenceRow(c.email, {
+        cadenciaStatus:  'ativa',
+        cadenciaEtapa:   '0',
+        cadenciaProximo: new Date().toISOString(),
+      });
+      activated++;
+    }
+    logger.info(`[CADENCE] activate-all: ${activated} leads ativados`);
+    res.json({ activated, message: `${activated} leads ativados na cadência` });
+  } catch (err) {
+    logger.error('[CADENCE] Erro no activate-all:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
 // ─── GET /cadence/history/:email ──────────────────────────────────────────────
 router.get('/history/:email', async (req, res) => {
   try {

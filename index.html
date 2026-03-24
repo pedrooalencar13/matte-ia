@@ -195,10 +195,12 @@ textarea.cta:focus{border-color:var(--acc)}
     <span id="hdr-count">carregando...</span>
     <button class="btn btn-sync btn-sm" id="sync-btn" onclick="syncNow()">↻ Sync</button>
     <button class="btn btn-g btn-sm" id="btn-captar" onclick="startCapture()">🔍 Captar</button>
-    <button class="btn btn-d btn-sm" id="btn-parar" onclick="stopCapture()" style="display:none">⏹ Parar</button>
+    <button class="btn btn-sm" id="btn-parar" onclick="stopCapture()" style="display:none;background:#f5734a;color:#fff;border:1px solid #c0452a;font-weight:600">⏹ Parar captação</button>
+    <span id="capture-indicator" style="display:none;color:#f5c842;font-size:11px;font-family:'DM Mono',monospace" class="dot-anim">● captando</span>
     <button class="btn btn-sync btn-sm" onclick="pushLeadsToSheet()">⬆ Sync leads</button>
     <button class="btn btn-bulk btn-sm" onclick="openBulk()">⚡ Disparo em massa</button>
     <button class="btn btn-g btn-sm" onclick="openDashboard()">📊 Dashboard</button>
+    <button class="btn btn-g btn-sm" onclick="openTasks()">📋 Tarefas</button>
     <button class="btn btn-g btn-sm" onclick="openModal()">⚙ API Key</button>
   </div>
 </header>
@@ -340,6 +342,17 @@ textarea.cta:focus{border-color:var(--acc)}
   </div>
 </div>
 
+<!-- TASKS OVERLAY -->
+<div class="dash-overlay" id="tasks-overlay">
+  <div class="dash-header">
+    <div class="dash-title">📋 Tarefas do Sistema</div>
+    <button class="dash-close" onclick="closeTasks()">✕ Fechar</button>
+  </div>
+  <div class="dash-body" id="tasks-body">
+    <div class="dash-loading">Carregando tarefas...</div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
@@ -456,13 +469,22 @@ function normQ(v) {
 }
 function parseCSV(text) {
   const rows = [];
-  for (const line of text.split('\n')) {
+  const lines = text.split(/\r?\n/);
+  for (const line of lines) {
     if (!line.trim()) continue;
-    const cols = []; let cur = '', inQ = false;
-    for (const ch of line) {
-      if (ch === '"') { inQ = !inQ; cur += ch; }
-      else if (ch === ',' && !inQ) { cols.push(cur); cur = ''; }
-      else cur += ch;
+    const cols = [];
+    let cur = '', inQ = false, i = 0;
+    while (i < line.length) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQ && line[i + 1] === '"') { cur += '"'; i += 2; continue; } // aspas escapadas ""
+        inQ = !inQ; // não adiciona a aspa ao valor
+      } else if (ch === ',' && !inQ) {
+        cols.push(cur); cur = '';
+      } else {
+        cur += ch;
+      }
+      i++;
     }
     cols.push(cur);
     rows.push(cols);
@@ -708,35 +730,53 @@ function skipContact() {
 }
 
 // ── ENVIAR EMAIL ──────────────────────────────────────────────────
-function enviarEmail() {
-  if (S.sel===null) return;
+async function enviarEmail() {
+  if (S.sel === null) return;
   const body = document.getElementById('ed-body').value.trim();
   if (!body) { toast('Gere o e-mail primeiro!'); return; }
   const c    = CONTACTS[S.sel];
   const subj = document.getElementById('ed-subj').value;
+  const btn  = document.getElementById('gmail-btn');
 
-  S.approved.add(S.sel);
-  S.emails[S.sel]   = body;
-  S.subjects[S.sel] = subj;
-  document.getElementById('approve-btn').textContent = '✓ Aprovado';
-  renderList();
+  btn.disabled = true;
+  btn.textContent = '⏳ Enviando...';
 
-  if (typeof sendPrompt === 'function') {
-    sendPrompt('GMAIL_ENVIAR||PARA:' + c.email + '||ASSUNTO:' + subj + '||CORPO:' + body);
-    toast('📤 Enviando via Gmail...');
-  } else {
-    const url = 'https://mail.google.com/mail/?view=cm&fs=1'
-      + '&to=' + encodeURIComponent(c.email)
-      + '&su=' + encodeURIComponent(subj)
-      + '&body=' + encodeURIComponent(body);
-    window.open(url, '_blank');
-    toast('📤 Gmail aberto com e-mail pronto!');
+  try {
+    const r = await fetch(`${BACKEND_URL}/email/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: c.email, subject: subj, body, name: c.name })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || `Erro ${r.status} no servidor`);
+
+    S.approved.add(S.sel);
+    S.emails[S.sel]   = body;
+    S.subjects[S.sel] = subj;
+    document.getElementById('approve-btn').textContent = '✓ Aprovado';
+    _registrarEnvioLocal(c.email, c.name, subj);
+    renderList();
+    toast('✓ E-mail enviado para ' + c.name + '!');
+
+    setTimeout(() => {
+      const nxt = CONTACTS.findIndex((_,i) => i > S.sel && !S.skipped.has(i) && !S.approved.has(i));
+      if (nxt >= 0) selectContact(nxt);
+    }, 1000);
+  } catch(e) {
+    toast('⚠ Erro no envio: ' + e.message + ' — verifique as credenciais Gmail no backend.');
+    console.error('Erro enviarEmail:', e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📤 Enviar e-mail';
   }
+}
 
-  setTimeout(() => {
-    const nxt = CONTACTS.findIndex((_,i) => i>S.sel && !S.skipped.has(i) && !S.approved.has(i));
-    if (nxt>=0) selectContact(nxt);
-  }, 1200);
+function _registrarEnvioLocal(email, nome, assunto) {
+  try {
+    const hist = JSON.parse(localStorage.getItem('matte_envios') || '[]');
+    hist.unshift({ email, nome, assunto, dt: new Date().toISOString() });
+    localStorage.setItem('matte_envios', JSON.stringify(hist.slice(0, 500)));
+  } catch(e) {}
 }
 
 // ── CHAT ──────────────────────────────────────────────────────────
@@ -972,16 +1012,13 @@ async function startBulkSend() {
     }
   } catch(e) {
     console.error('Erro bulk send:', e);
-    // Fallback: abre no Gmail
-    document.getElementById('bulk-status').textContent = '⚠ Backend indisponível — abrindo no Gmail...';
-    for (const item of emailsParaEnviar) {
-      const url = 'https://mail.google.com/mail/?view=cm&fs=1'
-        + '&to=' + encodeURIComponent(item.to)
-        + '&su=' + encodeURIComponent(item.subject)
-        + '&body=' + encodeURIComponent(item.body);
-      window.open(url, '_blank');
-      await new Promise(r => setTimeout(r, 500));
-    }
+    document.getElementById('bulk-prog-bar').style.width = '0%';
+    document.getElementById('bulk-status').textContent = '⚠ Erro: ' + e.message;
+    toast('⚠ Falha no envio em massa. Verifique se o backend está no ar e se o Gmail OAuth2 está configurado.');
+    bulkRunning = false;
+    btnEl.disabled = false;
+    btnEl.textContent = '⚡ Disparar selecionados';
+    return;
   }
 
   renderList();
@@ -1014,39 +1051,59 @@ async function pollBulkStatus(jobId, total) {
 
 // ── CAPTAÇÃO DE LEADS ──────────────────────────────────────────────
 async function startCapture() {
+  // Feedback otimista: mostrar botão Parar ANTES da chamada ao backend
+  document.getElementById('btn-captar').style.display = 'none';
+  document.getElementById('btn-parar').style.display = 'inline-flex';
+  document.getElementById('capture-indicator').style.display = 'inline';
+
   try {
     const r = await fetch(`${BACKEND_URL}/scraper/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' }
     });
-    const d = await r.json();
-    if (r.status === 409) { toast('Captação já está rodando!'); return; }
+    if (r.status === 409) {
+      toast('Captação já está rodando!');
+      checkCaptureStatus();
+      return;
+    }
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      throw new Error(d.error || `Servidor retornou ${r.status}`);
+    }
     toast('🔍 Captação iniciada! Novos leads em ~2 min.');
-    document.getElementById('btn-captar').style.display = 'none';
-    document.getElementById('btn-parar').style.display = 'inline-flex';
-    setTimeout(() => checkCaptureStatus(), 5000);
+    checkCaptureStatus();
   } catch(e) {
+    toast('⚠ Erro ao iniciar captação: ' + e.message);
     console.error('Erro startCapture:', e);
-    toast('Erro ao conectar ao backend: ' + e.message);
+    // Rollback do estado dos botões
+    document.getElementById('btn-captar').style.display = 'inline-flex';
+    document.getElementById('btn-parar').style.display = 'none';
+    document.getElementById('capture-indicator').style.display = 'none';
   }
 }
 
 async function stopCapture() {
+  const btnParar = document.getElementById('btn-parar');
+  btnParar.disabled = true;
+  btnParar.textContent = '⏳ Parando...';
+
   try {
-    toast('⏹ Parando captação...');
     await fetch(`${BACKEND_URL}/scraper/stop`, { method: 'POST' });
-    toast('⬆ Enviando leads captados para a planilha...');
-    await new Promise(r => setTimeout(r, 2000));
+    toast('⬆ Sincronizando leads com a planilha...');
     const r = await fetch(`${BACKEND_URL}/sheets/push`, { method: 'POST' });
-    const d = await r.json();
-    toast(`✓ Captação parada. ${d.pushed || 0} leads enviados à planilha.`);
+    const d = await r.json().catch(() => ({}));
+    toast(`✓ Captação parada. ${d.pushed || 0} novos leads enviados à planilha.`);
     await loadSheet(true);
   } catch(e) {
-    console.error('Erro stopCapture:', e);
     toast('Erro ao parar: ' + e.message);
+    console.error('Erro stopCapture:', e);
   }
+
   document.getElementById('btn-captar').style.display = 'inline-flex';
   document.getElementById('btn-parar').style.display = 'none';
+  document.getElementById('btn-parar').disabled = false;
+  document.getElementById('btn-parar').textContent = '⏹ Parar captação';
+  document.getElementById('capture-indicator').style.display = 'none';
 }
 
 async function checkCaptureStatus() {
@@ -1054,20 +1111,25 @@ async function checkCaptureStatus() {
     const r = await fetch(`${BACKEND_URL}/scraper/status`);
     const d = await r.json();
     if (d.running) {
-      document.getElementById('hdr-count').textContent = `🔍 captando... ${d.valid || 0} novos`;
-      setTimeout(() => checkCaptureStatus(), 5000);
+      document.getElementById('hdr-count').textContent =
+        `🔍 ${d.found || 0} encontrados · ${d.valid || 0} válidos`;
+      setTimeout(checkCaptureStatus, 4000);
     } else {
-      if (d.valid > 0) {
+      if ((d.valid || 0) > 0) {
         toast(`✓ ${d.valid} leads captados! Sincronizando...`);
-        await fetch(`${BACKEND_URL}/sheets/push`, { method: 'POST' });
+        try { await fetch(`${BACKEND_URL}/sheets/push`, { method: 'POST' }); } catch(e) {}
         await loadSheet(true);
+      } else {
+        toast('Captação finalizada. Nenhum lead novo encontrado.');
       }
       document.getElementById('btn-captar').style.display = 'inline-flex';
       document.getElementById('btn-parar').style.display = 'none';
+      document.getElementById('capture-indicator').style.display = 'none';
     }
   } catch(e) {
-    document.getElementById('btn-captar').style.display = 'inline-flex';
-    document.getElementById('btn-parar').style.display = 'none';
+    // Em erro de rede, manter botão Parar (captação pode ainda estar rodando)
+    console.warn('Erro checkCaptureStatus:', e);
+    setTimeout(checkCaptureStatus, 8000);
   }
 }
 
@@ -1084,265 +1146,477 @@ async function pushLeadsToSheet() {
 
 // ── DASHBOARD ─────────────────────────────────────────────────────
 let dashCharts = [];
+let _dashAutoRefresh = null;
 
 function openDashboard() {
   document.getElementById('dash-overlay').classList.add('open');
   loadDashboard();
+  _dashAutoRefresh = setInterval(() => loadDashboard(false), 30000);
 }
 
 function closeDashboard() {
   document.getElementById('dash-overlay').classList.remove('open');
   dashCharts.forEach(c => c.destroy());
   dashCharts = [];
+  if (_dashAutoRefresh) { clearInterval(_dashAutoRefresh); _dashAutoRefresh = null; }
 }
 
-async function loadDashboard() {
+async function loadDashboard(showLoading=true) {
   const body = document.getElementById('dash-body');
-  body.innerHTML = '<div class="dash-loading" id="dash-loading">⟳ Carregando métricas...</div>';
-  dashCharts.forEach(c => c.destroy());
-  dashCharts = [];
+  if (showLoading) {
+    body.innerHTML = '<div class="dash-loading">⟳ Carregando métricas...</div>';
+    dashCharts.forEach(c => c.destroy()); dashCharts = [];
+  }
 
-  // Busca dados em paralelo
-  let stats = {}, cadStatus = {}, sheetData = { contacts: [] };
-  try {
-    const [statsRes, cadRes, sheetRes] = await Promise.allSettled([
-      fetch(`${BACKEND_URL}/track/stats`).then(r => r.json()),
-      fetch(`${BACKEND_URL}/cadence/status`).then(r => r.json()),
-      fetch(`${BACKEND_URL}/sheets/pull`).then(r => r.json()),
-    ]);
-    if (statsRes.status === 'fulfilled') stats = statsRes.value;
-    if (cadRes.status === 'fulfilled') cadStatus = cadRes.value;
-    if (sheetRes.status === 'fulfilled') sheetData = sheetRes.value;
-  } catch(e) { console.warn('Erro parcial ao carregar dashboard:', e); }
+  // ── Buscar dados em paralelo ──────────────────────────────────────
+  let stats = {}, cadStatus = {}, sheetData = { contacts:[], meta:{} };
+  const [statsRes, cadRes, sheetRes] = await Promise.allSettled([
+    fetch(`${BACKEND_URL}/track/stats`).then(r => r.json()),
+    fetch(`${BACKEND_URL}/cadence/status`).then(r => r.json()),
+    fetch(`${BACKEND_URL}/sheets/pull`).then(r => r.json()),
+  ]);
+  if (statsRes.status === 'fulfilled') stats     = statsRes.value;
+  if (cadRes.status  === 'fulfilled') cadStatus  = cadRes.value;
+  if (sheetRes.status === 'fulfilled') sheetData = sheetRes.value;
 
   const contacts = sheetData.contacts || CONTACTS.map(c => ({
-    nome: c.name, email: c.email, empresa: c.emp, medium: c.medium,
-    cidade: c.cidade, cadenciaStatus: c.cadStatus, cadenciaEtapa: c.cadEtapa,
-    emailAberto: c.aberto, emailRespondido: c.respondido
+    nome:c.name, email:c.email, empresa:c.emp, medium:c.medium, cidade:c.cidade,
+    faturamento:c.fat||'', qualificacao:c.q||'', cadenciaStatus:c.cadStatus,
+    cadenciaEtapa:parseInt(c.cadEtapa)||0, emailAberto:c.aberto,
+    emailRespondido:c.respondido, dataResposta:c.dataResposta||'', created:c.created||''
   }));
 
-  const total     = contacts.length;
-  const abriram   = stats.abriram   || contacts.filter(c => c.emailAberto === 'sim').length;
-  const respond   = stats.responderam || contacts.filter(c => c.emailRespondido === 'sim').length;
-  const emCad     = stats.emCadencia || cadStatus.ativa || 0;
-  const taxaAb    = total > 0 ? ((abriram / total) * 100).toFixed(1) : '0.0';
-  const taxaResp  = total > 0 ? ((respond / total) * 100).toFixed(1) : '0.0';
+  const total    = contacts.length;
+  const abriram  = stats.abriram    || contacts.filter(c=>c.emailAberto==='sim').length;
+  const respond  = stats.responderam|| contacts.filter(c=>c.emailRespondido==='sim').length;
+  const emCad    = cadStatus.ativa  || contacts.filter(c=>c.cadenciaStatus==='ativa').length;
+  const conclu   = cadStatus.concluida || contacts.filter(c=>c.cadenciaStatus==='concluida').length;
+  const qualSim  = contacts.filter(c=>c.qualificacao==='sim').length;
+  const enviados = emCad + conclu;
+  const taxaAb   = total > 0 ? ((abriram/total)*100).toFixed(1) : '0.0';
+  const taxaResp = total > 0 ? ((respond/total)*100).toFixed(1) : '0.0';
+  const agora    = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
 
-  // Distribuição por especialidade
-  const porEsp = {};
+  // ── Distribuições ─────────────────────────────────────────────────
+  const porEsp={}, porCid={}, porEtapa={0:0,1:0,2:0,3:0,4:0,5:0,6:0};
   contacts.forEach(c => {
-    const esp = c.medium || 'não informado';
-    porEsp[esp] = (porEsp[esp] || 0) + 1;
+    const esp = c.medium||'não informado';    porEsp[esp] = (porEsp[esp]||0)+1;
+    const cid = c.cidade||'não informado';    porCid[cid] = (porCid[cid]||0)+1;
+    const et  = parseInt(c.cadenciaEtapa)||0;
+    if (et >= 0 && et <= 6) porEtapa[et] = (porEtapa[et]||0)+1;
   });
-
-  // Distribuição por cidade
-  const porCidade = {};
-  contacts.forEach(c => {
-    const cid = c.cidade || 'não informado';
-    porCidade[cid] = (porCidade[cid] || 0) + 1;
-  });
-
-  // Top 8
   const topEsp = Object.entries(porEsp).sort((a,b)=>b[1]-a[1]).slice(0,8);
-  const topCid = Object.entries(porCidade).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const topCid = Object.entries(porCid).sort((a,b)=>b[1]-a[1]).slice(0,8);
 
-  const CHART_COLORS = ['#c8f57a','#7ab8f5','#f5c842','#f5734a','#8adb4a','#7F77DD','#4ade80','#fb923c'];
+  // ── Dados temporais (últimos 30 dias) ────────────────────────────
+  const hoje = new Date();
+  const diasLabel=[], diasLeads=[];
+  for (let i=29;i>=0;i--) {
+    const d=new Date(hoje); d.setDate(d.getDate()-i);
+    const dStr=d.toISOString().slice(0,10);
+    diasLabel.push(d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}));
+    diasLeads.push(contacts.filter(c=>(c.created||'').startsWith(dStr)).length);
+  }
+
+  const CHART_COLORS=['#c8f57a','#7ab8f5','#f5c842','#f5734a','#8adb4a','#7F77DD','#4ade80','#fb923c'];
+  const responderam = contacts.filter(c=>c.emailRespondido==='sim').slice(0,20);
+  const maxEtapa    = Math.max(...Object.values(porEtapa),1);
 
   body.innerHTML = `
-    <div class="dash-cards">
-      <div class="dash-card">
-        <div class="dash-card-label">Total de leads</div>
-        <div class="dash-card-value">${total}</div>
-        <div class="dash-card-sub">na planilha</div>
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:4px">
+    <div style="font-size:11px;color:var(--mut)">Saúde:</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap" id="dash-health">
+      <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:'DM Mono',monospace">
+        <div id="hd-backend" style="width:6px;height:6px;border-radius:50%;background:var(--gol);animation:pulse 2s infinite;flex-shrink:0"></div>
+        <span id="hd-backend-txt">Verificando...</span>
       </div>
-      <div class="dash-card">
-        <div class="dash-card-label">Em cadência</div>
-        <div class="dash-card-value" style="color:var(--inf)">${emCad}</div>
-        <div class="dash-card-sub">recebendo e-mails</div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:'DM Mono',monospace">
+        <div id="hd-gmail" style="width:6px;height:6px;border-radius:50%;background:var(--gol);animation:pulse 2s infinite;flex-shrink:0"></div>
+        <span id="hd-gmail-txt">Gmail...</span>
       </div>
-      <div class="dash-card">
-        <div class="dash-card-label">Abriram e-mail</div>
-        <div class="dash-card-value" style="color:var(--gol)">${abriram}</div>
-        <div class="dash-card-sub">${taxaAb}% de abertura</div>
-      </div>
-      <div class="dash-card">
-        <div class="dash-card-label">Responderam</div>
-        <div class="dash-card-value" style="color:var(--dan)">${respond}</div>
-        <div class="dash-card-sub">${taxaResp}% de resposta</div>
-      </div>
-      <div class="dash-card">
-        <div class="dash-card-label">Concluídos</div>
-        <div class="dash-card-value" style="color:var(--mut)">${cadStatus.concluida||0}</div>
-        <div class="dash-card-sub">cadência completa</div>
-      </div>
-      <div class="dash-card">
-        <div class="dash-card-label">Aprovados</div>
-        <div class="dash-card-value">${S.approved.size}</div>
-        <div class="dash-card-sub">nesta sessão</div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:'DM Mono',monospace">
+        <div id="hd-sheet" style="width:6px;height:6px;border-radius:50%;background:var(--gol);animation:pulse 2s infinite;flex-shrink:0"></div>
+        <span id="hd-sheet-txt">Planilha...</span>
       </div>
     </div>
+    <span style="margin-left:auto;font-size:10px;color:var(--mut);font-family:'DM Mono',monospace">↻ auto-refresh 30s · ${agora}</span>
+    <button onclick="exportDashCSV()" style="font-size:11px;padding:5px 12px;border-radius:6px;background:var(--sur2);border:1px solid var(--bor);color:var(--acc);cursor:pointer;font-family:'Sora',sans-serif">⬇ CSV</button>
+  </div>
 
-    <div class="dash-row">
-      <div class="dash-chart-box">
-        <div class="dash-chart-title">Distribuição por Especialidade</div>
-        <canvas id="chart-esp" height="220"></canvas>
-      </div>
-      <div class="dash-chart-box">
-        <div class="dash-chart-title">Distribuição por Cidade</div>
-        <canvas id="chart-cid" height="220"></canvas>
-      </div>
-    </div>
+  <!-- 8 KPI CARDS -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+    <div class="dash-card"><div class="dash-card-label">Total de leads</div><div class="dash-card-value">${total}</div><div class="dash-card-sub">na planilha</div></div>
+    <div class="dash-card"><div class="dash-card-label">E-mails enviados</div><div class="dash-card-value" style="color:var(--inf)">${enviados}</div><div class="dash-card-sub">na cadência</div></div>
+    <div class="dash-card"><div class="dash-card-label">Taxa de abertura</div>
+      <div class="dash-card-value" style="color:${parseFloat(taxaAb)>=20?'var(--acc)':'var(--gol)'}">${taxaAb}%</div>
+      <div class="dash-card-sub">${parseFloat(taxaAb)>=20?'▲ acima da média':'▼ meta: 20%'}</div></div>
+    <div class="dash-card"><div class="dash-card-label">Taxa de resposta</div>
+      <div class="dash-card-value" style="color:${parseFloat(taxaResp)>=10?'var(--acc)':'var(--dan)'}">${taxaResp}%</div>
+      <div class="dash-card-sub">${parseFloat(taxaResp)>=10?'▲ meta atingida':'▼ meta: >10%'}</div></div>
+    <div class="dash-card"><div class="dash-card-label">Em cadência ativa</div><div class="dash-card-value" style="color:var(--inf)">${emCad}</div><div class="dash-card-sub">recebendo e-mails</div></div>
+    <div class="dash-card"><div class="dash-card-label">Cadência concluída</div><div class="dash-card-value" style="color:var(--mut)">${conclu}</div><div class="dash-card-sub">ciclo completo</div></div>
+    <div class="dash-card"><div class="dash-card-label">Qualificados</div><div class="dash-card-value" style="color:var(--acc)">${qualSim}</div><div class="dash-card-sub">${total>0?((qualSim/total)*100).toFixed(0):0}% do total</div></div>
+    <div class="dash-card"><div class="dash-card-label">Aprovados (sessão)</div><div class="dash-card-value">${S.approved.size}</div><div class="dash-card-sub">nesta sessão</div></div>
+  </div>
 
+  <!-- GRÁFICO TEMPORAL -->
+  <div class="dash-chart-box">
+    <div class="dash-chart-title">Evolução — Leads captados nos últimos 30 dias</div>
+    <canvas id="chart-timeline" height="75"></canvas>
+  </div>
+
+  <!-- 3 GRÁFICOS -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
     <div class="dash-chart-box">
-      <div class="dash-chart-title">Funil de Captação</div>
-      <canvas id="chart-funil" height="100"></canvas>
+      <div class="dash-chart-title">Distribuição por Especialidade</div>
+      <canvas id="chart-esp" height="200"></canvas>
     </div>
-
-    <div class="dash-table-wrap">
-      <div class="dash-table-head">
-        <span style="font-size:13px;font-weight:600;color:var(--txt)">Detalhamento por Lead</span>
-        <input class="dash-search" id="dash-search" placeholder="Buscar nome ou empresa..." oninput="filterDashTable()">
-        <div class="dash-filter-row">
-          <button class="df on" onclick="dashFilter('',this)">Todos</button>
-          <button class="df" onclick="dashFilter('ativa',this)">Em cadência</button>
-          <button class="df" onclick="dashFilter('respondeu',this)">Responderam</button>
-          <button class="df" onclick="dashFilter('concluida',this)">Concluídos</button>
-        </div>
+    <div class="dash-chart-box">
+      <div class="dash-chart-title">Top Cidades</div>
+      <canvas id="chart-cid" height="200"></canvas>
+    </div>
+    <div class="dash-chart-box">
+      <div class="dash-chart-title">Leads por Etapa da Cadência</div>
+      <div style="display:flex;align-items:flex-end;gap:4px;height:100px;padding-top:8px">
+        ${[0,1,2,3,4,5,6].map(et=>{const n=porEtapa[et]||0;const pct=Math.round((n/maxEtapa)*100);return`<div style="flex:1;background:var(--inf);border-radius:3px 3px 0 0;height:${Math.max(pct,4)}%;display:flex;align-items:flex-end;justify-content:center;padding-bottom:2px;font-size:9px;color:#0d0f0e;font-weight:700" title="Etapa ${et}: ${n}">${n>0?n:''}</div>`;}).join('')}
       </div>
-      <div style="overflow-x:auto">
-        <table class="dash-table" id="dash-table">
-          <thead>
-            <tr>
-              <th onclick="sortDash('nome')">Nome ↕</th>
-              <th onclick="sortDash('empresa')">Empresa ↕</th>
-              <th onclick="sortDash('medium')">Especialidade ↕</th>
-              <th onclick="sortDash('cidade')">Cidade ↕</th>
-              <th onclick="sortDash('cadenciaStatus')">Cadência ↕</th>
-              <th onclick="sortDash('cadenciaEtapa')">Etapa ↕</th>
-              <th>Abriu</th>
-              <th>Respondeu</th>
-            </tr>
-          </thead>
-          <tbody id="dash-tbody"></tbody>
-        </table>
-      </div>
-    </div>`;
+      <div style="display:flex;gap:4px;margin-top:4px">${[0,1,2,3,4,5,6].map(et=>`<div style="flex:1;text-align:center;font-size:9px;color:var(--mut);font-family:'DM Mono',monospace">E${et}</div>`).join('')}</div>
+    </div>
+  </div>
 
-  // Renderiza gráficos
+  <!-- FUNIL VISUAL -->
+  <div class="dash-chart-box">
+    <div class="dash-chart-title">Funil de Conversão</div>
+    <div style="display:flex;flex-direction:column;gap:7px;padding:6px 0">
+      ${[['Captados',total,null,'#c8f57a'],['Em cadência',emCad,total,'#7ab8f5'],['Abriram',abriram,emCad,'#f5c842'],['Responderam',respond,abriram,'#f5734a']].map(([lbl,n,prev,cor])=>{
+        const pct=total>0?((n/total)*100).toFixed(0):0;
+        const pctPrev=prev>0?((n/prev)*100).toFixed(0):100;
+        return`<div style="display:flex;align-items:center;gap:10px">
+          <div style="width:110px;font-size:12px;color:var(--txt);text-align:right">${lbl}</div>
+          <div style="flex:1;background:var(--sur2);border-radius:4px;height:30px;overflow:hidden">
+            <div style="width:${pct}%;height:100%;background:${cor};border-radius:4px;display:flex;align-items:center;padding-left:10px;font-size:12px;font-weight:600;color:#0d0f0e;min-width:${n>0?36:0}px">${n>0?n:''}</div>
+          </div>
+          <div style="width:36px;font-size:13px;font-weight:600;font-family:'DM Serif Display',serif">${n}</div>
+          <div style="width:44px;font-size:11px;color:var(--mut);font-family:'DM Mono',monospace">${prev!==null?pctPrev+'%':'100%'}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>
+
+  <!-- RESPONDERAM -->
+  ${responderam.length>0?`
+  <div class="dash-chart-box">
+    <div class="dash-chart-title">Leads que Responderam — acao necessaria</div>
+    <div style="display:flex;flex-direction:column;gap:8px;max-height:240px;overflow-y:auto">
+      ${responderam.map(c=>`
+        <div style="background:var(--sur2);border:1px solid var(--bor);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px">
+          <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--dan),#8B2222);display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:13px;color:#fff;flex-shrink:0">${(c.nome||'?')[0].toUpperCase()}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600">${esc(c.nome||'')} <span style="color:var(--mut);font-size:11px">· ${esc(c.empresa||'')}</span></div>
+            <div style="font-size:11px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.email||'')}</div>
+            <div style="font-size:10px;color:var(--mut);font-family:'DM Mono',monospace">${c.dataResposta?new Date(c.dataResposta).toLocaleDateString('pt-BR'):'data desconhecida'}</div>
+          </div>
+          <button onclick="closeDashboard();selectContactByEmail('${esc(c.email)}')" style="font-size:11px;padding:4px 10px;border-radius:6px;background:var(--sur);border:1px solid var(--bor);color:var(--acc);cursor:pointer;white-space:nowrap;font-family:'Sora',sans-serif">↗ Responder</button>
+        </div>`).join('')}
+    </div>
+  </div>`:''}
+
+  <!-- TABELA DETALHADA -->
+  <div class="dash-table-wrap">
+    <div class="dash-table-head">
+      <span style="font-size:13px;font-weight:600;color:var(--txt)">Detalhamento por Lead</span>
+      <input class="dash-search" id="dash-search" placeholder="Nome, empresa ou e-mail..." oninput="renderDashTable()">
+      <div class="dash-filter-row">
+        <button class="df on" onclick="dashFilter('',this)">Todos</button>
+        <button class="df" onclick="dashFilter('ativa',this)">Em cadência</button>
+        <button class="df" onclick="dashFilter('respondeu',this)">Responderam</button>
+        <button class="df" onclick="dashFilter('concluida',this)">Concluídos</button>
+        <button class="df" onclick="dashFilter('aberto',this)">Abriram</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="dash-table" id="dash-table">
+        <thead><tr>
+          <th onclick="sortDash('nome')">Nome ↕</th>
+          <th onclick="sortDash('empresa')">Empresa ↕</th>
+          <th onclick="sortDash('medium')">Especialidade ↕</th>
+          <th onclick="sortDash('cidade')">Cidade ↕</th>
+          <th onclick="sortDash('qualificacao')">Qualif. ↕</th>
+          <th onclick="sortDash('cadenciaStatus')">Cadência ↕</th>
+          <th onclick="sortDash('cadenciaEtapa')">Etapa ↕</th>
+          <th>Abriu</th>
+          <th>Respondeu</th>
+          <th>Ações</th>
+        </tr></thead>
+        <tbody id="dash-tbody"></tbody>
+      </table>
+    </div>
+    <div id="dash-paginator" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--bor);font-size:12px;color:var(--mut)"></div>
+  </div>`;
+
+  // ── Gráfico temporal ─────────────────────────────────────────────
+  const ctxTL = document.getElementById('chart-timeline').getContext('2d');
+  dashCharts.push(new Chart(ctxTL, {
+    type: 'line',
+    data: {
+      labels: diasLabel,
+      datasets: [{ label:'Leads captados', data:diasLeads, borderColor:'#c8f57a',
+        backgroundColor:'rgba(200,245,122,0.07)', tension:0.4, fill:true,
+        pointRadius:3, pointBackgroundColor:'#c8f57a' }]
+    },
+    options: {
+      plugins:{ legend:{ labels:{ color:'#e8ede9', font:{family:'Sora',size:11} } } },
+      scales:{
+        x:{ ticks:{ color:'#6b756d', font:{size:10}, maxTicksLimit:10 }, grid:{ color:'#2a2e2c' } },
+        y:{ ticks:{ color:'#6b756d' }, grid:{ color:'#2a2e2c' }, beginAtZero:true }
+      }
+    }
+  }));
+
+  // ── Gráfico especialidade ─────────────────────────────────────────
   const ctxEsp = document.getElementById('chart-esp').getContext('2d');
   dashCharts.push(new Chart(ctxEsp, {
     type: 'doughnut',
-    data: {
-      labels: topEsp.map(([k]) => k),
-      datasets: [{ data: topEsp.map(([,v]) => v), backgroundColor: CHART_COLORS, borderWidth: 0 }]
-    },
-    options: {
-      plugins: { legend: { labels: { color: '#e8ede9', font: { family: 'Sora', size: 11 } } } },
-      cutout: '60%'
-    }
+    data: { labels:topEsp.map(([k])=>k), datasets:[{ data:topEsp.map(([,v])=>v), backgroundColor:CHART_COLORS, borderWidth:0 }] },
+    options: { plugins:{ legend:{ labels:{ color:'#e8ede9', font:{family:'Sora',size:10} } } }, cutout:'62%' }
   }));
 
+  // ── Gráfico cidades ───────────────────────────────────────────────
   const ctxCid = document.getElementById('chart-cid').getContext('2d');
   dashCharts.push(new Chart(ctxCid, {
     type: 'bar',
-    data: {
-      labels: topCid.map(([k]) => k),
-      datasets: [{
-        data: topCid.map(([,v]) => v),
-        backgroundColor: '#7ab8f5',
-        borderRadius: 4,
-      }]
-    },
+    data: { labels:topCid.map(([k])=>k), datasets:[{ data:topCid.map(([,v])=>v), backgroundColor:'#7ab8f5', borderRadius:4 }] },
     options: {
-      indexAxis: 'y',
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { color: '#6b756d' }, grid: { color: '#2a2e2c' } },
-        y: { ticks: { color: '#e8ede9', font: { family: 'DM Mono', size: 11 } }, grid: { display: false } }
+      indexAxis:'y',
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ ticks:{ color:'#6b756d' }, grid:{ color:'#2a2e2c' } },
+        y:{ ticks:{ color:'#e8ede9', font:{family:'DM Mono',size:10} }, grid:{ display:false } }
       }
     }
   }));
 
-  const funil = [
-    ['Captados', total],
-    ['Em cadência', emCad],
-    ['Abriram', abriram],
-    ['Responderam', respond],
-  ];
-  const ctxFunil = document.getElementById('chart-funil').getContext('2d');
-  dashCharts.push(new Chart(ctxFunil, {
-    type: 'bar',
-    data: {
-      labels: funil.map(([k]) => k),
-      datasets: [{
-        data: funil.map(([,v]) => v),
-        backgroundColor: ['#c8f57a','#7ab8f5','#f5c842','#f5734a'],
-        borderRadius: 6,
-      }]
-    },
-    options: {
-      plugins: { legend: { display: false } },
-      scales: {
-        x: { ticks: { color: '#e8ede9', font: { family: 'Sora', size: 12 } }, grid: { display: false } },
-        y: { ticks: { color: '#6b756d' }, grid: { color: '#2a2e2c' } }
-      }
-    }
-  }));
-
-  // Tabela
+  // ── Init tabela ───────────────────────────────────────────────────
   window._dashContacts = contacts;
-  window._dashFilter = '';
-  window._dashSort = { key: 'nome', asc: true };
+  window._dashSort = { key:'nome', asc:true };
+  window._dashPage = 0;
   renderDashTable();
+
+  // ── Verificar saúde em background ────────────────────────────────
+  _checkDashHealth();
 }
 
+async function _checkDashHealth() {
+  try {
+    const r = await fetch(`${BACKEND_URL}/health`,{signal:AbortSignal.timeout(4000)});
+    const ok = r.ok;
+    document.getElementById('hd-backend').style.background = ok ? '#4ade80' : '#f5734a';
+    document.getElementById('hd-backend').style.animation  = ok ? 'none' : 'pulse 2s infinite';
+    document.getElementById('hd-backend-txt').textContent  = ok ? 'Backend online' : 'Backend offline';
+  } catch(e) {
+    document.getElementById('hd-backend').style.background = '#f5734a';
+    document.getElementById('hd-backend-txt').textContent  = 'Backend offline';
+  }
+  try {
+    const r = await fetch(`${BACKEND_URL}/email/test`,{signal:AbortSignal.timeout(4000)});
+    const d = await r.json();
+    const ok = d.gmail_configured && d.token_valid;
+    document.getElementById('hd-gmail').style.background = ok ? '#4ade80' : '#f5734a';
+    document.getElementById('hd-gmail').style.animation  = ok ? 'none' : 'pulse 2s infinite';
+    document.getElementById('hd-gmail-txt').textContent  = ok ? 'Gmail OK' : 'Gmail: sem credenciais';
+  } catch(e) {
+    document.getElementById('hd-gmail').style.background = '#f5734a';
+    document.getElementById('hd-gmail-txt').textContent  = 'Gmail: erro';
+  }
+  const sheetOk = window._dashContacts && window._dashContacts.length > 0;
+  document.getElementById('hd-sheet').style.background = sheetOk ? '#4ade80' : '#f5734a';
+  document.getElementById('hd-sheet').style.animation  = sheetOk ? 'none' : 'pulse 2s infinite';
+  document.getElementById('hd-sheet-txt').textContent  = sheetOk ? `Planilha: ${window._dashContacts.length} leads` : 'Planilha: sem dados';
+}
+
+const DASH_PAGE_SIZE = 50;
 let _dashFilterStatus = '';
 
 function dashFilter(status, btn) {
   _dashFilterStatus = status;
+  window._dashPage = 0;
   document.querySelectorAll('.df').forEach(b => b.classList.remove('on'));
   btn.classList.add('on');
   renderDashTable();
 }
 
-function filterDashTable() { renderDashTable(); }
-
 function sortDash(key) {
   if (window._dashSort.key === key) window._dashSort.asc = !window._dashSort.asc;
-  else window._dashSort = { key, asc: true };
+  else window._dashSort = { key, asc:true };
   renderDashTable();
+}
+
+function selectContactByEmail(email) {
+  const idx = CONTACTS.findIndex(c => c.email === email);
+  if (idx >= 0) selectContact(idx);
+}
+
+function exportDashCSV() {
+  const data = window._dashContacts || [];
+  const headers = ['Nome','Email','Empresa','Especialidade','Cidade','Qualificacao','Faturamento','Cadencia','Etapa','Abriu','Respondeu','Data Resposta'];
+  const rows = data.map(c => [c.nome,c.email,c.empresa,c.medium,c.cidade,c.qualificacao,c.faturamento,c.cadenciaStatus,c.cadenciaEtapa,c.emailAberto,c.emailRespondido,c.dataResposta]);
+  const csv  = [headers,...rows].map(r=>r.map(v=>`"${(v||'').toString().replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = `leads_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast('CSV exportado!');
 }
 
 function renderDashTable() {
   const tbody = document.getElementById('dash-tbody');
+  const pag   = document.getElementById('dash-paginator');
   if (!tbody) return;
-  const search = (document.getElementById('dash-search')?.value || '').toLowerCase();
-  let data = (window._dashContacts || []).filter(c => {
-    const matchSearch = !search || (c.nome||'').toLowerCase().includes(search) || (c.empresa||'').toLowerCase().includes(search);
-    const matchFilter = !_dashFilterStatus || c.cadenciaStatus === _dashFilterStatus;
-    return matchSearch && matchFilter;
+  const search = (document.getElementById('dash-search')?.value||'').toLowerCase();
+  let data = (window._dashContacts||[]).filter(c => {
+    const ms = !search || [c.nome,c.empresa,c.email].some(v=>(v||'').toLowerCase().includes(search));
+    const mf = !_dashFilterStatus
+      || (_dashFilterStatus==='aberto' && c.emailAberto==='sim')
+      || c.cadenciaStatus === _dashFilterStatus;
+    return ms && mf;
   });
-
-  const { key, asc } = window._dashSort || { key: 'nome', asc: true };
-  data.sort((a, b) => {
-    const va = String(a[key]||'').toLowerCase();
-    const vb = String(b[key]||'').toLowerCase();
-    return asc ? va.localeCompare(vb) : vb.localeCompare(va);
-  });
-
+  const {key,asc} = window._dashSort||{key:'nome',asc:true};
+  data.sort((a,b)=>{ const va=String(a[key]||'').toLowerCase(), vb=String(b[key]||'').toLowerCase(); return asc?va.localeCompare(vb):vb.localeCompare(va); });
+  const page  = window._dashPage||0;
+  const total = data.length;
+  const pages = Math.ceil(total/DASH_PAGE_SIZE);
+  const slice = data.slice(page*DASH_PAGE_SIZE,(page+1)*DASH_PAGE_SIZE);
   const cadClass = { ativa:'cad-ativa', pausada:'cad-pausada', concluida:'cad-concluida', respondeu:'cad-respondeu' };
-
-  tbody.innerHTML = data.slice(0, 200).map(c => `
+  const qClass   = { sim:'t-sim', 'com potencial':'t-pot', nao:'t-nao', 'não':'t-nao' };
+  tbody.innerHTML = slice.map(c=>`
     <tr>
       <td>${esc(c.nome||'')}</td>
-      <td style="color:var(--mut)">${esc(c.empresa||'')}</td>
+      <td style="color:var(--mut);font-size:11px">${esc(c.empresa||'')}</td>
       <td class="mono">${esc(c.medium||'—')}</td>
       <td class="mono">${esc(c.cidade||'—')}</td>
-      <td>${c.cadenciaStatus ? `<span class="cad-badge ${cadClass[c.cadenciaStatus]||''}">${c.cadenciaStatus}</span>` : '<span style="color:var(--mut)">—</span>'}</td>
+      <td><span class="tag ${qClass[c.qualificacao]||'t-nao'}" style="font-size:10px">${esc(c.qualificacao||'—')}</span></td>
+      <td>${c.cadenciaStatus?`<span class="cad-badge ${cadClass[c.cadenciaStatus]||''}">${c.cadenciaStatus}</span>`:'<span style="color:var(--bor)">—</span>'}</td>
       <td style="text-align:center">${c.cadenciaEtapa||'0'}/6</td>
       <td style="text-align:center">${c.emailAberto==='sim'?'<span style="color:var(--acc)">✓</span>':'<span style="color:var(--bor)">—</span>'}</td>
       <td style="text-align:center">${c.emailRespondido==='sim'?'<span style="color:var(--dan)">✓</span>':'<span style="color:var(--bor)">—</span>'}</td>
+      <td><button onclick="closeDashboard();selectContactByEmail('${esc(c.email)}')" style="font-size:10px;padding:2px 7px;border-radius:4px;background:transparent;border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-family:'Sora',sans-serif">↗ ver</button></td>
     </tr>`).join('');
+  if (pag) {
+    pag.innerHTML = `
+      <button onclick="window._dashPage=Math.max(0,(window._dashPage||0)-1);renderDashTable()" ${page===0?'disabled':''} style="padding:4px 10px;border-radius:5px;background:var(--sur2);border:1px solid var(--bor);color:var(--txt);cursor:pointer;font-size:12px;font-family:'Sora',sans-serif">← Ant.</button>
+      <span>${page+1} de ${Math.max(1,pages)} · ${total} leads</span>
+      <button onclick="window._dashPage=Math.min(${pages-1},(window._dashPage||0)+1);renderDashTable()" ${page>=pages-1?'disabled':''} style="padding:4px 10px;border-radius:5px;background:var(--sur2);border:1px solid var(--bor);color:var(--txt);cursor:pointer;font-size:12px;font-family:'Sora',sans-serif">Próx. →</button>`;
+  }
+}
+
+// ── TAREFAS ───────────────────────────────────────────────────────
+const PRIO_LABEL = { 1:'Critica', 2:'Alta', 3:'Media', 4:'Baixa' };
+const PRIO_COLOR = { 1:'var(--dan)', 2:'var(--gol)', 3:'var(--inf)', 4:'var(--mut)' };
+
+async function openTasks() {
+  document.getElementById('tasks-overlay').classList.add('open');
+  await loadTasks();
+}
+
+function closeTasks() {
+  document.getElementById('tasks-overlay').classList.remove('open');
+}
+
+async function loadTasks() {
+  const body = document.getElementById('tasks-body');
+  try {
+    const r = await fetch(`${BACKEND_URL}/tasks`);
+    const d = await r.json();
+    const tasks = d.tasks || [];
+    const pending   = tasks.filter(t=>t.status!=='completed');
+    const completed = tasks.filter(t=>t.status==='completed').slice(0,20);
+
+    body.innerHTML = `
+      <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+        <button onclick="showAddTask()" style="padding:7px 16px;border-radius:7px;background:var(--acc);border:none;color:#0d0f0e;cursor:pointer;font-family:'Sora',sans-serif;font-size:12px;font-weight:600">+ Nova tarefa</button>
+        <div id="task-form" style="display:none;background:var(--sur2);border:1px solid var(--bor);border-radius:10px;padding:14px;flex:1;min-width:280px">
+          <input id="task-title" placeholder="Titulo da tarefa" style="width:100%;background:var(--sur);border:1px solid var(--bor);border-radius:6px;padding:7px 10px;color:var(--txt);font-family:'Sora',sans-serif;font-size:13px;margin-bottom:8px;outline:none">
+          <input id="task-desc"  placeholder="Descricao (opcional)" style="width:100%;background:var(--sur);border:1px solid var(--bor);border-radius:6px;padding:7px 10px;color:var(--txt);font-family:'Sora',sans-serif;font-size:12px;margin-bottom:8px;outline:none">
+          <div style="display:flex;gap:8px;align-items:center">
+            <select id="task-prio" style="background:var(--sur);border:1px solid var(--bor);border-radius:6px;padding:6px 8px;color:var(--txt);font-family:'Sora',sans-serif;font-size:12px">
+              <option value="1">1 - Critica</option><option value="2">2 - Alta</option>
+              <option value="3" selected>3 - Media</option><option value="4">4 - Baixa</option>
+            </select>
+            <button onclick="saveTask()" style="padding:6px 14px;border-radius:6px;background:var(--acc);border:none;color:#0d0f0e;cursor:pointer;font-family:'Sora',sans-serif;font-size:12px;font-weight:600">Salvar</button>
+            <button onclick="document.getElementById('task-form').style.display='none'" style="padding:6px 14px;border-radius:6px;background:var(--sur);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-family:'Sora',sans-serif;font-size:12px">Cancelar</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--mut);font-weight:700;margin-bottom:10px">Pendentes (${pending.length})</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+        ${pending.length===0?'<div style="color:var(--mut);font-size:13px;padding:10px">Nenhuma tarefa pendente.</div>':
+          pending.map(t=>`
+            <div style="background:var(--sur2);border:1px solid var(--bor);border-radius:8px;padding:10px 14px;display:flex;align-items:flex-start;gap:10px">
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+                  <span style="font-size:10px;padding:2px 7px;border-radius:4px;background:var(--sur);border:1px solid var(--bor);color:${PRIO_COLOR[t.priority]};font-family:'DM Mono',monospace;white-space:nowrap">P${t.priority} ${PRIO_LABEL[t.priority]||''}</span>
+                  <span style="font-size:13px;font-weight:600">${esc(t.title)}</span>
+                </div>
+                ${t.description?`<div style="font-size:11px;color:var(--mut)">${esc(t.description)}</div>`:''}
+                <div style="font-size:10px;color:var(--bor);font-family:'DM Mono',monospace;margin-top:3px">${new Date(t.created).toLocaleDateString('pt-BR')}</div>
+              </div>
+              <button onclick="completeTask('${t.id}')" style="font-size:11px;padding:4px 10px;border-radius:5px;background:transparent;border:1px solid #2a4d15;color:#8adb4a;cursor:pointer;font-family:'Sora',sans-serif;white-space:nowrap">✓ Concluir</button>
+              <button onclick="deleteTask('${t.id}')" style="font-size:11px;padding:4px 10px;border-radius:5px;background:transparent;border:1px solid #3a1a10;color:var(--dan);cursor:pointer;font-family:'Sora',sans-serif">✕</button>
+            </div>`).join('')}
+      </div>
+
+      ${completed.length>0?`
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--mut);font-weight:700;margin-bottom:10px">Concluidas (${completed.length})</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${completed.map(t=>`
+          <div style="background:var(--sur);border:1px solid var(--bor);border-radius:8px;padding:8px 14px;display:flex;align-items:center;gap:10px;opacity:.6">
+            <span style="color:#4ade80;font-size:13px">✓</span>
+            <span style="font-size:13px;text-decoration:line-through;color:var(--mut)">${esc(t.title)}</span>
+            <span style="margin-left:auto;font-size:10px;color:var(--bor);font-family:'DM Mono',monospace">${t.completed?new Date(t.completed).toLocaleDateString('pt-BR'):''}</span>
+          </div>`).join('')}
+      </div>`:''}
+    `;
+  } catch(e) {
+    body.innerHTML = `<div style="color:var(--dan);padding:20px">Erro ao carregar tarefas: ${e.message}</div>`;
+  }
+}
+
+function showAddTask() {
+  document.getElementById('task-form').style.display='block';
+  document.getElementById('task-title').focus();
+}
+
+async function saveTask() {
+  const title = document.getElementById('task-title').value.trim();
+  const desc  = document.getElementById('task-desc').value.trim();
+  const prio  = parseInt(document.getElementById('task-prio').value);
+  if (!title) { toast('Informe o titulo da tarefa'); return; }
+  try {
+    await fetch(`${BACKEND_URL}/tasks`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,description:desc,priority:prio})});
+    toast('Tarefa criada!');
+    document.getElementById('task-form').style.display='none';
+    document.getElementById('task-title').value='';
+    document.getElementById('task-desc').value='';
+    await loadTasks();
+  } catch(e) { toast('Erro ao criar tarefa: '+e.message); }
+}
+
+async function completeTask(id) {
+  try {
+    await fetch(`${BACKEND_URL}/tasks/${id}/complete`,{method:'POST'});
+    toast('Tarefa concluida!');
+    await loadTasks();
+  } catch(e) { toast('Erro: '+e.message); }
+}
+
+async function deleteTask(id) {
+  if (!confirm('Remover esta tarefa?')) return;
+  try {
+    await fetch(`${BACKEND_URL}/tasks/${id}`,{method:'DELETE'});
+    await loadTasks();
+  } catch(e) { toast('Erro: '+e.message); }
 }
 </script>
 </body>

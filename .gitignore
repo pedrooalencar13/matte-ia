@@ -3,3 +3,6 @@ node_modules/
 src/data/leads.json
 *.log
 dist/
+data/
+logs/
+*.bak
