@@ -1,0 +1,11 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(cp index.html index.html.bak)",
+      "Bash(mkdir -p data logs memory scripts docs)"
+    ],
+    "additionalDirectories": [
+      "c:\\Users\\Usuario\\.claude\\projects\\c--Users-Usuario-Desktop-Geral-matte-backend\\memory"
+    ]
+  }
+}
