@@ -5,6 +5,7 @@
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Pedro Aranha — Painel de E-mails</title>
 <link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
 <style>
 *{box-sizing:border-box;margin:0;padding:0}
 :root{
@@ -146,6 +147,43 @@ textarea.cta:focus{border-color:var(--acc)}
 .bulk-prog-wrap{flex:1;height:4px;background:var(--sur2);border-radius:2px;overflow:hidden;display:none}
 .bulk-prog-bar{height:100%;background:var(--acc);width:0%;transition:width .3s}
 .bulk-status{font-size:11px;color:var(--mut);font-family:'DM Mono',monospace;white-space:nowrap}
+
+/* DASHBOARD */
+.dash-overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:9990;flex-direction:column;overflow:hidden}
+.dash-overlay.open{display:flex}
+.dash-header{padding:16px 28px;border-bottom:1px solid var(--bor);background:var(--sur);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.dash-title{font-family:'DM Serif Display',serif;font-size:22px;color:var(--acc)}
+.dash-close{background:var(--sur2);border:1px solid var(--bor);color:var(--txt);border-radius:8px;padding:6px 14px;cursor:pointer;font-family:'Sora',sans-serif;font-size:12px}
+.dash-close:hover{border-color:var(--dan);color:var(--dan)}
+.dash-body{flex:1;overflow-y:auto;padding:24px 28px;display:flex;flex-direction:column;gap:24px}
+.dash-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.dash-card{background:var(--sur);border:1px solid var(--bor);border-radius:12px;padding:18px 20px}
+.dash-card-label{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--mut);margin-bottom:8px;font-weight:600}
+.dash-card-value{font-family:'DM Serif Display',serif;font-size:32px;color:var(--acc);line-height:1}
+.dash-card-sub{font-size:11px;color:var(--mut);margin-top:4px}
+.dash-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.dash-chart-box{background:var(--sur);border:1px solid var(--bor);border-radius:12px;padding:18px 20px}
+.dash-chart-title{font-size:12px;font-weight:600;color:var(--txt);margin-bottom:14px;letter-spacing:.5px}
+.dash-table-wrap{background:var(--sur);border:1px solid var(--bor);border-radius:12px;overflow:hidden}
+.dash-table-head{padding:12px 16px;border-bottom:1px solid var(--bor);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.dash-search{background:var(--sur2);border:1px solid var(--bor);border-radius:6px;padding:5px 10px;color:var(--txt);font-family:'Sora',sans-serif;font-size:12px;outline:none;width:180px}
+.dash-search:focus{border-color:var(--acc)}
+.dash-filter-row{display:flex;gap:6px;flex-wrap:wrap}
+.df{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--sur2);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-family:'Sora',sans-serif;transition:all .12s}
+.df.on{background:#1a2e0f;color:var(--acc);border-color:var(--acc)}
+.dash-table{width:100%;border-collapse:collapse}
+.dash-table th{padding:9px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--mut);font-weight:600;border-bottom:1px solid var(--bor);cursor:pointer;user-select:none;white-space:nowrap}
+.dash-table th:hover{color:var(--acc)}
+.dash-table td{padding:9px 12px;font-size:12px;border-bottom:1px solid var(--bor)}
+.dash-table tr:last-child td{border-bottom:none}
+.dash-table tr:hover td{background:var(--sur2)}
+.dash-table .mono{font-family:'DM Mono',monospace;font-size:11px}
+.cad-badge{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:500}
+.cad-ativa{background:#0d1f0d;color:var(--acc);border:1px solid #1a3a1a}
+.cad-pausada{background:#1a2410;color:var(--gol);border:1px solid #3d3210}
+.cad-concluida{background:#101820;color:var(--inf);border:1px solid #1a2d40}
+.cad-respondeu{background:#2a1510;color:var(--dan);border:1px solid #4a2010}
+.dash-loading{text-align:center;padding:40px;color:var(--mut);font-family:'DM Mono',monospace;font-size:13px}
 </style>
 </head>
 <body>
@@ -156,9 +194,11 @@ textarea.cta:focus{border-color:var(--acc)}
     <div class="dot"></div>
     <span id="hdr-count">carregando...</span>
     <button class="btn btn-sync btn-sm" id="sync-btn" onclick="syncNow()">↻ Sync</button>
-    <button class="btn btn-g btn-sm" onclick="startCapture()">🔍 Captar</button>
+    <button class="btn btn-g btn-sm" id="btn-captar" onclick="startCapture()">🔍 Captar</button>
+    <button class="btn btn-d btn-sm" id="btn-parar" onclick="stopCapture()" style="display:none">⏹ Parar</button>
     <button class="btn btn-sync btn-sm" onclick="pushLeadsToSheet()">⬆ Sync leads</button>
     <button class="btn btn-bulk btn-sm" onclick="openBulk()">⚡ Disparo em massa</button>
+    <button class="btn btn-g btn-sm" onclick="openDashboard()">📊 Dashboard</button>
     <button class="btn btn-g btn-sm" onclick="openModal()">⚙ API Key</button>
   </div>
 </header>
@@ -265,8 +305,7 @@ textarea.cta:focus{border-color:var(--acc)}
   <div class="bulk-box">
     <div class="bulk-title">⚡ Disparo em massa</div>
     <div class="bulk-sub">
-      Cada e-mail é enviado <strong style="color:var(--txt)">individualmente</strong> para cada lead.
-      Nenhum cliente vê outros destinatários — privacidade total garantida.
+      Cada e-mail é gerado pelo Claude e enviado <strong style="color:var(--txt)">diretamente via Gmail API</strong> — sem abrir abas, sem confirmação manual.
     </div>
     <div class="bulk-filters">
       <button class="bf on" onclick="bulkFilter('all',this)">Todos</button>
@@ -290,25 +329,102 @@ textarea.cta:focus{border-color:var(--acc)}
   </div>
 </div>
 
+<!-- DASHBOARD OVERLAY -->
+<div class="dash-overlay" id="dash-overlay">
+  <div class="dash-header">
+    <div class="dash-title">📊 Dashboard — Métricas de Captação</div>
+    <button class="dash-close" onclick="closeDashboard()">✕ Fechar</button>
+  </div>
+  <div class="dash-body" id="dash-body">
+    <div class="dash-loading" id="dash-loading">Carregando dados...</div>
+  </div>
+</div>
+
 <div class="toast" id="toast"></div>
 
 <script>
-// ── GOOGLE SHEETS CONFIG ──────────────────────────────────────────
-const SHEET_ID   = '1r7vob1TvEY8P9G6wm5NcfNFg_r1aUwqvBSS7mrSt9Oo';
-const SHEET_NAME = 'Sheet1';
-const SYNC_MS    = 60000;
-const COL        = { NOME:0, EMAIL:3, EMPRESA:4, FAT:12, URG:13, QUALIF:14, TAGS:7 };
+// ── CONFIGURAÇÕES ─────────────────────────────────────────────────
+const SHEET_ID    = '1r7vob1TvEY8P9G6wm5NcfNFg_r1aUwqvBSS7mrSt9Oo';
+const SHEET_NAME  = 'Página1';
+const SYNC_MS     = 60000;
+const COL         = { NOME:0, SOBRENOME:1, TELEFONE:2, EMAIL:3, EMPRESA:4, CREATED:5,
+                      ACTIVITY:6, TAGS:7, SOURCE:8, MEDIUM:9, CAMPAIGN:10, CONTENT:11,
+                      FAT:12, URG:13, QUALIF:14, CAD_STATUS:15, CAD_ETAPA:16, CAD_PROXIMO:17,
+                      ABERTO:18, RESPONDIDO:19, DT_RESPOSTA:20 };
 const BACKEND_URL = 'https://matte-ia-production.up.railway.app';
 
 // ── TEMPLATE FIXO PARA ADVOGADOS ──────────────────────────────────
 const TEMPLATE_ADV_SUBJ = 'O tipo de cliente que você atrai depende do que você fala no anúncio';
-const TEMPLATE_ADV_BODY = 'A maioria dos escritórios ainda erra na base da campanha.\n\nNão é o orçamento.\nNão é o criativo.\nNão é nem o tráfego.\n\nÉ a comunicação.\n\nVejo muitos anúncios genéricos tentando falar com todo mundo:\n\n"Teve seu direito negado?"\n"Precisa de ajuda jurídica?"\n\nIsso até gera volume.\nMas atrai o tipo errado de lead.\n\nGente curiosa.\nSem urgência.\nSem clareza do problema.\nQue entra na conversa só pra "entender melhor".\n\nE isso trava o comercial.\n\nAgora compara com uma comunicação direcionada:\n\n"Plano de saúde negou cirurgia ou medicamento de alto custo?"\n"Seu benefício do INSS foi cortado recentemente?"\n\nPercebe a diferença?\n\nAqui você não está chamando qualquer pessoa.\nVocê está falando diretamente com quem:\njá tem o problema\njá sentiu o impacto\njá está buscando solução\n\nEsse é o lead que chega diferente.\nEle não pergunta "isso funciona?"\nEle pergunta "como resolvemos isso?"\n\nE tem outro ponto importante:\nEsse tipo de comunicação não precisa ser agressiva.\nPelo contrário.\n\nFunciona muito melhor quando tem caráter descritivo e informativo, mostrando o cenário com clareza e deixando o próximo passo natural.\n\nSem pressão.\nCom CTAs neutros, como:\n\n"Fale com um advogado especialista"\n"Consulte um escritório especializado"\n\nIsso gera mais confiança…\ne atrai um cliente com nível de consciência muito mais alto.\n\nNo fim do dia, o jogo não é sobre gerar mais leads.\nÉ sobre atrair as pessoas certas, no momento certo.\n\nSe fizer sentido ajustar a comunicação dos seus anúncios para começar a atrair clientes já prontos para contratar,\nme chama no WhatsApp que eu te explico como estruturar isso no seu escritório:\n\n👉 (11) 99515-7048';
+const TEMPLATE_ADV_BODY = `A maioria dos escritórios ainda erra na base da campanha.
+
+Não é o orçamento.
+Não é o criativo.
+Não é nem o tráfego.
+
+É a comunicação.
+
+Vejo muitos anúncios genéricos tentando falar com todo mundo:
+
+"Teve seu direito negado?"
+"Precisa de ajuda jurídica?"
+
+Isso até gera volume.
+Mas atrai o tipo errado de lead.
+
+Gente curiosa.
+Sem urgência.
+Sem clareza do problema.
+Que entra na conversa só pra "entender melhor".
+
+E isso trava o comercial.
+
+Agora compara com uma comunicação direcionada:
+
+"Plano de saúde negou cirurgia ou medicamento de alto custo?"
+"Seu benefício do INSS foi cortado recentemente?"
+
+Percebe a diferença?
+
+Aqui você não está chamando qualquer pessoa.
+Você está falando diretamente com quem:
+já tem o problema
+já sentiu o impacto
+já está buscando solução
+
+Esse é o lead que chega diferente.
+Ele não pergunta "isso funciona?"
+Ele pergunta "como resolvemos isso?"
+
+E tem outro ponto importante:
+Esse tipo de comunicação não precisa ser agressiva.
+Pelo contrário.
+
+Funciona muito melhor quando tem caráter descritivo e informativo, mostrando o cenário com clareza e deixando o próximo passo natural.
+
+Sem pressão.
+Com CTAs neutros, como:
+
+"Fale com um advogado especialista"
+"Consulte um escritório especializado"
+
+Isso gera mais confiança…
+e atrai um cliente com nível de consciência muito mais alto.
+
+No fim do dia, o jogo não é sobre gerar mais leads.
+É sobre atrair as pessoas certas, no momento certo.
+
+Se fizer sentido ajustar a comunicação dos seus anúncios para começar a atrair clientes já prontos para contratar,
+me chama no WhatsApp que eu te explico como estruturar isso no seu escritório:
+
+👉 (11) 99515-7048`;
 
 function isAdvogado(c) {
   const tags = (c.tags||'').toLowerCase();
-  const emp  = (c.emp||'').toLowerCase();
-  const name = (c.name||'').toLowerCase();
-  return tags.includes('adv') || emp.includes('adv') || name.includes('adv')
+  const emp  = (c.emp||c.empresa||'').toLowerCase();
+  const name = (c.name||c.nome||'').toLowerCase();
+  const camp = (c.campaign||'').toLowerCase();
+  return camp === 'advogados'
+      || tags.includes('adv') || emp.includes('adv') || name.includes('adv')
       || tags.includes('jurídic') || emp.includes('jurídic')
       || tags.includes('oab') || emp.includes('oab');
 }
@@ -366,13 +482,20 @@ async function loadSheet(showLoading=true) {
     const prevEmail = S.sel !== null ? CONTACTS[S.sel]?.email : null;
     CONTACTS = rows.slice(1)
       .map(r => ({
-        name:  cleanCell(r[COL.NOME])    || 'Sem nome',
-        email: cleanCell(r[COL.EMAIL]),
-        emp:   cleanCell(r[COL.EMPRESA]),
-        fat:   cleanCell(r[COL.FAT])     || 'não informado',
-        urg:   cleanCell(r[COL.URG]),
-        q:     normQ(cleanCell(r[COL.QUALIF])),
-        tags:  cleanCell(r[COL.TAGS]),
+        name:         cleanCell(r[COL.NOME])       || 'Sem nome',
+        email:        cleanCell(r[COL.EMAIL]),
+        emp:          cleanCell(r[COL.EMPRESA]),
+        fat:          cleanCell(r[COL.FAT])         || 'não informado',
+        urg:          cleanCell(r[COL.URG]),
+        q:            normQ(cleanCell(r[COL.QUALIF])),
+        tags:         cleanCell(r[COL.TAGS]),
+        campaign:     cleanCell(r[COL.CAMPAIGN]),
+        medium:       cleanCell(r[COL.MEDIUM]),
+        cidade:       cleanCell(r[COL.ACTIVITY]),
+        cadStatus:    cleanCell(r[COL.CAD_STATUS]),
+        cadEtapa:     cleanCell(r[COL.CAD_ETAPA]),
+        aberto:       cleanCell(r[COL.ABERTO]),
+        respondido:   cleanCell(r[COL.RESPONDIDO]),
       }))
       .filter(c => c.email && c.email.includes('@'));
     renderList();
@@ -456,6 +579,7 @@ function renderList() {
     d.className = 'ci' + (S.sel===i?' active':'');
     d.onclick = () => selectContact(i);
     const advBadge = isAdvogado(c) ? '<span class="tag" style="background:#101820;color:#7ab8f5;border:1px solid #1a2d40;font-size:9px">ADV</span>' : '';
+    const cadBadge = c.cadStatus === 'ativa' ? '<span class="tag" style="background:#0d1f0d;color:var(--acc);border:1px solid #1a3a1a;font-size:9px">cad</span>' : '';
     d.innerHTML = `
       <div class="ci-name">
         <span>${esc(c.name)}</span>
@@ -465,7 +589,7 @@ function renderList() {
       <div class="tags">
         <span class="tag ${tagClass(c.q)}">${esc(c.q)}</span>
         <span class="tag t-fat">${esc(fatShort(c.fat))}</span>
-        ${advBadge}
+        ${advBadge}${cadBadge}
       </div>`;
     el.appendChild(d);
   });
@@ -515,7 +639,6 @@ async function generateEmail() {
   btn.disabled=true; btn.textContent='⏳ Gerando...';
   gbtn.classList.remove('visible');
 
-  // Se for advogado, usa template fixo direto — sem chamar a API
   if (isAdvogado(c)) {
     ta.value = TEMPLATE_ADV_BODY;
     S.emails[S.sel] = TEMPLATE_ADV_BODY;
@@ -585,8 +708,6 @@ function skipContact() {
 }
 
 // ── ENVIAR EMAIL ──────────────────────────────────────────────────
-// Usa sendPrompt quando dentro do Claude.ai (integração direta com Gmail MCP)
-// Fallback: abre Gmail Compose preenchido quando no GitHub Pages
 function enviarEmail() {
   if (S.sel===null) return;
   const body = document.getElementById('ed-body').value.trim();
@@ -601,11 +722,9 @@ function enviarEmail() {
   renderList();
 
   if (typeof sendPrompt === 'function') {
-    // Dentro do Claude.ai — envia via MCP diretamente
     sendPrompt('GMAIL_ENVIAR||PARA:' + c.email + '||ASSUNTO:' + subj + '||CORPO:' + body);
     toast('📤 Enviando via Gmail...');
   } else {
-    // GitHub Pages — abre Gmail Compose já preenchido
     const url = 'https://mail.google.com/mail/?view=cm&fs=1'
       + '&to=' + encodeURIComponent(c.email)
       + '&su=' + encodeURIComponent(subj)
@@ -720,8 +839,8 @@ function bulkFilter(f, btn) {
 function bulkFiltered() {
   return CONTACTS.map((c,i)=>({...c,idx:i})).filter(c => {
     if (S.skipped.has(c.idx)) return false;
-    if (bulkFilter_ === 'adv')         return isAdvogado(c);
-    if (bulkFilter_ === 'sim')         return c.q === 'sim';
+    if (bulkFilter_ === 'adv')          return isAdvogado(c);
+    if (bulkFilter_ === 'sim')          return c.q === 'sim';
     if (bulkFilter_ === 'nao_enviados') return !S.approved.has(c.idx);
     return true;
   });
@@ -752,11 +871,7 @@ function bulkSelAll()   { bulkFiltered().forEach(c => bulkSel.add(c.idx)); rende
 function bulkDeselAll() { bulkSel.clear(); renderBulkList(); }
 
 async function gerarCorpoEmail(c) {
-  // Advogados: template fixo instantâneo — sem API
-  if (isAdvogado(c)) {
-    return { subj: TEMPLATE_ADV_SUBJ, body: TEMPLATE_ADV_BODY };
-  }
-  // Demais: gera personalizado via Claude
+  if (isAdvogado(c)) return { subj: TEMPLATE_ADV_SUBJ, body: TEMPLATE_ADV_BODY };
   if (!API_KEY) throw new Error('Configure a chave da API primeiro (⚙ API Key)');
   const inst = c.q==='sim'
     ? 'Lead ALTAMENTE QUALIFICADO. Convide diretamente para reunião. Tom direto e confiante.'
@@ -793,6 +908,7 @@ Escreva APENAS o corpo do e-mail.`;
   return { subj, body: d.content[0].text };
 }
 
+// ── NOVO: BULK SEND VIA BACKEND (SEM ABRIR ABAS) ──────────────────
 async function startBulkSend() {
   if (bulkSel.size === 0) { toast('Selecione ao menos um lead!'); return; }
   if (bulkRunning) return;
@@ -800,64 +916,137 @@ async function startBulkSend() {
   const lista = [...bulkSel].map(idx => CONTACTS[idx] ? {...CONTACTS[idx], idx} : null).filter(Boolean);
   const total = lista.length;
 
-  // Confirm
-  if (!confirm(`Confirmar envio individual para ${total} lead(s)?
-
-Cada e-mail será enviado separadamente — nenhum lead verá os outros.`)) return;
+  if (!confirm(`Enviar ${total} e-mail(s) diretamente via Gmail?\n\nOs e-mails serão enviados automaticamente sem abrir abas.`)) return;
 
   bulkRunning = true;
-  document.getElementById('bulk-btn').disabled = true;
-  document.getElementById('bulk-btn').textContent = '⏳ Enviando...';
+  const btnEl = document.getElementById('bulk-btn');
+  btnEl.disabled = true;
+  btnEl.textContent = '⏳ Gerando e-mails...';
   document.getElementById('bulk-prog-wrap').style.display = 'block';
+  document.getElementById('bulk-status').textContent = 'Gerando conteúdo dos e-mails...';
 
-  let ok = 0, erros = 0;
-
+  // Fase 1: Gerar todos os e-mails via Claude
+  const emailsParaEnviar = [];
   for (let i = 0; i < lista.length; i++) {
     const c = lista[i];
-    document.getElementById('bulk-status').textContent = `${i+1}/${total} — ${c.name}`;
-    document.getElementById('bulk-prog-bar').style.width = Math.round((i/total)*100) + '%';
-
+    document.getElementById('bulk-status').textContent = `Gerando ${i+1}/${total}: ${c.name}`;
+    document.getElementById('bulk-prog-bar').style.width = Math.round((i / total) * 50) + '%';
     try {
       const { subj, body } = await gerarCorpoEmail(c);
-
-      // Abre Gmail Compose individual — cada um em aba separada, sem expor outros destinatários
-      const url = 'https://mail.google.com/mail/?view=cm&fs=1'
-        + '&to='   + encodeURIComponent(c.email)
-        + '&su='   + encodeURIComponent(subj)
-        + '&body=' + encodeURIComponent(body);
-      window.open(url, '_blank');
-
+      emailsParaEnviar.push({ to: c.email, subject: subj, body, name: c.name });
       S.emails[c.idx]   = body;
       S.subjects[c.idx] = subj;
-      S.approved.add(c.idx);
-      ok++;
     } catch(e) {
-      erros++;
-      console.error('Bulk erro para', c.name, ':', e.message);
+      console.error('Erro gerando email para', c.name, e);
     }
-
-    // Pausa entre envios para não sobrecarregar
-    if (i < lista.length - 1) await new Promise(r => setTimeout(r, 600));
+    if (i < lista.length - 1) await new Promise(r => setTimeout(r, 300));
   }
 
-  document.getElementById('bulk-prog-bar').style.width = '100%';
-  document.getElementById('bulk-status').textContent = `✓ ${ok} enviados · ${erros} erros`;
-  document.getElementById('bulk-btn').textContent = '✓ Concluído';
+  if (emailsParaEnviar.length === 0) {
+    toast('Nenhum e-mail gerado!');
+    bulkRunning = false;
+    btnEl.disabled = false;
+    btnEl.textContent = '⚡ Disparar selecionados';
+    return;
+  }
+
+  // Fase 2: Enviar via backend
+  document.getElementById('bulk-status').textContent = `Enviando ${emailsParaEnviar.length} e-mails via Gmail...`;
+  document.getElementById('bulk-prog-bar').style.width = '55%';
+  btnEl.textContent = '📤 Enviando...';
+
+  try {
+    const r = await fetch(`${BACKEND_URL}/email/bulk`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emails: emailsParaEnviar })
+    });
+    const d = await r.json();
+
+    if (d.jobId) {
+      await pollBulkStatus(d.jobId, total);
+    } else {
+      document.getElementById('bulk-prog-bar').style.width = '100%';
+      document.getElementById('bulk-status').textContent = `✓ ${d.sent||0} enviados · ${d.failed||0} erros`;
+      lista.forEach(c => S.approved.add(c.idx));
+    }
+  } catch(e) {
+    console.error('Erro bulk send:', e);
+    // Fallback: abre no Gmail
+    document.getElementById('bulk-status').textContent = '⚠ Backend indisponível — abrindo no Gmail...';
+    for (const item of emailsParaEnviar) {
+      const url = 'https://mail.google.com/mail/?view=cm&fs=1'
+        + '&to=' + encodeURIComponent(item.to)
+        + '&su=' + encodeURIComponent(item.subject)
+        + '&body=' + encodeURIComponent(item.body);
+      window.open(url, '_blank');
+      await new Promise(r => setTimeout(r, 500));
+    }
+  }
+
   renderList();
   renderBulkList();
   bulkRunning = false;
-  toast(`✓ ${ok} e-mails gerados! Confirme o envio em cada aba do Gmail.`);
+  btnEl.disabled = false;
+  btnEl.textContent = '✓ Concluído';
+  toast('Disparo em massa concluído!');
 }
 
-// ── CAPTAÇÃO DE LEADS (BACKEND) ───────────────────────────────────
+async function pollBulkStatus(jobId, total) {
+  return new Promise(resolve => {
+    const interval = setInterval(async () => {
+      try {
+        const r = await fetch(`${BACKEND_URL}/email/status?jobId=${jobId}`);
+        const d = await r.json();
+        const pct = 55 + Math.round(((d.sent || 0) / total) * 45);
+        document.getElementById('bulk-prog-bar').style.width = pct + '%';
+        document.getElementById('bulk-status').textContent = `Enviando... ${d.sent || 0}/${total}`;
+        if (!d.running) {
+          clearInterval(interval);
+          document.getElementById('bulk-prog-bar').style.width = '100%';
+          document.getElementById('bulk-status').textContent = `✓ ${d.sent || 0} enviados · ${d.failed || 0} erros`;
+          resolve();
+        }
+      } catch(e) { clearInterval(interval); resolve(); }
+    }, 3000);
+  });
+}
+
+// ── CAPTAÇÃO DE LEADS ──────────────────────────────────────────────
 async function startCapture() {
   try {
-    const r = await fetch(`${BACKEND_URL}/scraper/start`, {method:'POST'});
+    const r = await fetch(`${BACKEND_URL}/scraper/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
     const d = await r.json();
     if (r.status === 409) { toast('Captação já está rodando!'); return; }
     toast('🔍 Captação iniciada! Novos leads em ~2 min.');
+    document.getElementById('btn-captar').style.display = 'none';
+    document.getElementById('btn-parar').style.display = 'inline-flex';
     setTimeout(() => checkCaptureStatus(), 5000);
-  } catch(e) { toast('Erro ao conectar ao backend. Verifique se está no ar.'); }
+  } catch(e) {
+    console.error('Erro startCapture:', e);
+    toast('Erro ao conectar ao backend: ' + e.message);
+  }
+}
+
+async function stopCapture() {
+  try {
+    toast('⏹ Parando captação...');
+    await fetch(`${BACKEND_URL}/scraper/stop`, { method: 'POST' });
+    toast('⬆ Enviando leads captados para a planilha...');
+    await new Promise(r => setTimeout(r, 2000));
+    const r = await fetch(`${BACKEND_URL}/sheets/push`, { method: 'POST' });
+    const d = await r.json();
+    toast(`✓ Captação parada. ${d.pushed || 0} leads enviados à planilha.`);
+    await loadSheet(true);
+  } catch(e) {
+    console.error('Erro stopCapture:', e);
+    toast('Erro ao parar: ' + e.message);
+  }
+  document.getElementById('btn-captar').style.display = 'inline-flex';
+  document.getElementById('btn-parar').style.display = 'none';
 }
 
 async function checkCaptureStatus() {
@@ -865,13 +1054,21 @@ async function checkCaptureStatus() {
     const r = await fetch(`${BACKEND_URL}/scraper/status`);
     const d = await r.json();
     if (d.running) {
-      document.getElementById('hdr-count').textContent = `🔍 captando... ${d.valid} novos`;
+      document.getElementById('hdr-count').textContent = `🔍 captando... ${d.valid || 0} novos`;
       setTimeout(() => checkCaptureStatus(), 5000);
-    } else if (d.valid > 0) {
-      toast(`✓ ${d.valid} leads captados! Clique em ⬆ Sync leads para enviar à planilha.`);
-      loadSheet();
+    } else {
+      if (d.valid > 0) {
+        toast(`✓ ${d.valid} leads captados! Sincronizando...`);
+        await fetch(`${BACKEND_URL}/sheets/push`, { method: 'POST' });
+        await loadSheet(true);
+      }
+      document.getElementById('btn-captar').style.display = 'inline-flex';
+      document.getElementById('btn-parar').style.display = 'none';
     }
-  } catch(e) {}
+  } catch(e) {
+    document.getElementById('btn-captar').style.display = 'inline-flex';
+    document.getElementById('btn-parar').style.display = 'none';
+  }
 }
 
 async function pushLeadsToSheet() {
@@ -883,6 +1080,269 @@ async function pushLeadsToSheet() {
     toast(`✓ ${d.pushed} leads enviados para a planilha!`);
     setTimeout(() => loadSheet(), 2000);
   } catch(e) { toast('Erro ao sincronizar leads com a planilha.'); }
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────
+let dashCharts = [];
+
+function openDashboard() {
+  document.getElementById('dash-overlay').classList.add('open');
+  loadDashboard();
+}
+
+function closeDashboard() {
+  document.getElementById('dash-overlay').classList.remove('open');
+  dashCharts.forEach(c => c.destroy());
+  dashCharts = [];
+}
+
+async function loadDashboard() {
+  const body = document.getElementById('dash-body');
+  body.innerHTML = '<div class="dash-loading" id="dash-loading">⟳ Carregando métricas...</div>';
+  dashCharts.forEach(c => c.destroy());
+  dashCharts = [];
+
+  // Busca dados em paralelo
+  let stats = {}, cadStatus = {}, sheetData = { contacts: [] };
+  try {
+    const [statsRes, cadRes, sheetRes] = await Promise.allSettled([
+      fetch(`${BACKEND_URL}/track/stats`).then(r => r.json()),
+      fetch(`${BACKEND_URL}/cadence/status`).then(r => r.json()),
+      fetch(`${BACKEND_URL}/sheets/pull`).then(r => r.json()),
+    ]);
+    if (statsRes.status === 'fulfilled') stats = statsRes.value;
+    if (cadRes.status === 'fulfilled') cadStatus = cadRes.value;
+    if (sheetRes.status === 'fulfilled') sheetData = sheetRes.value;
+  } catch(e) { console.warn('Erro parcial ao carregar dashboard:', e); }
+
+  const contacts = sheetData.contacts || CONTACTS.map(c => ({
+    nome: c.name, email: c.email, empresa: c.emp, medium: c.medium,
+    cidade: c.cidade, cadenciaStatus: c.cadStatus, cadenciaEtapa: c.cadEtapa,
+    emailAberto: c.aberto, emailRespondido: c.respondido
+  }));
+
+  const total     = contacts.length;
+  const abriram   = stats.abriram   || contacts.filter(c => c.emailAberto === 'sim').length;
+  const respond   = stats.responderam || contacts.filter(c => c.emailRespondido === 'sim').length;
+  const emCad     = stats.emCadencia || cadStatus.ativa || 0;
+  const taxaAb    = total > 0 ? ((abriram / total) * 100).toFixed(1) : '0.0';
+  const taxaResp  = total > 0 ? ((respond / total) * 100).toFixed(1) : '0.0';
+
+  // Distribuição por especialidade
+  const porEsp = {};
+  contacts.forEach(c => {
+    const esp = c.medium || 'não informado';
+    porEsp[esp] = (porEsp[esp] || 0) + 1;
+  });
+
+  // Distribuição por cidade
+  const porCidade = {};
+  contacts.forEach(c => {
+    const cid = c.cidade || 'não informado';
+    porCidade[cid] = (porCidade[cid] || 0) + 1;
+  });
+
+  // Top 8
+  const topEsp = Object.entries(porEsp).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const topCid = Object.entries(porCidade).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  const CHART_COLORS = ['#c8f57a','#7ab8f5','#f5c842','#f5734a','#8adb4a','#7F77DD','#4ade80','#fb923c'];
+
+  body.innerHTML = `
+    <div class="dash-cards">
+      <div class="dash-card">
+        <div class="dash-card-label">Total de leads</div>
+        <div class="dash-card-value">${total}</div>
+        <div class="dash-card-sub">na planilha</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-card-label">Em cadência</div>
+        <div class="dash-card-value" style="color:var(--inf)">${emCad}</div>
+        <div class="dash-card-sub">recebendo e-mails</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-card-label">Abriram e-mail</div>
+        <div class="dash-card-value" style="color:var(--gol)">${abriram}</div>
+        <div class="dash-card-sub">${taxaAb}% de abertura</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-card-label">Responderam</div>
+        <div class="dash-card-value" style="color:var(--dan)">${respond}</div>
+        <div class="dash-card-sub">${taxaResp}% de resposta</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-card-label">Concluídos</div>
+        <div class="dash-card-value" style="color:var(--mut)">${cadStatus.concluida||0}</div>
+        <div class="dash-card-sub">cadência completa</div>
+      </div>
+      <div class="dash-card">
+        <div class="dash-card-label">Aprovados</div>
+        <div class="dash-card-value">${S.approved.size}</div>
+        <div class="dash-card-sub">nesta sessão</div>
+      </div>
+    </div>
+
+    <div class="dash-row">
+      <div class="dash-chart-box">
+        <div class="dash-chart-title">Distribuição por Especialidade</div>
+        <canvas id="chart-esp" height="220"></canvas>
+      </div>
+      <div class="dash-chart-box">
+        <div class="dash-chart-title">Distribuição por Cidade</div>
+        <canvas id="chart-cid" height="220"></canvas>
+      </div>
+    </div>
+
+    <div class="dash-chart-box">
+      <div class="dash-chart-title">Funil de Captação</div>
+      <canvas id="chart-funil" height="100"></canvas>
+    </div>
+
+    <div class="dash-table-wrap">
+      <div class="dash-table-head">
+        <span style="font-size:13px;font-weight:600;color:var(--txt)">Detalhamento por Lead</span>
+        <input class="dash-search" id="dash-search" placeholder="Buscar nome ou empresa..." oninput="filterDashTable()">
+        <div class="dash-filter-row">
+          <button class="df on" onclick="dashFilter('',this)">Todos</button>
+          <button class="df" onclick="dashFilter('ativa',this)">Em cadência</button>
+          <button class="df" onclick="dashFilter('respondeu',this)">Responderam</button>
+          <button class="df" onclick="dashFilter('concluida',this)">Concluídos</button>
+        </div>
+      </div>
+      <div style="overflow-x:auto">
+        <table class="dash-table" id="dash-table">
+          <thead>
+            <tr>
+              <th onclick="sortDash('nome')">Nome ↕</th>
+              <th onclick="sortDash('empresa')">Empresa ↕</th>
+              <th onclick="sortDash('medium')">Especialidade ↕</th>
+              <th onclick="sortDash('cidade')">Cidade ↕</th>
+              <th onclick="sortDash('cadenciaStatus')">Cadência ↕</th>
+              <th onclick="sortDash('cadenciaEtapa')">Etapa ↕</th>
+              <th>Abriu</th>
+              <th>Respondeu</th>
+            </tr>
+          </thead>
+          <tbody id="dash-tbody"></tbody>
+        </table>
+      </div>
+    </div>`;
+
+  // Renderiza gráficos
+  const ctxEsp = document.getElementById('chart-esp').getContext('2d');
+  dashCharts.push(new Chart(ctxEsp, {
+    type: 'doughnut',
+    data: {
+      labels: topEsp.map(([k]) => k),
+      datasets: [{ data: topEsp.map(([,v]) => v), backgroundColor: CHART_COLORS, borderWidth: 0 }]
+    },
+    options: {
+      plugins: { legend: { labels: { color: '#e8ede9', font: { family: 'Sora', size: 11 } } } },
+      cutout: '60%'
+    }
+  }));
+
+  const ctxCid = document.getElementById('chart-cid').getContext('2d');
+  dashCharts.push(new Chart(ctxCid, {
+    type: 'bar',
+    data: {
+      labels: topCid.map(([k]) => k),
+      datasets: [{
+        data: topCid.map(([,v]) => v),
+        backgroundColor: '#7ab8f5',
+        borderRadius: 4,
+      }]
+    },
+    options: {
+      indexAxis: 'y',
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#6b756d' }, grid: { color: '#2a2e2c' } },
+        y: { ticks: { color: '#e8ede9', font: { family: 'DM Mono', size: 11 } }, grid: { display: false } }
+      }
+    }
+  }));
+
+  const funil = [
+    ['Captados', total],
+    ['Em cadência', emCad],
+    ['Abriram', abriram],
+    ['Responderam', respond],
+  ];
+  const ctxFunil = document.getElementById('chart-funil').getContext('2d');
+  dashCharts.push(new Chart(ctxFunil, {
+    type: 'bar',
+    data: {
+      labels: funil.map(([k]) => k),
+      datasets: [{
+        data: funil.map(([,v]) => v),
+        backgroundColor: ['#c8f57a','#7ab8f5','#f5c842','#f5734a'],
+        borderRadius: 6,
+      }]
+    },
+    options: {
+      plugins: { legend: { display: false } },
+      scales: {
+        x: { ticks: { color: '#e8ede9', font: { family: 'Sora', size: 12 } }, grid: { display: false } },
+        y: { ticks: { color: '#6b756d' }, grid: { color: '#2a2e2c' } }
+      }
+    }
+  }));
+
+  // Tabela
+  window._dashContacts = contacts;
+  window._dashFilter = '';
+  window._dashSort = { key: 'nome', asc: true };
+  renderDashTable();
+}
+
+let _dashFilterStatus = '';
+
+function dashFilter(status, btn) {
+  _dashFilterStatus = status;
+  document.querySelectorAll('.df').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderDashTable();
+}
+
+function filterDashTable() { renderDashTable(); }
+
+function sortDash(key) {
+  if (window._dashSort.key === key) window._dashSort.asc = !window._dashSort.asc;
+  else window._dashSort = { key, asc: true };
+  renderDashTable();
+}
+
+function renderDashTable() {
+  const tbody = document.getElementById('dash-tbody');
+  if (!tbody) return;
+  const search = (document.getElementById('dash-search')?.value || '').toLowerCase();
+  let data = (window._dashContacts || []).filter(c => {
+    const matchSearch = !search || (c.nome||'').toLowerCase().includes(search) || (c.empresa||'').toLowerCase().includes(search);
+    const matchFilter = !_dashFilterStatus || c.cadenciaStatus === _dashFilterStatus;
+    return matchSearch && matchFilter;
+  });
+
+  const { key, asc } = window._dashSort || { key: 'nome', asc: true };
+  data.sort((a, b) => {
+    const va = String(a[key]||'').toLowerCase();
+    const vb = String(b[key]||'').toLowerCase();
+    return asc ? va.localeCompare(vb) : vb.localeCompare(va);
+  });
+
+  const cadClass = { ativa:'cad-ativa', pausada:'cad-pausada', concluida:'cad-concluida', respondeu:'cad-respondeu' };
+
+  tbody.innerHTML = data.slice(0, 200).map(c => `
+    <tr>
+      <td>${esc(c.nome||'')}</td>
+      <td style="color:var(--mut)">${esc(c.empresa||'')}</td>
+      <td class="mono">${esc(c.medium||'—')}</td>
+      <td class="mono">${esc(c.cidade||'—')}</td>
+      <td>${c.cadenciaStatus ? `<span class="cad-badge ${cadClass[c.cadenciaStatus]||''}">${c.cadenciaStatus}</span>` : '<span style="color:var(--mut)">—</span>'}</td>
+      <td style="text-align:center">${c.cadenciaEtapa||'0'}/6</td>
+      <td style="text-align:center">${c.emailAberto==='sim'?'<span style="color:var(--acc)">✓</span>':'<span style="color:var(--bor)">—</span>'}</td>
+      <td style="text-align:center">${c.emailRespondido==='sim'?'<span style="color:var(--dan)">✓</span>':'<span style="color:var(--bor)">—</span>'}</td>
+    </tr>`).join('');
 }
 </script>
 </body>
