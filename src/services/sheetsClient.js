@@ -49,7 +49,7 @@ const COL = {
   DT_RESPOSTA:20,
 };
 
-const SHEET_RANGE_READ  = 'A2:U';
+const SHEET_RANGE_READ  = 'A1:U'; // inclui linha de cabeçalho (sheetRows[0] = header)
 const SHEET_RANGE_WRITE = 'A1';
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -84,8 +84,9 @@ async function pullFromSheets() {
   });
 
   const rows = res.data.values || [];
+  const dataRows = rows.slice(1); // remove linha de cabeçalho (índice 0 = linha 1 da planilha)
 
-  const contacts = rows.map((row, i) => ({
+  const contacts = dataRows.map((row, i) => ({
     rowIndex:         i + 2, // linha real na planilha (começa em 2 pois linha 1 é header)
     nome:             row[COL.NOME]        || '',
     sobrenome:        row[COL.SOBRENOME]   || '',

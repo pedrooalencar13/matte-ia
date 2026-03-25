@@ -185,44 +185,53 @@ textarea.cta:focus{border-color:var(--acc)}
 .cad-respondeu{background:#2a1510;color:var(--dan);border:1px solid #4a2010}
 .dash-loading{text-align:center;padding:40px;color:var(--mut);font-family:'DM Mono',monospace;font-size:13px}
 
-/* INBOX OVERLAY */
-.inbox-overlay{position:fixed;inset:0;background:rgba(0,0,0,.75);z-index:200;display:none;flex-direction:column}
+/* ── CAIXA DE ENTRADA ──────────────────────────────────────────── */
+.inbox-overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:9990;flex-direction:column;overflow:hidden}
 .inbox-overlay.open{display:flex}
-.inbox-header{padding:16px 28px;border-bottom:1px solid var(--bor);background:var(--sur);display:flex;align-items:center;gap:12px;flex-shrink:0;flex-wrap:wrap}
-.inbox-title{font-family:'DM Serif Display',serif;font-size:20px;color:var(--acc);flex:1}
-.inbox-toolbar{display:flex;gap:6px;align-items:center;flex-wrap:wrap}
-.inbox-filter{font-size:11px;padding:4px 10px;border-radius:20px;background:var(--sur2);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-family:'Sora',sans-serif;transition:all .12s}
-.inbox-filter.on{background:#1a2e0f;color:var(--acc);border-color:var(--acc)}
-.inbox-close{background:var(--sur2);border:1px solid var(--bor);color:var(--txt);border-radius:8px;padding:6px 14px;cursor:pointer;font-family:'Sora',sans-serif;font-size:12px}
-.inbox-close:hover{border-color:var(--dan);color:var(--dan)}
-.inbox-body{flex:1;overflow-y:auto;padding:24px 28px;display:flex;flex-direction:column;gap:10px}
+.inbox-hdr{padding:14px 24px;border-bottom:1px solid var(--bor);background:var(--sur);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px;flex-wrap:wrap}
+.inbox-title{font-family:'DM Serif Display',serif;font-size:20px;color:var(--acc)}
+.inbox-body{flex:1;overflow-y:auto;padding:20px 28px;display:flex;flex-direction:column;gap:10px}
+.inf{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--sur2);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-family:'Sora',sans-serif;transition:all .12s}
+.inf.on{background:#1a2e0f;color:var(--acc);border-color:var(--acc)}
+/* Cards */
 .reply-card{background:var(--sur);border:1px solid var(--bor);border-radius:12px;padding:14px 18px;cursor:pointer;transition:border-color .15s}
 .reply-card:hover{border-color:var(--acc)}
-.reply-card.unread{border-left:3px solid var(--acc)}
-.reply-card.answered{opacity:.5}
-.reply-card-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:6px}
-.reply-card-name{font-weight:600;font-size:14px;flex:1}
-.reply-card-date{font-size:10px;color:var(--mut);font-family:'DM Mono',monospace;white-space:nowrap}
-.reply-card-subj{font-size:12px;color:var(--txt);margin-bottom:5px}
-.reply-card-snippet{font-size:11px;color:var(--mut);line-height:1.5;white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
-.reply-card-badges{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap;align-items:center}
-.rc-badge{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:500;font-family:'DM Mono',monospace}
-.rc-new{background:#0d1f0d;color:var(--acc);border:1px solid #1a3a1a}
-.rc-answered{background:#101820;color:var(--inf);border:1px solid #1a2d40}
-/* REPLY MODAL */
-.reply-modal{position:fixed;inset:0;background:rgba(0,0,0,.88);z-index:300;display:none;align-items:center;justify-content:center}
-.reply-modal.open{display:flex}
-.reply-modal-box{background:var(--sur);border:1px solid var(--bor);border-radius:16px;width:700px;max-width:96vw;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
-.reply-modal-head{padding:18px 22px;border-bottom:1px solid var(--bor);display:flex;align-items:flex-start;gap:12px}
-.reply-modal-info{flex:1;min-width:0}
-.reply-modal-from{font-size:15px;font-weight:600;margin-bottom:2px}
-.reply-modal-subj{font-size:12px;color:var(--mut)}
-.reply-modal-body{flex:1;overflow-y:auto;padding:20px 22px;font-size:13px;line-height:1.7;color:var(--txt);white-space:pre-wrap;font-family:'DM Mono',monospace;background:var(--sur2)}
-.reply-modal-foot{padding:14px 22px;border-top:1px solid var(--bor);display:flex;gap:8px;justify-content:flex-end}
-/* Header inbox badge */
-.inbox-btn-wrap{position:relative;display:inline-flex}
-.inbox-notif{position:absolute;top:-5px;right:-5px;background:var(--dan);color:#fff;font-size:9px;font-weight:700;border-radius:50%;min-width:16px;height:16px;display:none;align-items:center;justify-content:center;padding:0 3px}
-.inbox-notif.show{display:flex}
+.reply-card.nao-lida{border-left:3px solid var(--acc)}
+.reply-card.respondido{opacity:.5}
+.reply-card.tem-followup{border-left:3px solid var(--inf)}
+.rc-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:6px}
+.rc-av{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--dan),#8B1A1A);display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:14px;color:#fff;flex-shrink:0}
+.rc-info{flex:1;min-width:0}
+.rc-from{font-weight:600;font-size:13px;margin-bottom:1px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.rc-email{font-size:11px;color:var(--mut);font-family:'DM Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rc-subj{font-size:12px;font-weight:500;margin-bottom:4px}
+.rc-prev{font-size:12px;color:var(--mut);line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rc-date{font-size:10px;color:var(--mut);font-family:'DM Mono',monospace;white-space:nowrap;flex-shrink:0}
+.rc-dot{width:7px;height:7px;border-radius:50%;background:var(--acc);flex-shrink:0;margin-top:2px}
+.rc-fu-badge{font-size:10px;padding:2px 6px;border-radius:4px;background:#101820;color:var(--inf);border:1px solid #1a2d40;white-space:nowrap}
+.rc-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.rc-fu-preview{background:var(--sur2);border:1px solid #1a2d40;border-radius:8px;padding:10px 12px;margin-top:8px;font-size:12px;line-height:1.6}
+.rc-fu-label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--inf);font-weight:600;margin-bottom:4px}
+.rc-fu-subj{font-weight:600;color:var(--txt);margin-bottom:3px;font-size:12px}
+.rc-fu-body{color:var(--mut);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* Badge header */
+.hdr-btn-wrap{position:relative;display:inline-flex}
+.hdr-notif{position:absolute;top:-5px;right:-6px;background:var(--dan);color:#fff;font-size:9px;font-weight:700;border-radius:10px;padding:1px 4px;min-width:14px;text-align:center;display:none;pointer-events:none}
+.hdr-notif.on{display:block}
+/* Modal de resposta completa */
+.rmodal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:10000;align-items:center;justify-content:center}
+.rmodal.open{display:flex}
+.rmodal-box{background:var(--sur);border:1px solid var(--bor);border-radius:16px;width:680px;max-width:96vw;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+.rmodal-hdr{padding:16px 22px;border-bottom:1px solid var(--bor);flex-shrink:0}
+.rmodal-tab{padding:10px 18px;font-size:12px;cursor:pointer;border-bottom:2px solid transparent;color:var(--mut);transition:all .15s;user-select:none;flex-shrink:0;display:inline-block}
+.rmodal-tab.on{color:var(--acc);border-bottom-color:var(--acc)}
+.rmodal-content{flex:1;overflow-y:auto;padding:16px 22px}
+.rmodal-body-text{font-size:13px;line-height:1.8;color:var(--txt);white-space:pre-wrap;word-break:break-word}
+.rmodal-fu-subj{width:100%;background:var(--sur2);border:1px solid var(--bor);border-radius:6px;padding:8px 12px;color:var(--txt);font-family:'Sora',sans-serif;font-size:13px;outline:none;margin-bottom:8px;box-sizing:border-box}
+.rmodal-fu-subj:focus{border-color:var(--acc)}
+.rmodal-fu-corpo{width:100%;background:var(--sur2);border:1px solid var(--bor);border-radius:8px;padding:12px 14px;color:var(--txt);font-family:'Sora',sans-serif;font-size:13px;line-height:1.8;resize:vertical;outline:none;min-height:200px;box-sizing:border-box}
+.rmodal-fu-corpo:focus{border-color:var(--acc)}
+.rmodal-lead-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;font-size:12px;background:var(--sur2);border-radius:8px;padding:12px 14px;line-height:1.8}
 /* MASS-EDIT */
 .mass-confirm-box{background:var(--sur2);border:1px solid var(--bor);border-radius:10px;padding:14px 16px;margin:6px 0;font-size:12px;line-height:1.6}
 .mass-confirm-box strong{color:var(--acc)}
@@ -245,9 +254,9 @@ textarea.cta:focus{border-color:var(--acc)}
     <button class="btn btn-g btn-sm" id="btn-captar" onclick="startCapture()">🔍 Captar</button>
     <button class="btn btn-sm" id="btn-parar" onclick="stopCapture()" style="display:none;background:#f5734a;color:#fff;border:1px solid #c0452a;font-weight:600">⏹ Parar captação</button>
     <span id="capture-indicator" style="display:none;color:#f5c842;font-size:11px;font-family:'DM Mono',monospace" class="dot-anim">● captando</span>
-    <div class="inbox-btn-wrap">
-      <button class="btn btn-g btn-sm" onclick="openInbox()">📥 Caixa de Entrada</button>
-      <span class="inbox-notif" id="inbox-notif">0</span>
+    <div class="hdr-btn-wrap">
+      <button class="btn btn-g btn-sm" onclick="openInbox()">📬 Respostas</button>
+      <span class="hdr-notif" id="hdr-notif">0</span>
     </div>
     <button class="btn btn-sync btn-sm" onclick="pushLeadsToSheet()">⬆ Sync leads</button>
     <button class="btn btn-bulk btn-sm" onclick="openBulk()">⚡ Disparo em massa</button>
@@ -294,6 +303,7 @@ textarea.cta:focus{border-color:var(--acc)}
       <div class="ed-actions">
         <button class="btn btn-p" id="approve-btn" onclick="approveEmail()">✓ Aprovar e-mail</button>
         <button class="btn btn-g" id="gen-btn" onclick="generateEmail()">⚡ Gerar e-mail</button>
+        <button class="btn btn-g" id="save-btn" onclick="salvarEmail()" title="Salva o e-mail editado sem enviar">💾 Salvar</button>
         <button class="btn btn-gmail" id="gmail-btn" onclick="enviarEmail()">📤 Enviar e-mail</button>
         <div style="flex:1"></div>
         <button class="btn btn-d" onclick="skipContact()">Pular</button>
@@ -408,38 +418,56 @@ textarea.cta:focus{border-color:var(--acc)}
   </div>
 </div>
 
-<!-- INBOX OVERLAY -->
+<!-- ══════════════════════════════════════════════════
+     CAIXA DE ENTRADA — RESPOSTAS DOS LEADS
+     ══════════════════════════════════════════════════ -->
 <div class="inbox-overlay" id="inbox-overlay">
-  <div class="inbox-header">
-    <div class="inbox-title">📥 Caixa de Entrada — Respostas de Leads</div>
-    <div class="inbox-toolbar">
-      <button class="inbox-filter on" onclick="inboxSetFilter('all',this)">Todas</button>
-      <button class="inbox-filter" onclick="inboxSetFilter('unread',this)">Não lidas</button>
-      <button class="inbox-filter" onclick="inboxSetFilter('unanswered',this)">Não respondidas</button>
-      <button class="btn btn-g btn-sm" onclick="inboxCheckNow(this)">↻ Verificar agora</button>
-      <button class="inbox-close" onclick="closeInbox()">✕ Fechar</button>
+  <div class="inbox-hdr">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="inbox-title">📬 Caixa de Entrada</div>
+      <span id="inbox-nr" style="display:none;background:var(--dan);color:#fff;font-size:10px;font-weight:700;border-radius:20px;padding:2px 8px">0</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <button class="inf on" onclick="inboxFilter('todas',this)">Todas</button>
+      <button class="inf"    onclick="inboxFilter('nao-lidas',this)">Não lidas</button>
+      <button class="inf"    onclick="inboxFilter('followup',this)">✦ Follow-up pronto</button>
+      <button class="inf"    onclick="inboxFilter('pendentes',this)">Não respondidas</button>
+      <span id="inbox-last" style="font-size:10px;color:var(--mut);font-family:'DM Mono',monospace"></span>
+      <button class="btn btn-sync btn-sm" id="inbox-check-btn" onclick="inboxCheckNow()">🔄 Verificar agora</button>
+      <button class="btn btn-g btn-sm" onclick="closeInbox()">✕ Fechar</button>
     </div>
   </div>
   <div class="inbox-body" id="inbox-body">
-    <div style="color:var(--mut);font-family:'DM Mono',monospace;font-size:13px;text-align:center;padding:40px">Carregando...</div>
+    <div style="text-align:center;padding:60px 20px;color:var(--mut)">
+      <div style="font-size:48px;opacity:.12;margin-bottom:12px">📭</div>
+      <p style="font-size:14px">Carregando respostas...</p>
+    </div>
   </div>
 </div>
 
-<!-- REPLY MODAL -->
-<div class="reply-modal" id="reply-modal">
-  <div class="reply-modal-box">
-    <div class="reply-modal-head">
-      <div class="reply-modal-info">
-        <div class="reply-modal-from" id="rm-from">—</div>
-        <div class="reply-modal-subj" id="rm-subj">—</div>
-        <div style="font-size:10px;color:var(--mut);font-family:'DM Mono',monospace;margin-top:4px" id="rm-date">—</div>
-      </div>
-      <button onclick="closeReplyModal()" style="background:var(--sur2);border:1px solid var(--bor);color:var(--mut);border-radius:6px;padding:5px 10px;cursor:pointer;font-family:'Sora',sans-serif;font-size:12px">✕</button>
+<!-- ══════════════════════════════════════════════════
+     MODAL — RESPOSTA COMPLETA DO LEAD
+     ══════════════════════════════════════════════════ -->
+<div class="rmodal" id="rmodal">
+  <div class="rmodal-box">
+    <div class="rmodal-hdr">
+      <div style="font-size:11px;color:var(--mut);font-family:'DM Mono',monospace;margin-bottom:3px" id="rm-from"></div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:2px" id="rm-subj"></div>
+      <div style="font-size:11px;color:var(--mut);font-family:'DM Mono',monospace" id="rm-date"></div>
     </div>
-    <div class="reply-modal-body" id="rm-body">—</div>
-    <div class="reply-modal-foot">
-      <button class="btn btn-g btn-sm" onclick="markAnsweredModal()">✓ Marcar respondida</button>
-      <button class="btn btn-p btn-sm" onclick="openEditorFromModal()">Abrir no editor →</button>
+    <div style="display:flex;border-bottom:1px solid var(--bor);flex-shrink:0">
+      <div class="rmodal-tab on" id="rm-tab-resp" onclick="rmodalTab('resposta',this)">Resposta do lead</div>
+      <div class="rmodal-tab"   id="rm-tab-fu"   onclick="rmodalTab('followup',this)">✦ Follow-up gerado</div>
+      <div class="rmodal-tab"   id="rm-tab-lead" onclick="rmodalTab('lead',this)">Dados do lead</div>
+    </div>
+    <div class="rmodal-content" id="rm-content"></div>
+    <div style="padding:12px 22px;border-top:1px solid var(--bor);display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
+      <button class="btn btn-p"        id="rm-usar-fu" onclick="usarFollowUp()">⚡ Usar follow-up no editor</button>
+      <button class="btn btn-g btn-sm" id="rm-regen"   onclick="regenerarFollowUp()">↻ Regenerar</button>
+      <button class="btn btn-g btn-sm"                 onclick="responderNoEditor()">↗ Responder do zero</button>
+      <button class="btn btn-g btn-sm"                 onclick="markAnsweredModal()">✓ Marcar respondido</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-d btn-sm"                 onclick="closeRmodal()">Fechar</button>
     </div>
   </div>
 </div>
@@ -547,6 +575,8 @@ window.addEventListener('DOMContentLoaded', () => {
   if (!API_KEY) openModal();
   loadSheet();
   setInterval(() => loadSheet(false), SYNC_MS);
+  // Carregar badge da inbox ao iniciar (silencioso, após 4s)
+  setTimeout(() => loadInbox(true), 4000);
 });
 
 // ── GOOGLE SHEETS SYNC ────────────────────────────────────────────
@@ -741,61 +771,134 @@ function getSubject(c) {
 }
 
 // ── GENERATE EMAIL ────────────────────────────────────────────────
+// ── Cache de respostas recebidas (preenchido por loadInbox) ──────────────────
+const _respostasCache = {};
+function _getRespostaDoLead(email) { return _respostasCache[(email||'').toLowerCase()] || null; }
+function _cacheRespostas(replies) {
+  (replies || []).forEach(r => { if (r.email) _respostasCache[r.email.toLowerCase()] = r; });
+}
+
 async function generateEmail() {
-  if (S.sel===null) return;
+  if (S.sel === null) return;
   const c    = CONTACTS[S.sel];
   const ind  = document.getElementById('gen-ind');
   const ta   = document.getElementById('ed-body');
   const btn  = document.getElementById('gen-btn');
   const gbtn = document.getElementById('gmail-btn');
-  ind.classList.add('on'); ta.value=''; ta.style.display='none';
-  btn.disabled=true; btn.textContent='⏳ Gerando...';
+
+  ind.classList.add('on');
+  ta.value = ''; ta.style.display = 'none';
+  btn.disabled = true; btn.textContent = '⏳ Gerando...';
   gbtn.classList.remove('visible');
 
+  // Template fixo para advogados (sem chamar API)
   if (isAdvogado(c)) {
-    ta.value = TEMPLATE_ADV_BODY;
-    S.emails[S.sel] = TEMPLATE_ADV_BODY;
+    ta.value          = TEMPLATE_ADV_BODY;
+    S.emails[S.sel]   = TEMPLATE_ADV_BODY;
     S.subjects[S.sel] = TEMPLATE_ADV_SUBJ;
     document.getElementById('ed-subj').value = TEMPLATE_ADV_SUBJ;
-    ind.classList.remove('on'); ta.style.display='block';
-    btn.disabled=false; btn.textContent='⚡ Gerar e-mail';
+    ind.classList.remove('on'); ta.style.display = 'block';
+    btn.disabled = false; btn.textContent = '⚡ Gerar e-mail';
     gbtn.classList.add('visible');
     return;
   }
 
-  if (!API_KEY) { openModal(); ind.classList.remove('on'); ta.style.display='block'; btn.disabled=false; btn.textContent='⚡ Gerar e-mail'; return; }
+  if (!API_KEY) {
+    openModal();
+    ind.classList.remove('on'); ta.style.display = 'block';
+    btn.disabled = false; btn.textContent = '⚡ Gerar e-mail';
+    return;
+  }
 
-  const inst = c.q==='sim'
-    ? 'Lead ALTAMENTE QUALIFICADO. Convide diretamente para reunião ou demo. Tom direto e confiante.'
-    : c.q==='com potencial'
-    ? 'Lead com potencial. Reative o interesse, apresente os serviços de gestão de tráfego pago e gere curiosidade.'
-    : 'Lead não qualificado. Apresente levemente, sem pressão, deixe porta aberta.';
+  // Verificar se lead respondeu → modo follow-up
+  const respostaLocal = _getRespostaDoLead(c.email);
+  const leadRespondeu = c.emailRespondido === 'sim' || !!respostaLocal;
 
-  const prompt = `Você é especialista em vendas consultivas para gestão de tráfego pago. Escreva um e-mail profissional, caloroso e personalizado em português brasileiro.
+  let prompt;
+
+  if (leadRespondeu && respostaLocal) {
+    btn.textContent = '⏳ Analisando resposta...';
+    const instrQual = c.q === 'sim'
+      ? 'Lead ALTAMENTE QUALIFICADO. Avance diretamente para marcar reunião ou call.'
+      : c.q === 'com potencial'
+      ? 'Lead com potencial. Aprofunde o interesse e proponha próximo passo concreto.'
+      : 'Lead em avaliação. Seja consultivo, foque em entender mais sobre ele.';
+
+    prompt = `Você é Pedro Aranha, especialista em gestão de tráfego pago para advogados.
+
+## DADOS DO LEAD
+Nome: ${c.name}
+Empresa: ${c.emp || 'não informado'}
+Faturamento: ${c.fat || 'não informado'}
+Qualificação: ${c.q}
+Especialidade: ${c.medium || 'não informado'}
+Cidade: ${c.cidade || 'não informado'}
+Urgência: ${c.urg || 'não informada'}
+
+## O QUE O LEAD RESPONDEU
+${respostaLocal.bodyClean || respostaLocal.body || '(conteúdo não disponível)'}
+
+## E-MAIL QUE VOCÊ HAVIA ENVIADO
+${S.emails[S.sel] || '(sem histórico local)'}
+
+## INSTRUÇÃO: ${instrQual}
+
+Escreva um follow-up que:
+1. Responda diretamente ao que o lead disse
+2. Avance para o próximo passo (reunião, call, proposta)
+3. Seja humano e consultivo — máximo 3 parágrafos
+4. CTA: WhatsApp (11) 99515-7048
+
+Escreva APENAS o corpo do e-mail. Assine como: Pedro Aranha Gestão de Tráfego`;
+
+  } else if (leadRespondeu) {
+    prompt = `Você é Pedro Aranha, gestor de tráfego pago para advogados.
+Lead: ${c.name} | Empresa: ${c.emp||'—'} | Faturamento: ${c.fat||'—'} | Qualificação: ${c.q}
+Este lead respondeu seu e-mail. Escreva um follow-up caloroso que agradece a resposta,
+aprofunda o interesse e propõe uma reunião ou call.
+Máximo 3 parágrafos. CTA: WhatsApp (11) 99515-7048.
+Assine como: Pedro Aranha Gestão de Tráfego. Escreva APENAS o corpo.`;
+
+  } else {
+    // Primeiro contato
+    const inst = c.q === 'sim'
+      ? 'Lead ALTAMENTE QUALIFICADO. Convide diretamente para reunião ou demo. Tom direto e confiante.'
+      : c.q === 'com potencial'
+      ? 'Lead com potencial. Reative o interesse, apresente gestão de tráfego pago e gere curiosidade.'
+      : 'Lead não qualificado. Apresente levemente, sem pressão, deixe porta aberta.';
+
+    prompt = `Você é especialista em vendas consultivas para gestão de tráfego pago.
+Escreva um e-mail profissional, caloroso e personalizado em português brasileiro.
 
 Destinatário: ${c.name}
-Empresa: ${c.emp||'não informado'}
-Faturamento mensal: ${c.fat}
-Urgência: ${c.urg||'não informada'}
+Empresa: ${c.emp || 'não informado'}
+Faturamento mensal: ${c.fat || 'não informado'}
+Urgência: ${c.urg || 'não informada'}
+Especialidade: ${c.medium || 'não informado'}
+Cidade: ${c.cidade || 'não informada'}
 Perfil: ${c.q}
 
 Instrução: ${inst}
-
-Regras: máximo 4 parágrafos curtos, tom humano, termine com chamada para ação clara. Assine como: Equipe Pedro Aranha Gestão de Tráfego
-
+Regras: máximo 4 parágrafos curtos, tom humano, termine com CTA claro.
+WhatsApp: (11) 99515-7048. Assine como: Equipe Pedro Aranha Gestão de Tráfego
 Escreva APENAS o corpo do e-mail, sem assunto nem explicações.`;
+  }
 
   try {
-    const text = await callClaude([{role:'user', content:prompt}]);
-    ta.value = text;
-    S.emails[S.sel] = text;
+    const text = await callClaude([{ role: 'user', content: prompt }], '', 700);
+    ta.value          = text;
+    S.emails[S.sel]   = text;
     S.subjects[S.sel] = document.getElementById('ed-subj').value;
     gbtn.classList.add('visible');
+    if (leadRespondeu) toast('✦ Follow-up gerado com base na resposta do lead!');
   } catch(e) {
-    ta.value = '⚠ Erro: ' + e.message + '\n\nVerifique sua chave em ⚙ API Key.';
+    ta.value = '⚠ Erro ao gerar: ' + e.message + '\n\nVerifique sua chave em ⚙ API Key.';
+    console.error('generateEmail erro:', e);
   }
-  ind.classList.remove('on'); ta.style.display='block';
-  btn.disabled=false; btn.textContent='⚡ Gerar e-mail';
+
+  ind.classList.remove('on'); ta.style.display = 'block';
+  btn.disabled = false;
+  btn.textContent = leadRespondeu ? '↻ Regerar follow-up' : '⚡ Gerar e-mail';
 }
 
 // ── APPROVE / SKIP ────────────────────────────────────────────────
@@ -810,6 +913,17 @@ function approveEmail() {
     const nxt = CONTACTS.findIndex((_,i) => i>S.sel && !S.skipped.has(i) && !S.approved.has(i));
     if (nxt>=0) selectContact(nxt);
   }, 500);
+}
+
+function salvarEmail() {
+  if (S.sel === null) { toast('Selecione um lead primeiro'); return; }
+  S.emails[S.sel]   = document.getElementById('ed-body').value;
+  S.subjects[S.sel] = document.getElementById('ed-subj').value;
+  S.approved.add(S.sel);
+  document.getElementById('approve-btn').textContent = '✓ Aprovado';
+  document.getElementById('gmail-btn').classList.add('visible');
+  renderList();
+  toast('💾 E-mail salvo!');
 }
 
 function skipContact() {
@@ -1717,145 +1831,339 @@ async function deleteTask(id) {
   } catch(e) { toast('Erro: '+e.message); }
 }
 
-// ── INBOX (RESPOSTAS DE LEADS) ─────────────────────────────────────
-let inboxReplies  = [];
-let inboxFilter_  = 'all';
-let _activeReply  = null;
+// ══════════════════════════════════════════════════════════════
+// CAIXA DE ENTRADA + FOLLOW-UP INTELIGENTE
+// ══════════════════════════════════════════════════════════════
+let _inboxFilter  = 'todas';
+let _inboxData    = [];
+let _currentReply = null;
+let _rmodalTab_   = 'resposta';
+let _inboxTimer   = null;
 
-async function openInbox() {
+function openInbox() {
   document.getElementById('inbox-overlay').classList.add('open');
-  await loadInbox();
+  loadInbox();
+  _inboxTimer = setInterval(() => loadInbox(true), 3 * 60 * 1000);
 }
 
 function closeInbox() {
   document.getElementById('inbox-overlay').classList.remove('open');
+  if (_inboxTimer) { clearInterval(_inboxTimer); _inboxTimer = null; }
 }
 
-function inboxSetFilter(f, btn) {
-  inboxFilter_ = f;
-  document.querySelectorAll('.inbox-filter').forEach(b => b.classList.remove('on'));
-  btn.classList.add('on');
-  renderInbox();
-}
-
-async function loadInbox() {
-  const body = document.getElementById('inbox-body');
-  body.innerHTML = '<div style="color:var(--mut);font-family:\'DM Mono\',monospace;font-size:13px;text-align:center;padding:40px">Carregando...</div>';
+async function loadInbox(silent) {
   try {
     const r = await fetch(`${BACKEND_URL}/replies`);
-    const d = await r.json();
-    inboxReplies = d.replies || [];
-    _updateInboxBadge(d.naoLidas || 0);
+    if (!r.ok) throw new Error('Backend retornou ' + r.status);
+    const d    = await r.json();
+    _inboxData = d.replies || [];
+    _cacheRespostas(_inboxData);
+
+    // Atualizar badges
+    const nr      = d.naoLidas || 0;
+    const nrEl    = document.getElementById('inbox-nr');
+    const notifEl = document.getElementById('hdr-notif');
+    if (nrEl)    { nrEl.textContent = nr; nrEl.style.display = nr > 0 ? 'inline-block' : 'none'; }
+    if (notifEl) { notifEl.textContent = nr; notifEl.classList.toggle('on', nr > 0); }
+
+    if (d.lastCheck) {
+      const dt = new Date(d.lastCheck).toLocaleString('pt-BR',
+        { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+      const el = document.getElementById('inbox-last');
+      if (el) el.textContent = `Última verificação: ${dt}`;
+    }
+
     renderInbox();
+
+    // Atualizar label do botão Gerar se lead selecionado respondeu
+    if (S.sel !== null) {
+      const c = CONTACTS[S.sel];
+      if (c) {
+        const respondeu = _inboxData.some(rep =>
+          (rep.email||'').toLowerCase() === (c.email||'').toLowerCase()
+        );
+        const genBtn = document.getElementById('gen-btn');
+        if (genBtn && respondeu) genBtn.textContent = '↻ Gerar follow-up';
+      }
+    }
   } catch(e) {
-    body.innerHTML = `<div style="color:var(--dan);padding:20px">Erro ao carregar: ${esc(e.message)}</div>`;
+    if (!silent) {
+      const body = document.getElementById('inbox-body');
+      if (body) body.innerHTML = `
+        <div style="text-align:center;padding:40px;color:var(--mut)">
+          <p style="font-size:14px;margin-bottom:8px">⚠ Erro ao carregar respostas</p>
+          <p style="font-size:12px">${esc(e.message)}</p>
+        </div>`;
+    }
   }
 }
 
-function _updateInboxBadge(n) {
-  const notif = document.getElementById('inbox-notif');
-  if (n > 0) { notif.textContent = n; notif.classList.add('show'); }
-  else notif.classList.remove('show');
+function inboxFilter(f, btn) {
+  _inboxFilter = f;
+  document.querySelectorAll('.inf').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  renderInbox();
 }
 
 function renderInbox() {
   const body = document.getElementById('inbox-body');
-  let items = [...inboxReplies];
-  if (inboxFilter_ === 'unread')     items = items.filter(r => !r.lida);
-  if (inboxFilter_ === 'unanswered') items = items.filter(r => !r.respondida);
+  if (!body) return;
 
-  if (!items.length) {
-    body.innerHTML = '<div style="color:var(--mut);font-family:\'DM Mono\',monospace;font-size:13px;text-align:center;padding:40px">Nenhuma resposta encontrada.</div>';
+  let data = [..._inboxData];
+  if (_inboxFilter === 'nao-lidas') data = data.filter(r => !r.lido);
+  if (_inboxFilter === 'followup')  data = data.filter(r => r.followUpGerado);
+  if (_inboxFilter === 'pendentes') data = data.filter(r => !r.respondido);
+
+  const msgs = {
+    'todas':     'Nenhuma resposta ainda.<br>Clique em 🔄 Verificar agora para checar o Gmail.',
+    'nao-lidas': 'Todas as respostas já foram lidas.',
+    'followup':  'Nenhum follow-up pendente de aprovação.',
+    'pendentes': 'Nenhuma resposta pendente de retorno.',
+  };
+
+  if (data.length === 0) {
+    body.innerHTML = `
+      <div style="text-align:center;padding:60px 20px;color:var(--mut)">
+        <div style="font-size:48px;opacity:.12;margin-bottom:12px">📭</div>
+        <p style="font-size:14px;font-weight:500;color:var(--txt);margin-bottom:6px">
+          ${_inboxFilter === 'todas' ? 'Caixa de entrada vazia' : 'Nenhum resultado'}
+        </p>
+        <p style="font-size:13px">${msgs[_inboxFilter] || ''}</p>
+      </div>`;
     return;
   }
 
-  body.innerHTML = items.map(r => {
-    const dt  = r.date ? new Date(r.date).toLocaleDateString('pt-BR', {day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'}) : '—';
-    const cls = ['reply-card', !r.lida ? 'unread' : '', r.respondida ? 'answered' : ''].filter(Boolean).join(' ');
+  body.innerHTML = data.map(r => {
+    const ini    = ((r.leadData?.nome || r.from || '?')[0] || '?').toUpperCase();
+    const temFU  = r.followUpGerado;
+    const naoLida = !r.lido;
+
+    const fuPreview = temFU ? `
+      <div class="rc-fu-preview">
+        <div class="rc-fu-label">✦ Follow-up gerado pela IA</div>
+        <div class="rc-fu-subj">${esc(r.followUpAssunto || r.subject || '')}</div>
+        <div class="rc-fu-body">${esc((r.followUpCorpo || '').slice(0, 160))}...</div>
+      </div>` : '';
+
     return `
-      <div class="${cls}" onclick="openReplyModal('${r.gmailId}')">
-        <div class="reply-card-top">
-          <div class="reply-card-name">${esc(r.from || r.email)}</div>
-          <div class="reply-card-date">${dt}</div>
+      <div class="reply-card ${naoLida?'nao-lida':''} ${r.respondido?'respondido':''} ${temFU?'tem-followup':''}"
+           onclick="openRmodal('${r.id}')">
+        <div class="rc-top">
+          <div class="rc-av">${ini}</div>
+          <div class="rc-info">
+            <div class="rc-from">
+              ${naoLida ? '<div class="rc-dot"></div>' : ''}
+              <span>${esc(r.leadData?.nome || r.from || r.email)}</span>
+              ${temFU ? '<span class="rc-fu-badge">✦ Follow-up pronto</span>' : ''}
+              ${r.respondido ? '<span style="font-size:10px;padding:1px 6px;border-radius:4px;background:var(--sur2);border:1px solid var(--bor);color:var(--mut)">respondido</span>' : ''}
+            </div>
+            <div class="rc-email">${esc(r.email || '')}</div>
+          </div>
+          <div class="rc-date">${r.dateFormatted || ''}</div>
         </div>
-        <div class="reply-card-subj">${esc(r.subject || '(sem assunto)')}</div>
-        <div class="reply-card-snippet">${esc(r.snippet || '')}</div>
-        <div class="reply-card-badges">
-          ${!r.lida ? '<span class="rc-badge rc-new">nova</span>' : ''}
-          ${r.respondida ? '<span class="rc-badge rc-answered">respondida</span>' : ''}
-          <span style="font-size:10px;color:var(--mut);font-family:'DM Mono',monospace">${esc(r.email)}</span>
+        <div class="rc-subj">${esc(r.subject || '')}</div>
+        <div class="rc-prev">${esc(r.bodyClean || r.body || '')}</div>
+        ${fuPreview}
+        <div class="rc-actions" onclick="event.stopPropagation()">
+          ${temFU
+            ? `<button class="btn btn-p btn-sm" onclick="usarFollowUpDireto('${r.id}');event.stopPropagation()">⚡ Usar no editor</button>`
+            : `<button class="btn btn-g btn-sm" onclick="_abrirNoEditor('${esc(r.email)}','','');closeInbox();event.stopPropagation()">↗ Abrir no editor</button>`
+          }
+          ${!r.respondido ? `<button class="btn btn-g btn-sm" onclick="markAnswered('${r.id}');event.stopPropagation()">✓ Respondido</button>` : ''}
+          ${!r.lido ? `<button class="btn btn-g btn-sm" onclick="markRead('${r.id}');event.stopPropagation()">👁 Lida</button>` : ''}
         </div>
       </div>`;
   }).join('');
 }
 
-async function openReplyModal(gmailId) {
-  const reply = inboxReplies.find(r => r.gmailId === gmailId);
-  if (!reply) return;
-  _activeReply = reply;
-  document.getElementById('rm-from').textContent = reply.from || reply.email;
-  document.getElementById('rm-subj').textContent = reply.subject || '(sem assunto)';
-  document.getElementById('rm-date').textContent = reply.date || '';
-  document.getElementById('rm-body').textContent = reply.body || reply.snippet || '(sem conteúdo)';
-  document.getElementById('reply-modal').classList.add('open');
-  if (!reply.lida) {
-    try {
-      await fetch(`${BACKEND_URL}/replies/${gmailId}/read`, { method: 'POST' });
-      reply.lida = true;
-      renderInbox();
-      _updateInboxBadge(inboxReplies.filter(r => !r.lida).length);
-    } catch(e) {}
+function openRmodal(id) {
+  const r = _inboxData.find(x => x.id === id);
+  if (!r) return;
+  _currentReply = r;
+  document.getElementById('rm-from').textContent = r.from || r.email;
+  document.getElementById('rm-subj').textContent = r.subject || '';
+  document.getElementById('rm-date').textContent = r.dateFormatted || '';
+  const tabFu = document.getElementById('rm-tab-fu');
+  if (tabFu) {
+    tabFu.textContent = r.followUpGerado ? '✦ Follow-up gerado' : '✦ Follow-up';
+    tabFu.style.color = r.followUpGerado ? 'var(--inf)' : 'var(--mut)';
+  }
+  document.getElementById('rmodal').classList.add('open');
+  rmodalTab('resposta', document.getElementById('rm-tab-resp'));
+  if (!r.lido) markRead(id, true);
+}
+
+function closeRmodal() {
+  document.getElementById('rmodal').classList.remove('open');
+  _currentReply = null;
+  renderInbox();
+}
+
+function rmodalTab(tab, btn) {
+  _rmodalTab_ = tab;
+  document.querySelectorAll('.rmodal-tab').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  const content = document.getElementById('rm-content');
+  const r = _currentReply;
+  if (!r || !content) return;
+
+  if (tab === 'resposta') {
+    content.innerHTML = `<div class="rmodal-body-text">${esc(r.fullBody || r.bodyClean || r.body || '(sem conteúdo)')}</div>`;
+  } else if (tab === 'followup') {
+    if (!r.followUpGerado) {
+      content.innerHTML = `
+        <div style="text-align:center;padding:30px;color:var(--mut)">
+          <p style="margin-bottom:12px;font-size:13px">Follow-up não gerado automaticamente.</p>
+          <button class="btn btn-p btn-sm" onclick="regenerarFollowUp()">✦ Gerar agora</button>
+        </div>`;
+    } else {
+      content.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div>
+            <div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Assunto</div>
+            <input class="rmodal-fu-subj" id="rm-fu-subj" value="${esc(r.followUpAssunto||'')}">
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Corpo do e-mail</div>
+            <textarea class="rmodal-fu-corpo" id="rm-fu-corpo">${esc(r.followUpCorpo||'')}</textarea>
+          </div>
+          <p style="font-size:11px;color:var(--mut);font-style:italic">
+            ✦ Gerado com base na resposta, dados da planilha e estilo de Pedro. Edite à vontade.
+          </p>
+        </div>`;
+    }
+  } else if (tab === 'lead') {
+    const d = r.leadData || {};
+    content.innerHTML = `
+      <div class="rmodal-lead-grid">
+        <div><span style="color:var(--mut)">Nome: </span><strong>${esc(d.nome||r.from||'—')}</strong></div>
+        <div><span style="color:var(--mut)">Empresa: </span><strong>${esc(d.empresa||'—')}</strong></div>
+        <div><span style="color:var(--mut)">Faturamento: </span><strong>${esc(d.faturamento||'—')}</strong></div>
+        <div><span style="color:var(--mut)">Qualificação: </span><strong>${esc(d.qualificacao||'—')}</strong></div>
+        <div><span style="color:var(--mut)">Especialidade: </span><strong>${esc(d.medium||'—')}</strong></div>
+        <div><span style="color:var(--mut)">Cidade: </span><strong>${esc(d.cidade||'—')}</strong></div>
+        <div><span style="color:var(--mut)">Urgência: </span><strong>${esc(d.urgencia||'—')}</strong></div>
+        <div><span style="color:var(--mut)">Etapa cadência: </span><strong>${esc(d.cadenciaEtapa||'0')}/6</strong></div>
+        <div><span style="color:var(--mut)">E-mail: </span><strong style="font-family:'DM Mono',monospace;font-size:11px">${esc(r.email||'—')}</strong></div>
+        <div><span style="color:var(--mut)">Respondeu em: </span><strong>${esc(r.dateFormatted||'—')}</strong></div>
+      </div>`;
   }
 }
 
-function closeReplyModal() {
-  document.getElementById('reply-modal').classList.remove('open');
-  _activeReply = null;
+function usarFollowUp() {
+  if (!_currentReply) return;
+  const r       = _currentReply;
+  const assunto = document.getElementById('rm-fu-subj')?.value || r.followUpAssunto || `Re: ${r.subject}`;
+  const corpo   = document.getElementById('rm-fu-corpo')?.value || r.followUpCorpo || '';
+  _abrirNoEditor(r.email, assunto, corpo);
+  closeRmodal();
 }
 
-async function markAnsweredModal() {
-  if (!_activeReply) return;
+function usarFollowUpDireto(id) {
+  const r = _inboxData.find(x => x.id === id);
+  if (!r || !r.followUpGerado) return;
+  _abrirNoEditor(r.email, r.followUpAssunto, r.followUpCorpo);
+}
+
+function responderNoEditor() {
+  if (!_currentReply) return;
+  _abrirNoEditor(_currentReply.email, `Re: ${_currentReply.subject}`, '');
+  closeRmodal();
+}
+
+function _abrirNoEditor(email, assunto, corpo) {
+  closeInbox();
+  const idx = CONTACTS.findIndex(c => (c.email||'').toLowerCase() === (email||'').toLowerCase());
+  if (idx < 0) { toast('⚠ Lead não encontrado na lista atual'); return; }
+
+  S.sel = idx;
+  if (assunto) S.subjects[idx] = assunto;
+  if (corpo)   S.emails[idx]   = corpo;
+  renderList();
+
+  const c = CONTACTS[idx];
+  document.getElementById('empty-state').style.display  = 'none';
+  document.getElementById('ed-content').style.display   = 'flex';
+  document.getElementById('ed-av').textContent          = (c.name||'?')[0].toUpperCase();
+  document.getElementById('ed-name').textContent        = c.name;
+  document.getElementById('ed-email').textContent       = c.email;
+  document.getElementById('ed-subj').value              = assunto || S.subjects[idx] || getSubject(c);
+  document.getElementById('ed-body').value              = corpo   || S.emails[idx]   || '';
+  document.getElementById('approve-btn').textContent    = S.approved.has(idx) ? '✓ Aprovado' : '✓ Aprovar e-mail';
+
+  const respondeu = _inboxData.some(rep => (rep.email||'').toLowerCase() === (email||'').toLowerCase());
+  const genBtn    = document.getElementById('gen-btn');
+  if (genBtn) genBtn.textContent = respondeu ? '↻ Gerar follow-up' : '⚡ Gerar e-mail';
+
+  if (corpo) {
+    document.getElementById('gmail-btn').classList.add('visible');
+    toast('✦ Follow-up carregado — revise e envie!');
+  } else {
+    document.getElementById('gmail-btn').classList.remove('visible');
+    if (!S.emails[idx]) generateEmail();
+  }
+}
+
+function markAnsweredModal() {
+  if (_currentReply) markAnswered(_currentReply.id);
+  closeRmodal();
+}
+
+async function markRead(id, silent) {
   try {
-    await fetch(`${BACKEND_URL}/replies/${_activeReply.gmailId}/answered`, { method: 'POST' });
-    _activeReply.respondida = true;
-    _activeReply.lida       = true;
-    toast('Marcada como respondida');
-    closeReplyModal();
-    renderInbox();
+    await fetch(`${BACKEND_URL}/replies/${id}/read`, { method: 'POST' });
+    const r = _inboxData.find(x => x.id === id);
+    if (r) r.lido = true;
+    if (!silent) { renderInbox(); loadInbox(true); }
+  } catch(e) { if (!silent) toast('Erro: ' + e.message); }
+}
+
+async function markAnswered(id) {
+  try {
+    await fetch(`${BACKEND_URL}/replies/${id}/answered`, { method: 'POST' });
+    const r = _inboxData.find(x => x.id === id);
+    if (r) { r.respondido = true; r.lido = true; }
+    toast('✓ Marcado como respondido');
+    renderInbox(); loadInbox(true);
   } catch(e) { toast('Erro: ' + e.message); }
 }
 
-function openEditorFromModal() {
-  if (!_activeReply) return;
-  const email = (_activeReply.email || '').toLowerCase().trim();
-  const idx   = CONTACTS.findIndex(c => (c.email || '').toLowerCase().trim() === email);
-  closeReplyModal();
-  closeInbox();
-  if (idx !== -1) { selectContact(idx); toast(`Contato aberto: ${email}`); }
-  else toast(`Lead ${email} não encontrado na lista`);
+async function regenerarFollowUp() {
+  if (!_currentReply) return;
+  const btn = document.getElementById('rm-regen');
+  if (btn) { btn.disabled = true; btn.textContent = '⟳ Gerando...'; }
+  try {
+    const r = await fetch(`${BACKEND_URL}/replies/${_currentReply.id}/regenerate`, { method: 'POST' });
+    const d = await r.json();
+    if (d.success) {
+      _currentReply.followUpGerado  = true;
+      _currentReply.followUpAssunto = d.followUpAssunto;
+      _currentReply.followUpCorpo   = d.followUpCorpo;
+      const idx = _inboxData.findIndex(x => x.id === _currentReply.id);
+      if (idx >= 0) Object.assign(_inboxData[idx], _currentReply);
+      rmodalTab('followup', document.getElementById('rm-tab-fu'));
+      toast('✦ Follow-up regenerado!');
+    } else { toast('Erro: ' + (d.error || 'Falha')); }
+  } catch(e) { toast('Erro: ' + e.message); }
+  if (btn) { btn.disabled = false; btn.textContent = '↻ Regenerar'; }
 }
 
-async function inboxCheckNow(btn) {
-  const orig = btn.textContent;
-  btn.textContent = '↻ Verificando...';
-  btn.disabled = true;
+async function inboxCheckNow() {
+  const btn = document.getElementById('inbox-check-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⟳ Verificando...'; }
   try {
     const r = await fetch(`${BACKEND_URL}/replies/check`, { method: 'POST' });
     const d = await r.json();
-    toast(`${d.found || 0} novas respostas encontradas`);
+    toast(d.newReplies > 0
+      ? `📬 ${d.newReplies} nova(s) resposta(s)!`
+      : '✓ Nenhuma resposta nova');
     await loadInbox();
   } catch(e) { toast('Erro: ' + e.message); }
-  finally { btn.textContent = orig; btn.disabled = false; }
+  if (btn) { btn.disabled = false; btn.textContent = '🔄 Verificar agora'; }
 }
 
-// Polling de badge a cada 5 min (sem abrir overlay)
-setInterval(async () => {
-  try {
-    const r = await fetch(`${BACKEND_URL}/replies`);
-    const d = await r.json();
-    _updateInboxBadge(d.naoLidas || 0);
-  } catch(e) {}
-}, 5 * 60 * 1000);
+// Polling silencioso a cada 5min (badge sempre atualizado)
+setInterval(() => loadInbox(true), 5 * 60 * 1000);
 
 // ── MASS-EDIT CHAT ─────────────────────────────────────────────────
 const MASS_KEYWORDS = [
@@ -1983,7 +2291,25 @@ async function _executeMassEdit(emails, updates, confirmId, prevBox) {
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ email, updates }),
       });
-      if (!r.ok) { const d = await r.json(); errors.push(email + ': ' + (d.error||r.status)); }
+      if (!r.ok) {
+        const d = await r.json();
+        errors.push(email + ': ' + (d.error || r.status));
+      } else {
+        // Salvar no estado local para o editor refletir imediatamente
+        const i = CONTACTS.findIndex(c => (c.email||'').toLowerCase() === email.toLowerCase());
+        if (i >= 0) {
+          if (updates.cadenciaStatus  !== undefined) CONTACTS[i].cadenciaStatus  = updates.cadenciaStatus;
+          if (updates.cadenciaEtapa   !== undefined) CONTACTS[i].cadenciaEtapa   = updates.cadenciaEtapa;
+          if (updates.emailRespondido !== undefined) CONTACTS[i].emailRespondido = updates.emailRespondido;
+          if (updates.dataResposta    !== undefined) CONTACTS[i].dataResposta    = updates.dataResposta;
+          // Atualizar editor se este lead está selecionado
+          if (S.sel === i) {
+            const subj = S.subjects[i] || document.getElementById('ed-subj').value;
+            selectContact(i);
+            document.getElementById('ed-subj').value = subj;
+          }
+        }
+      }
     } catch(e) { errors.push(email + ': ' + e.message); }
     done++;
     bar.style.width = Math.round(done / emails.length * 100) + '%';
@@ -1996,7 +2322,7 @@ async function _executeMassEdit(emails, updates, confirmId, prevBox) {
 
   prevBox.innerHTML = `<span style="color:var(--acc)">${msg}</span>`;
   toast(msg);
-  // Recarrega contatos
+  renderList();
   await syncNow();
 }
 </script>

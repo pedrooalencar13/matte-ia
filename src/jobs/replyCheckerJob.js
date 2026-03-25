@@ -1,197 +1,283 @@
-/**
- * replyCheckerJob.js
- * Verifica respostas de leads no Gmail a cada 15 minutos.
- * - Lê todos os e-mails da planilha via readAll()
- * - Busca mensagens na inbox enviadas por esses e-mails nos últimos 2 dias
- * - Persiste resultados em data/replies.json
- * - Atualiza planilha: col T (respondido=sim), col U (data), col P (status=respondeu)
- */
+'use strict';
+const cron         = require('node-cron');
+const { google }   = require('googleapis');
+const Anthropic    = require('@anthropic-ai/sdk');
+const sheetsClient = require('../services/sheetsClient');
+const fs           = require('fs');
+const path         = require('path');
 
-const cron   = require('node-cron');
-const { google } = require('googleapis');
-const fs     = require('fs');
-const path   = require('path');
-const { readAll, updateCell } = require('../services/sheetsClient');
-const { logger } = require('../utils/logger');
+const REPLIES_FILE = path.join(process.cwd(), 'data', 'replies.json');
+const LOG_FILE     = path.join(process.cwd(), 'logs', 'reply_checker.log');
 
-const REPLIES_FILE = path.join(__dirname, '../../data/replies.json');
-const COL_EMAIL    = 3;   // D = índice 3
-const COL_STATUS   = 15;  // P
-const COL_RESPONDIDO = 19; // T
-const COL_DT_RESPOSTA = 20; // U
+// ── Índices de colunas (0-based) ──────────────────────────────────────────────
+const COL_EMAIL       = 3;   // D
+const COL_CAD_STATUS  = 15;  // P
+const COL_RESPONDIDO  = 19;  // T
+const COL_DT_RESPOSTA = 20;  // U
 
-// Garantir diretório
-const dir = path.dirname(REPLIES_FILE);
-if (!fs.existsSync(dir)) fs.mkdirSync(dir, { recursive: true });
+function log(msg) {
+  const line = `[${new Date().toISOString()}] ${msg}`;
+  console.log(line);
+  try { fs.appendFileSync(LOG_FILE, line + '\n'); } catch(e) {}
+}
 
 function loadReplies() {
-  try { return JSON.parse(fs.readFileSync(REPLIES_FILE, 'utf-8')); }
-  catch(e) { return []; }
+  try { return JSON.parse(fs.readFileSync(REPLIES_FILE, 'utf8')); }
+  catch(e) { return { replies: [], processedIds: [], lastCheck: null }; }
 }
 
 function saveReplies(data) {
-  fs.writeFileSync(REPLIES_FILE, JSON.stringify(data, null, 2));
+  try {
+    fs.mkdirSync(path.dirname(REPLIES_FILE), { recursive: true });
+    fs.mkdirSync(path.dirname(LOG_FILE),     { recursive: true });
+    fs.writeFileSync(REPLIES_FILE, JSON.stringify(data, null, 2));
+  } catch(e) { log('Erro ao salvar replies: ' + e.message); }
 }
 
-function getOAuth2Client() {
+function getGmailClient() {
   const oauth2 = new google.auth.OAuth2(
     process.env.GMAIL_CLIENT_ID,
     process.env.GMAIL_CLIENT_SECRET
   );
   oauth2.setCredentials({ refresh_token: process.env.GMAIL_REFRESH_TOKEN });
-  return oauth2;
+  return google.gmail({ version: 'v1', auth: oauth2 });
 }
 
-/**
- * Extrai texto plain de um payload de mensagem do Gmail (recursivo)
- */
 function extractBody(payload) {
   if (!payload) return '';
-  if (payload.mimeType === 'text/plain' && payload.body?.data) {
+  if (payload.mimeType === 'text/plain' && payload.body?.data)
     return Buffer.from(payload.body.data, 'base64').toString('utf-8');
-  }
   if (payload.parts) {
     for (const part of payload.parts) {
-      const text = extractBody(part);
-      if (text) return text;
+      const b = extractBody(part);
+      if (b) return b;
     }
   }
   return '';
 }
 
-/**
- * Função principal: escaneia Gmail e atualiza planilha
- */
-async function checkReplies() {
-  if (!process.env.GMAIL_CLIENT_ID) {
-    logger.warn('[REPLY] Gmail OAuth2 não configurado. Checagem ignorada.');
-    return { checked: 0, found: 0 };
-  }
-
-  try {
-    const rows = await readAll();
-    if (!rows.length) {
-      logger.info('[REPLY] Planilha vazia.');
-      return { checked: 0, found: 0 };
-    }
-
-    // Monta mapa email→rowIndex (rowIndex = linha real na planilha, começa em 2)
-    const emailMap = {};
-    rows.forEach((row, i) => {
-      const email = (row[COL_EMAIL] || '').toLowerCase().trim();
-      if (email && email.includes('@')) {
-        emailMap[email] = i + 2; // +2: header ocupa linha 1
-      }
-    });
-
-    const allEmails = Object.keys(emailMap);
-    if (!allEmails.length) {
-      logger.info('[REPLY] Nenhum e-mail na planilha.');
-      return { checked: 0, found: 0 };
-    }
-
-    logger.info(`[REPLY] Checando respostas de ${allEmails.length} leads...`);
-
-    const gmail     = google.gmail({ version: 'v1', auth: getOAuth2Client() });
-    const replies   = loadReplies();
-    const seenIds   = new Set(replies.map(r => r.gmailId));
-
-    // Data de corte: 48h atrás (em segundos epoch)
-    const cutoff = Math.floor((Date.now() - 48 * 60 * 60 * 1000) / 1000);
-
-    // Busca todas as mensagens recebidas nos últimos 2 dias da inbox
-    const listRes = await gmail.users.messages.list({
-      userId: 'me',
-      q: `in:inbox after:${cutoff}`,
-      maxResults: 100,
-    });
-
-    const messages = listRes.data.messages || [];
-    logger.info(`[REPLY] ${messages.length} mensagens recentes encontradas na inbox`);
-
-    let found = 0;
-    const updated = [...replies];
-
-    for (const m of messages) {
-      if (seenIds.has(m.id)) continue;
-
-      try {
-        const detail = await gmail.users.messages.get({
-          userId: 'me',
-          id: m.id,
-          format: 'full',
-          metadataHeaders: ['From', 'Subject', 'Date'],
-        });
-
-        const headers  = detail.data.payload?.headers || [];
-        const getHdr   = (name) => headers.find(h => h.name === name)?.value || '';
-        const fromRaw  = getHdr('From');
-        // Extrai e-mail do campo From: "Nome <email@domain.com>" ou "email@domain.com"
-        const fromMatch = fromRaw.match(/<([^>]+)>/) || fromRaw.match(/([^\s]+@[^\s]+)/);
-        const fromEmail = fromMatch ? fromMatch[1].toLowerCase().trim() : '';
-
-        if (!fromEmail || !emailMap[fromEmail]) continue;
-
-        const rowNum = emailMap[fromEmail];
-        const row    = rows[rowNum - 2]; // -2 para voltar ao índice do array
-
-        // Verifica se já está marcado como respondeu na planilha
-        const jaRespondeu = (row[COL_RESPONDIDO] || '') === 'sim';
-
-        const replyEntry = {
-          gmailId:     m.id,
-          email:       fromEmail,
-          from:        fromRaw,
-          subject:     getHdr('Subject'),
-          date:        getHdr('Date'),
-          snippet:     detail.data.snippet || '',
-          body:        extractBody(detail.data.payload).slice(0, 2000),
-          rowNum,
-          receivedAt:  new Date().toISOString(),
-          lida:        false,
-          respondida:  false,
-        };
-
-        updated.push(replyEntry);
-        seenIds.add(m.id);
-        found++;
-
-        logger.success(`[REPLY] Resposta de ${fromEmail}: "${replyEntry.subject}"`);
-
-        // Atualiza planilha se ainda não foi marcado
-        if (!jaRespondeu) {
-          const dateIso = new Date(replyEntry.date || Date.now()).toISOString();
-          try {
-            await updateCell(rowNum, COL_RESPONDIDO,  'sim');
-            await updateCell(rowNum, COL_DT_RESPOSTA, dateIso);
-            await updateCell(rowNum, COL_STATUS,      'respondeu');
-            logger.info(`[REPLY] Planilha atualizada: linha ${rowNum} → respondeu`);
-          } catch(err) {
-            logger.warn(`[REPLY] Erro ao atualizar planilha para ${fromEmail}: ${err.message}`);
-          }
-        }
-      } catch(e) {
-        logger.warn(`[REPLY] Erro ao processar mensagem ${m.id}: ${e.message}`);
-      }
-    }
-
-    saveReplies(updated);
-    logger.info(`[REPLY] Checagem concluída: ${found} respostas novas`);
-    return { checked: messages.length, found };
-
-  } catch(err) {
-    logger.error('[REPLY] Erro geral na checagem:', err.message);
-    return { checked: 0, found: 0, error: err.message };
-  }
+function cleanBody(raw) {
+  return raw.split('\n')
+    .filter(l => {
+      const t = l.trim();
+      return !t.startsWith('>') && !t.startsWith('On ') &&
+             !t.startsWith('Em ') && !t.match(/^-{3,}/) && t !== '--';
+    })
+    .join('\n').trim();
 }
 
-// ── Cron: a cada 15 minutos ──────────────────────────────────────────────────
+// ── Gerar follow-up com Claude ────────────────────────────────────────────────
+async function gerarFollowUp(replyData, leadData, sentHistory, anthropic) {
+  log(`Gerando follow-up para: ${replyData.email}`);
+  const tomExemplos = sentHistory.slice(0, 20).map(e => e.snippet).filter(Boolean).join('\n---\n');
+
+  const prompt = `Você é Pedro Aranha, especialista em gestão de tráfego pago para escritórios de advocacia.
+
+## DADOS COMPLETOS DO LEAD
+- Nome: ${leadData.nome || replyData.from}
+- Empresa/Escritório: ${leadData.empresa || 'não informado'}
+- Faturamento mensal: ${leadData.faturamento || 'não informado'}
+- Qualificação: ${leadData.qualificacao || 'não informado'}
+- Especialidade jurídica: ${leadData.medium || 'não informado'}
+- Cidade: ${leadData.cidade || 'não informado'}
+- Urgência declarada: ${leadData.urgencia || 'não informada'}
+- Etapa da cadência: ${leadData.cadenciaEtapa || '0'} de 6
+- Data do primeiro contato: ${leadData.created || 'não registrada'}
+
+## RESPOSTA DO LEAD
+Assunto: ${replyData.subject}
+Data: ${replyData.dateFormatted}
+${replyData.bodyClean}
+
+## SEU ESTILO DE ESCRITA (últimos e-mails enviados)
+${tomExemplos || '(sem histórico disponível)'}
+
+## MISSÃO
+Analise a resposta do lead. Escreva um follow-up PERFEITO que:
+1. Responda diretamente ao que ele disse (mostre que leu com atenção)
+2. Avance para o próximo passo natural (reunião, call, proposta)
+3. Use o mesmo tom e estilo dos seus e-mails anteriores
+4. Seja humano, caloroso e consultivo — máximo 3 parágrafos
+5. Termine com CTA claro: WhatsApp (11) 99515-7048 ou sugestão de horário
+
+Formato da resposta — PRIMEIRA LINHA: assunto do e-mail. SEGUNDA LINHA: ===ASSUNTO===. RESTANTE: corpo do e-mail.`;
+
+  const r = await anthropic.messages.create({
+    model: 'claude-haiku-4-5-20251001', max_tokens: 700,
+    messages: [{ role: 'user', content: prompt }],
+  });
+
+  const texto  = r.content[0].text;
+  const partes = texto.split('===ASSUNTO===');
+  return partes.length === 2
+    ? { assunto: partes[0].trim(), corpo: partes[1].trim() }
+    : { assunto: `Re: ${replyData.subject}`, corpo: texto.trim() };
+}
+
+// ── Verificação principal ─────────────────────────────────────────────────────
+async function checkReplies() {
+  if (!process.env.GMAIL_CLIENT_ID || !process.env.GMAIL_REFRESH_TOKEN) {
+    log('Gmail não configurado — pulando verificação');
+    return { checked: 0, newReplies: 0 };
+  }
+
+  log('=== Iniciando verificação de respostas ===');
+  const stored    = loadReplies();
+  const gmail     = getGmailClient();
+  const anthropic = new Anthropic({ apiKey: process.env.CLAUDE_API_KEY });
+
+  // Carregar leads da planilha (inclui header em sheetRows[0])
+  let sheetRows = [], sheetEmails = [];
+  try {
+    await new Promise(r => setTimeout(r, 1000));
+    sheetRows   = await sheetsClient.readAll();
+    // slice(1) descarta o cabeçalho
+    sheetEmails = sheetRows.slice(1)
+      .map(r => (r[COL_EMAIL] || '').trim().toLowerCase())
+      .filter(e => e.includes('@'));
+    log(`${sheetEmails.length} leads carregados da planilha`);
+  } catch(e) {
+    log('Erro ao ler planilha: ' + e.message);
+    return { checked: 0, newReplies: 0 };
+  }
+
+  // Histórico de enviados para análise de tom
+  let sentHistory = [];
+  try {
+    const sentRes = await gmail.users.messages.list({ userId: 'me', q: 'in:sent', maxResults: 20 });
+    for (const m of (sentRes.data.messages || [])) {
+      const d = await gmail.users.messages.get({ userId: 'me', id: m.id, format: 'metadata' });
+      sentHistory.push({ snippet: d.data.snippet || '' });
+      await new Promise(r => setTimeout(r, 100));
+    }
+  } catch(e) { log('Aviso: não foi possível carregar enviados: ' + e.message); }
+
+  // Buscar e-mails recebidos nas últimas 72h
+  const after   = Math.floor((Date.now() - 72 * 60 * 60 * 1000) / 1000);
+  const listRes = await gmail.users.messages.list({
+    userId: 'me', q: `in:inbox after:${after}`, maxResults: 30,
+  });
+  const messages = listRes.data.messages || [];
+  log(`${messages.length} e-mails para verificar`);
+
+  let newReplies = 0;
+  const updatedReplies = [...(stored.replies || [])];
+
+  for (const msg of messages) {
+    if ((stored.processedIds || []).includes(msg.id)) continue;
+    try {
+      await new Promise(r => setTimeout(r, 300));
+      const detail  = await gmail.users.messages.get({ userId: 'me', id: msg.id });
+      const headers = detail.data.payload?.headers || [];
+      const getHdr  = name => headers.find(h => h.name === name)?.value || '';
+
+      const fromHeader = getHdr('From');
+      const subject    = getHdr('Subject') || '(sem assunto)';
+      const date       = getHdr('Date')    || '';
+
+      const fromMatch = fromHeader.match(/[\w.+\-]+@[\w.\-]+\.\w+/);
+      if (!fromMatch) { stored.processedIds.push(msg.id); continue; }
+      const fromEmail = fromMatch[0].toLowerCase();
+
+      if (!sheetEmails.includes(fromEmail))                      { stored.processedIds.push(msg.id); continue; }
+      if (updatedReplies.some(r => r.id === msg.id))             { stored.processedIds.push(msg.id); continue; }
+
+      log(`Resposta de lead encontrada: ${fromEmail}`);
+
+      const bodyRaw   = extractBody(detail.data.payload);
+      const bodyClean = cleanBody(bodyRaw).slice(0, 800);
+
+      // Buscar dados do lead na planilha (sheetRows[0] é cabeçalho, dados a partir de [1])
+      let leadData = {}, leadRowIndex = -1;
+      for (let i = 1; i < sheetRows.length; i++) {
+        if ((sheetRows[i][COL_EMAIL] || '').trim().toLowerCase() === fromEmail) {
+          leadRowIndex = i; // índice no array (1-based, sendo 0 o header)
+          leadData = {
+            nome:          `${sheetRows[i][0]||''} ${sheetRows[i][1]||''}`.trim(),
+            empresa:        sheetRows[i][4]  || '',
+            created:        sheetRows[i][5]  || '',
+            cidade:         sheetRows[i][6]  || '',
+            medium:         sheetRows[i][9]  || '',
+            faturamento:    sheetRows[i][12] || '',
+            urgencia:       sheetRows[i][13] || '',
+            qualificacao:   sheetRows[i][14] || '',
+            cadenciaStatus: sheetRows[i][15] || '',
+            cadenciaEtapa:  sheetRows[i][16] || '0',
+          };
+          break;
+        }
+      }
+
+      const dateISO = new Date(date).toISOString();
+      const replyObj = {
+        id:              msg.id,
+        email:           fromEmail,
+        from:            fromHeader,
+        subject,
+        bodyClean,
+        body:            bodyClean,
+        fullBody:        bodyRaw.slice(0, 3000),
+        date:            dateISO,
+        dateFormatted:   new Date(date).toLocaleString('pt-BR',
+          { day:'2-digit', month:'2-digit', year:'numeric', hour:'2-digit', minute:'2-digit' }),
+        threadId:        detail.data.threadId,
+        leadData,
+        lido:            false,
+        respondido:      false,
+        followUpGerado:  false,
+        followUpAssunto: '',
+        followUpCorpo:   '',
+      };
+
+      // Gerar follow-up com Claude
+      try {
+        const fu = await gerarFollowUp(replyObj, leadData, sentHistory, anthropic);
+        replyObj.followUpGerado  = true;
+        replyObj.followUpAssunto = fu.assunto;
+        replyObj.followUpCorpo   = fu.corpo;
+        log(`Follow-up gerado: "${fu.assunto}"`);
+      } catch(e) {
+        log(`Aviso: não foi possível gerar follow-up: ${e.message}`);
+      }
+
+      // Atualizar planilha (leadRowIndex é index 1-based no array com header em 0)
+      // Linha na planilha = leadRowIndex + 1 (header ocupa linha 1 da sheet, dados a partir de 2)
+      if (leadRowIndex >= 0) {
+        const planilhaRow = leadRowIndex + 1;
+        try {
+          await new Promise(r => setTimeout(r, 500));
+          await sheetsClient.updateCell(planilhaRow, COL_RESPONDIDO,  'sim');
+          await new Promise(r => setTimeout(r, 300));
+          await sheetsClient.updateCell(planilhaRow, COL_DT_RESPOSTA, dateISO);
+          await new Promise(r => setTimeout(r, 300));
+          await sheetsClient.updateCell(planilhaRow, COL_CAD_STATUS,  'respondeu');
+          log(`Planilha atualizada: ${fromEmail} (linha ${planilhaRow}) → respondeu`);
+        } catch(e) { log(`Aviso: não foi possível atualizar planilha: ${e.message}`); }
+      }
+
+      updatedReplies.unshift(replyObj);
+      newReplies++;
+      stored.processedIds.push(msg.id);
+    } catch(e) {
+      log(`Erro ao processar ${msg.id}: ${e.message}`);
+      stored.processedIds.push(msg.id);
+    }
+  }
+
+  stored.replies      = updatedReplies.slice(0, 300);
+  stored.lastCheck    = new Date().toISOString();
+  stored.processedIds = (stored.processedIds || []).slice(-1000);
+  saveReplies(stored);
+  log(`=== Concluído: ${newReplies} nova(s) resposta(s) ===`);
+  return { checked: messages.length, newReplies, total: updatedReplies.length, lastCheck: stored.lastCheck };
+}
+
+// ── Cron: a cada 15 minutos ───────────────────────────────────────────────────
 cron.schedule('*/15 * * * *', async () => {
-  logger.info('[CRON-REPLY] Verificando respostas de leads...');
-  const result = await checkReplies();
-  logger.info(`[CRON-REPLY] Resultado: ${result.found} novas de ${result.checked} mensagens`);
-});
+  try { await checkReplies(); }
+  catch(e) { log('Erro no cron: ' + e.message); }
+}, { timezone: 'America/Sao_Paulo' });
 
-logger.info('[CRON-REPLY] Agendado: a cada 15 minutos (*/15 * * * *)');
+log('[CRON-REPLY] Agendado: a cada 15 minutos');
 
-module.exports = { checkReplies };
+module.exports = { checkReplies, gerarFollowUp };
