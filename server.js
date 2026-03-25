@@ -11,6 +11,7 @@ const cadenceRouter = require('./src/routes/cadence');
 const trackRouter   = require('./src/routes/track');
 const inboxRouter   = require('./src/routes/inbox');
 const tasksRouter   = require('./src/routes/tasks');
+const repliesRouter = require('./src/routes/replies');
 
 // Cron jobs em background
 require('./src/jobs/scraperJob');
@@ -36,7 +37,7 @@ app.use(cors({
     if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
     cb(new Error(`CORS: origin não permitida — ${origin}`));
   },
-  methods: ['GET', 'POST', 'DELETE', 'OPTIONS'],
+  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   allowedHeaders: ['Content-Type', 'Authorization'],
   credentials: true,
 }));
@@ -60,6 +61,7 @@ app.use('/cadence', cadenceRouter);
 app.use('/track',   trackRouter);
 app.use('/inbox',   inboxRouter);
 app.use('/tasks',   tasksRouter);
+app.use('/replies', repliesRouter);
 
 // ── 404 ─────────────────────────────────────────────────────────────────────
 app.use((req, res) => {

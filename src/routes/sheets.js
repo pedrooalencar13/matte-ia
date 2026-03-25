@@ -1,5 +1,5 @@
 const express = require('express');
-const { pullFromSheets, pushToSheets } = require('../services/sheetsClient');
+const { pullFromSheets, pushToSheets, updateCadenceRow } = require('../services/sheetsClient');
 const { readLeads, writeLeads } = require('./leads');
 const { logger } = require('../utils/logger');
 
@@ -56,6 +56,22 @@ router.get('/pull', async (req, res) => {
   } catch (err) {
     logger.error('[SHEETS] Erro ao fazer pull:', err.message);
     res.status(500).json({ error: 'Erro ao ler Google Sheets', detail: err.message });
+  }
+});
+
+// ─── POST /sheets/update-row ──────────────────────────────────────────────────
+// Atualiza colunas de cadência/tracking de um lead pelo e-mail
+// Body: { email: string, updates: { cadenciaStatus?, cadenciaEtapa?, cadenciaProximo?, emailAberto?, emailRespondido?, dataResposta? } }
+router.post('/update-row', async (req, res) => {
+  try {
+    const { email, updates } = req.body || {};
+    if (!email) return res.status(400).json({ error: 'email obrigatório' });
+    const ok = await updateCadenceRow(email, updates || {});
+    if (!ok) return res.status(404).json({ error: `Lead não encontrado: ${email}` });
+    res.json({ ok: true, email });
+  } catch(err) {
+    logger.error('[SHEETS] Erro ao atualizar linha:', err.message);
+    res.status(500).json({ error: err.message });
   }
 });
 

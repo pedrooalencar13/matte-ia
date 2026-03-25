@@ -241,4 +241,38 @@ function formatPhone(raw) {
   return raw;
 }
 
-module.exports = { pullFromSheets, pushToSheets, getExistingEmails, updateCadenceRow };
+// ── Leitura raw (todas as linhas, sem filtro) ──────────────────────────────────
+async function readAll() {
+  const sheets  = await getSheetsClient();
+  const sheetId = process.env.SHEET_ID;
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: `${tab()}!${SHEET_RANGE_READ}`,
+  });
+  return res.data.values || [];
+}
+
+// ── Atualização de célula individual ──────────────────────────────────────────
+/**
+ * Atualiza uma célula específica pelo número de linha (1-based, incluindo header)
+ * e índice de coluna (0-based).
+ * @param {number} rowNum   - linha na planilha (2 = primeira linha de dados)
+ * @param {number} colIndex - coluna 0-based (ex: 19 = T, 20 = U, 15 = P)
+ * @param {string} value    - valor a gravar
+ */
+async function updateCell(rowNum, colIndex, value) {
+  const sheets  = await getSheetsClient();
+  const sheetId = process.env.SHEET_ID;
+  // Converte índice de coluna 0-based para letra (A=0, B=1, ...)
+  const colLetter = String.fromCharCode(65 + colIndex);
+  const range = `${tab()}!${colLetter}${rowNum}`;
+  await sheets.spreadsheets.values.update({
+    spreadsheetId: sheetId,
+    range,
+    valueInputOption: 'RAW',
+    resource: { values: [[value]] },
+  });
+  logger.info(`[SHEETS] updateCell(${range}) = "${value}"`);
+}
+
+module.exports = { pullFromSheets, pushToSheets, getExistingEmails, updateCadenceRow, readAll, updateCell };
