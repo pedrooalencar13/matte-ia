@@ -1,16 +1,6 @@
-const cron = require('node-cron');
-const { checkAndSendCadence } = require('../services/cadenceManager');
+// !! ENVIO AUTOMÁTICO DESABILITADO — 25/03/2026 !!
+// Motivo: incidente de envio não autorizado detectado em 24/03/2026.
+// O cron de cadência NÃO envia mais e-mails automaticamente.
+// Todo envio deve ser iniciado manualmente pelo frontend com source validado.
 const { logger } = require('../utils/logger');
-
-// A cada 1 hora
-cron.schedule('0 * * * *', async () => {
-  logger.info('[CRON-CADENCE] Verificando e-mails de cadência...');
-  try {
-    const result = await checkAndSendCadence();
-    logger.info(`[CRON-CADENCE] ${result.sent} enviados, ${result.errors} erros`);
-  } catch (err) {
-    logger.error('[CRON-CADENCE] Erro na rodada:', err.message);
-  }
-});
-
-logger.info('[CRON-CADENCE] Agendado: a cada hora (0 * * * *)');
+logger.warn('[CRON-CADENCE] DESABILITADO — envio automático bloqueado por segurança');

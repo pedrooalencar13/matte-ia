@@ -1,17 +1,35 @@
 const express = require('express');
 const { sendEmail, sendBulkEmails, getBulkStatus } = require('../services/gmailSender');
 const { logger } = require('../utils/logger');
+const fs   = require('fs');
+const path = require('path');
 
 const router = express.Router();
 
+const SENT_FILE    = path.join(process.cwd(), 'data', 'sent_emails.json');
+const VALID_SOURCES = ['manual_individual', 'manual_bulk'];
+
+function loadSent() {
+  try { return JSON.parse(fs.readFileSync(SENT_FILE, 'utf8')); }
+  catch(e) { return []; }
+}
+function saveSent(list) {
+  fs.mkdirSync(path.dirname(SENT_FILE), { recursive: true });
+  fs.writeFileSync(SENT_FILE, JSON.stringify(list, null, 2));
+}
+
 // ─── POST /email/send ─────────────────────────────────────────────────────────
 router.post('/send', async (req, res) => {
-  const { to, subject, body } = req.body || {};
+  const { to, subject, body, source } = req.body || {};
   if (!to || !subject || !body) {
     return res.status(400).json({ error: 'Campos obrigatórios: to, subject, body' });
   }
+  if (!VALID_SOURCES.includes(source)) {
+    logger.error(`[EMAIL] /send bloqueado — source inválido: "${source}" para ${to}`);
+    return res.status(403).json({ error: `source inválido: "${source}". Envio manual requer source válido.` });
+  }
   try {
-    const msgId = await sendEmail({ to, subject, body });
+    const msgId = await sendEmail({ to, subject, body, source });
     logger.success(`[EMAIL] E-mail enviado para ${to} — msgId: ${msgId}`);
     res.json({ sent: true, messageId: msgId });
   } catch (err) {
@@ -23,9 +41,13 @@ router.post('/send', async (req, res) => {
 // ─── POST /email/bulk ─────────────────────────────────────────────────────────
 // Inicia envio em massa em background — retorna jobId imediatamente
 router.post('/bulk', async (req, res) => {
-  const { emails } = req.body || {};
+  const { emails, source } = req.body || {};
   if (!emails || !Array.isArray(emails) || emails.length === 0) {
     return res.status(400).json({ error: 'Forneça um array "emails" com pelo menos 1 item' });
+  }
+  if (!VALID_SOURCES.includes(source)) {
+    logger.error(`[EMAIL] /bulk bloqueado — source inválido: "${source}"`);
+    return res.status(403).json({ error: `source inválido: "${source}". Envio manual requer source válido.` });
   }
 
   const status = getBulkStatus();
@@ -50,6 +72,29 @@ router.post('/bulk', async (req, res) => {
     total: emails.length,
     message: `Enviando ${emails.length} e-mails em background`,
   });
+});
+
+// ─── POST /email/mark-sent ────────────────────────────────────────────────────
+// Persiste registro de e-mail enviado manualmente (fonte da verdade para o frontend)
+router.post('/mark-sent', (req, res) => {
+  const { email, nome, assunto, source } = req.body || {};
+  if (!email || !assunto) {
+    return res.status(400).json({ error: 'Campos obrigatórios: email, assunto' });
+  }
+  try {
+    const list = loadSent();
+    list.unshift({ email: email.toLowerCase().trim(), nome: nome || '', assunto, source: source || 'manual_individual', dt: new Date().toISOString() });
+    saveSent(list.slice(0, 1000));
+    res.json({ ok: true });
+  } catch(e) {
+    res.status(500).json({ error: e.message });
+  }
+});
+
+// ─── GET /email/sent ──────────────────────────────────────────────────────────
+// Retorna lista de e-mails enviados (para restaurar estado do frontend)
+router.get('/sent', (req, res) => {
+  res.json(loadSent());
 });
 
 // ─── GET /email/status ────────────────────────────────────────────────────────

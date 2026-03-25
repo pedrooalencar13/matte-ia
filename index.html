@@ -563,7 +563,7 @@ function isAdvogado(c) {
 
 // ── STATE ─────────────────────────────────────────────────────────
 let CONTACTS = [];
-const S = { sel:null, approved:new Set(), skipped:new Set(), emails:{}, subjects:{}, history:[] };
+const S = { sel:null, approved:new Set(), sent:new Set(), skipped:new Set(), emails:{}, subjects:{}, history:[] };
 let API_KEY = localStorage.getItem('matte_key') || '';
 
 // ── INIT ──────────────────────────────────────────────────────────
@@ -573,6 +573,7 @@ window.addEventListener('DOMContentLoaded', () => {
     document.getElementById('key-err').style.display = 'none';
   });
   if (!API_KEY) openModal();
+  _carregarEnviados();
   loadSheet();
   setInterval(() => loadSheet(false), SYNC_MS);
   // Carregar badge da inbox ao iniciar (silencioso, após 4s)
@@ -641,6 +642,12 @@ async function loadSheet(showLoading=true) {
         respondido:   cleanCell(r[COL.RESPONDIDO]),
       }))
       .filter(c => c.email && c.email.includes('@'));
+    // Restaurar aprovados/enviados confirmados pela planilha
+    CONTACTS.forEach((c, i) => {
+      if (c.aberto === 'sim' || c.respondido === 'sim') {
+        S.approved.add(i); S.sent.add(i);
+      }
+    });
     renderList();
     if (prevEmail) {
       const idx = CONTACTS.findIndex(c => c.email === prevEmail);
@@ -726,7 +733,7 @@ function renderList() {
     d.innerHTML = `
       <div class="ci-name">
         <span>${esc(c.name)}</span>
-        ${S.approved.has(i) ? '<span class="ci-check">✓</span>' : ''}
+        ${S.sent.has(i) ? '<span class="ci-check" title="Enviado">✓</span>' : S.approved.has(i) ? '<span class="ci-check" style="color:#b8860b" title="Gerado, não enviado">⏸</span>' : ''}
       </div>
       <div class="ci-email">${esc(c.email)}</div>
       <div class="tags">
@@ -950,16 +957,17 @@ async function enviarEmail() {
     const r = await fetch(`${BACKEND_URL}/email/send`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ to: c.email, subject: subj, body, name: c.name })
+      body: JSON.stringify({ to: c.email, subject: subj, body, name: c.name, source: 'manual_individual' })
     });
     const d = await r.json();
     if (!r.ok) throw new Error(d.error || `Erro ${r.status} no servidor`);
 
     S.approved.add(S.sel);
+    S.sent.add(S.sel);
     S.emails[S.sel]   = body;
     S.subjects[S.sel] = subj;
     document.getElementById('approve-btn').textContent = '✓ Aprovado';
-    _registrarEnvioLocal(c.email, c.name, subj);
+    _marcarEnviado(c.email, c.name, subj);
     renderList();
     toast('✓ E-mail enviado para ' + c.name + '!');
 
@@ -976,11 +984,44 @@ async function enviarEmail() {
   }
 }
 
-function _registrarEnvioLocal(email, nome, assunto) {
+function _marcarEnviado(email, nome, assunto) {
   try {
-    const hist = JSON.parse(localStorage.getItem('matte_envios') || '[]');
-    hist.unshift({ email, nome, assunto, dt: new Date().toISOString() });
-    localStorage.setItem('matte_envios', JSON.stringify(hist.slice(0, 500)));
+    const map = JSON.parse(localStorage.getItem('matte_sent_v2') || '{}');
+    map[email.toLowerCase().trim()] = { nome, assunto, dt: new Date().toISOString() };
+    localStorage.setItem('matte_sent_v2', JSON.stringify(map));
+  } catch(e) {}
+  // Persiste no backend (melhor esforço)
+  fetch(`${BACKEND_URL}/email/mark-sent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, nome, assunto, source: 'manual_individual' }),
+  }).catch(() => {});
+}
+
+async function _carregarEnviados() {
+  // Restaura do localStorage primeiro (imediato)
+  try {
+    const map = JSON.parse(localStorage.getItem('matte_sent_v2') || '{}');
+    const emails = Object.keys(map);
+    if (emails.length > 0 && CONTACTS.length > 0) {
+      CONTACTS.forEach((c, i) => {
+        if (map[c.email?.toLowerCase()?.trim()]) { S.approved.add(i); S.sent.add(i); }
+      });
+      renderList();
+    }
+  } catch(e) {}
+  // Complementa com dados do backend
+  try {
+    const r = await fetch(`${BACKEND_URL}/email/sent`);
+    if (!r.ok) return;
+    const list = await r.json();
+    const emailSet = new Set(list.map(e => (e.email || '').toLowerCase().trim()));
+    if (emailSet.size > 0 && CONTACTS.length > 0) {
+      CONTACTS.forEach((c, i) => {
+        if (emailSet.has(c.email?.toLowerCase()?.trim())) { S.approved.add(i); S.sent.add(i); }
+      });
+      renderList();
+    }
   } catch(e) {}
 }
 
@@ -1211,16 +1252,17 @@ async function startBulkSend() {
     const r = await fetch(`${BACKEND_URL}/email/bulk`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ emails: emailsParaEnviar })
+      body: JSON.stringify({ emails: emailsParaEnviar, source: 'manual_bulk' })
     });
     const d = await r.json();
 
     if (d.jobId) {
       await pollBulkStatus(d.jobId, total);
+      lista.forEach(c => { S.approved.add(c.idx); S.sent.add(c.idx); _marcarEnviado(c.email, c.name, S.subjects[c.idx] || ''); });
     } else {
       document.getElementById('bulk-prog-bar').style.width = '100%';
       document.getElementById('bulk-status').textContent = `✓ ${d.sent||0} enviados · ${d.failed||0} erros`;
-      lista.forEach(c => S.approved.add(c.idx));
+      lista.forEach(c => { S.approved.add(c.idx); S.sent.add(c.idx); _marcarEnviado(c.email, c.name, S.subjects[c.idx] || ''); });
     }
   } catch(e) {
     console.error('Erro bulk send:', e);

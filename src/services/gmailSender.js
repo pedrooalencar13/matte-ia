@@ -1,5 +1,18 @@
 const { google } = require('googleapis');
 const { logger } = require('../utils/logger');
+const fs   = require('fs');
+const path = require('path');
+
+const AUDIT_LOG  = path.join(process.cwd(), 'logs', 'email_audit.log');
+const VALID_SOURCES = ['manual_individual', 'manual_bulk'];
+
+function auditLog(entry) {
+  try {
+    fs.mkdirSync(path.dirname(AUDIT_LOG), { recursive: true });
+    const line = JSON.stringify({ ts: new Date().toISOString(), ...entry }) + '\n';
+    fs.appendFileSync(AUDIT_LOG, line);
+  } catch(e) { logger.warn('[AUDIT] Falha ao gravar log:', e.message); }
+}
 
 // Pixel de tracking: GIF 1x1 transparente em base64
 const PIXEL_GIF = Buffer.from(
@@ -88,10 +101,18 @@ ${pixel}
 
 /**
  * Envia um único e-mail via Gmail API.
- * @param {object} opts - { to, subject, body, trackingPixelUrl? }
+ * @param {object} opts - { to, subject, body, trackingPixelUrl?, source }
+ *   source DEVE ser 'manual_individual' ou 'manual_bulk' — qualquer outro valor é bloqueado.
  * @returns {string} messageId do Gmail
  */
-async function sendEmail({ to, subject, body, trackingPixelUrl }) {
+async function sendEmail({ to, subject, body, trackingPixelUrl, source }) {
+  if (!VALID_SOURCES.includes(source)) {
+    const msg = `[BLOQUEADO] Tentativa de envio com source inválido: "${source}" para ${to}`;
+    logger.error(msg);
+    auditLog({ action: 'BLOCKED', source, to, subject });
+    throw new Error(`Envio bloqueado: source inválido ("${source}"). Use manual_individual ou manual_bulk.`);
+  }
+
   if (!process.env.GMAIL_CLIENT_ID || !process.env.GMAIL_REFRESH_TOKEN) {
     throw new Error('Credenciais Gmail OAuth2 não configuradas (GMAIL_CLIENT_ID, GMAIL_REFRESH_TOKEN)');
   }
@@ -108,6 +129,7 @@ async function sendEmail({ to, subject, body, trackingPixelUrl }) {
     requestBody: { raw },
   });
 
+  auditLog({ action: 'SENT', source, to, subject, messageId: res.data.id });
   return res.data.id;
 }
 
@@ -152,6 +174,7 @@ async function sendBulkEmails(emails) {
         subject: item.subject,
         body: item.body,
         trackingPixelUrl: trackingUrl,
+        source: 'manual_bulk',
       });
 
       bulkJob.sent++;
