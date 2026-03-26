@@ -527,13 +527,13 @@ CONTATO:
 - Assinar e-mails como: Pedro Aranha | Gestão de Tráfego
 `;
 
-const PEDRO_EMAIL_INTRO = `Pedro Aranha aqui.
+const PEDRO_EMAIL_INTRO = `Pedro Aranha aqui — estrategista de tráfego pago.
 
-Estrategista de tráfego pago com mais de R$20MM gerenciados em anúncios e R$100MM em vendas geradas. Trabalho com Meta Ads, Google Ads, funis e WhatsApp — com foco em resultado real: cliente fechado, não lead curioso.`;
+Já gerenciei mais de R$20MM em anúncios e ajudei a gerar mais de R$100MM em vendas para negócios como o seu. Trabalho com Meta Ads, Google Ads e estruturação de funis com foco em resultado real: cliente fechado, não curiosidade vazia.`;
 
-const PEDRO_EMAIL_CLOSING = `Qualquer dúvida, me chama direto no WhatsApp: (11) 99515-7048
+const PEDRO_EMAIL_CLOSING = `Se quiser conversar sobre como estruturar isso no seu negócio, me chama direto no WhatsApp: (11) 99515-7048
 
-E se quiser acompanhar conteúdo direto sobre tráfego e vendas — sem enrolação — me segue no Instagram: @pedrocgaaranha
+E se quiser acompanhar conteúdo sobre tráfego e vendas sem enrolação, me segue no Instagram: @pedrocgaaranha
 
 Pedro Aranha | Gestão de Tráfego`;
 
@@ -555,7 +555,7 @@ Vejo muitos anúncios genéricos tentando falar com todo mundo:
 "Precisa de ajuda jurídica?"
 
 Isso até gera volume.
-Mas atrai o tipo errado de lead.
+Mas atrai o tipo errado de cliente.
 
 Gente curiosa.
 Sem urgência.
@@ -577,7 +577,7 @@ já tem o problema
 já sentiu o impacto
 já está buscando solução
 
-Esse é o lead que chega diferente.
+Esse é o cliente que chega diferente.
 Ele não pergunta "isso funciona?"
 Ele pergunta "como resolvemos isso?"
 
@@ -585,7 +585,7 @@ E tem outro ponto importante:
 Esse tipo de comunicação não precisa ser agressiva.
 Pelo contrário.
 
-Funciona muito melhor quando tem caráter descritivo e informativo, mostrando
+Funciona muito melhor quando tem caráter descritivo e informativo — mostrando
 o cenário com clareza e deixando o próximo passo natural.
 
 Sem pressão. Com CTAs neutros:
@@ -593,13 +593,10 @@ Sem pressão. Com CTAs neutros:
 "Fale com um advogado especialista"
 "Consulte um escritório especializado"
 
-Isso gera mais confiança… e atrai cliente com nível de consciência muito mais alto.
+Isso gera mais confiança e atrai cliente com nível de consciência muito mais alto.
 
-No fim do dia, o jogo não é sobre gerar mais leads.
+No fim do dia, o jogo não é sobre gerar mais clientes.
 É sobre atrair as pessoas certas, no momento certo.
-
-Se fizer sentido estruturar a comunicação dos seus anúncios para começar a
-atrair clientes já prontos para contratar, me chama no WhatsApp:
 
 ${PEDRO_EMAIL_CLOSING}`;
 
@@ -770,6 +767,18 @@ function fatShort(f) {
 function tagClass(q) { return q==='sim'?'t-sim':q==='com potencial'?'t-pot':'t-nao'; }
 function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
 
+// ── SUBSTITUIÇÕES OBRIGATÓRIAS NOS E-MAILS GERADOS ───────────────────
+function _limparPalavrasProibidas(texto) {
+  if (!texto) return texto;
+  return texto
+    .replace(/\bLeads\b/g, 'Clientes')
+    .replace(/\bleads\b/g, 'clientes')
+    .replace(/\bLead\b/g,  'Cliente')
+    .replace(/\blead\b/g,  'cliente')
+    .replace(/\bléads\b/gi, 'clientes')
+    .replace(/\bléad\b/gi,  'cliente');
+}
+
 function renderList() {
   const el = document.getElementById('sb-list');
   const st = el.scrollTop;
@@ -879,66 +888,52 @@ async function generateEmail() {
   if (leadRespondeu && respostaLocal) {
     btn.textContent = '⏳ Analisando resposta...';
 
-    prompt = `Você escreve e-mails no estilo e voz de Pedro Aranha.
+    prompt = `Você escreve e-mails no estilo de Pedro Aranha — direto, sem enrolação, confiante.
 
-${PEDRO_PROFILE}
-
-LEAD QUE RESPONDEU:
+DESTINATÁRIO:
 - Nome: ${c.name}
 - Empresa: ${c.emp || 'não informado'}
 - Faturamento: ${c.fat || 'não informado'}
 - Qualificação: ${c.q}
 - Especialidade: ${c.medium || 'não informado'}
-- Cidade: ${c.cidade || 'não informado'}
-- Urgência: ${c.urg || 'não informada'}
 
-O QUE O LEAD RESPONDEU:
+O QUE ESTE CLIENTE RESPONDEU:
 ${respostaLocal.bodyClean || respostaLocal.body || '(sem conteúdo)'}
 
-E-MAIL QUE VOCÊ HAVIA ENVIADO:
+E-MAIL ANTERIOR ENVIADO:
 ${S.emails[S.sel] || '(sem histórico)'}
 
 INSTRUÇÃO: ${c.q === 'sim'
-  ? 'Lead qualificado. Avance para marcar reunião ou call. Seja direto.'
+  ? 'Cliente qualificado. Avance diretamente para marcar reunião ou call.'
   : 'Aprofunde o interesse. Proponha próximo passo concreto.'}
 
-ESTRUTURA OBRIGATÓRIA:
-1. ABERTURA: responda diretamente ao que o lead disse (1 parágrafo curto, sem
-   repetir a apresentação — ele já te conhece).
-2. CORPO: avance a conversa para o próximo passo. Tom Pedro: direto, confiante,
-   sem enrolação. Máximo 2 parágrafos.
-3. ENCERRAMENTO: use o texto exato abaixo (não altere):
-"${PEDRO_EMAIL_CLOSING}"
-
-Escreva APENAS o corpo do e-mail.`;
+Escreva APENAS o corpo central da resposta (2 parágrafos curtos).
+- NÃO inclua apresentação ou assinatura — serão adicionadas depois
+- NÃO use as palavras "lead" ou "leads" — use "cliente" ou "clientes"
+- Responda ao que o cliente disse, mostre que leu com atenção
+- Tom: direto, caloroso, sem enrolação
+- Termine com proposta de próximo passo clara`;
 
   } else if (leadRespondeu) {
-    prompt = `Você escreve e-mails no estilo e voz de Pedro Aranha.
+    prompt = `Você escreve e-mails no estilo de Pedro Aranha — direto, sem enrolação, confiante.
 
-${PEDRO_PROFILE}
-
-Lead: ${c.name} | Empresa: ${c.emp||'—'} | Faturamento: ${c.fat||'—'} | Qualificação: ${c.q}
-Este lead respondeu seu e-mail. Responda com follow-up direto no estilo Pedro,
-aprofundando o interesse e propondo reunião ou call. Máximo 3 parágrafos.
-
-ENCERRAMENTO OBRIGATÓRIO (use exatamente):
-"${PEDRO_EMAIL_CLOSING}"
-
-Escreva APENAS o corpo do e-mail.`;
+Cliente: ${c.name} | Empresa: ${c.emp||'—'} | Faturamento: ${c.fat||'—'} | Qualificação: ${c.q}
+Este cliente respondeu seu e-mail. Escreva um follow-up direto no estilo Pedro,
+aprofundando o interesse e propondo reunião ou call. Máximo 2 parágrafos.
+NÃO inclua apresentação ou assinatura. NÃO use "lead" ou "leads".
+Escreva APENAS o corpo central.`;
 
   } else {
     // Primeiro contato
     const inst = c.q === 'sim'
-      ? 'Lead ALTAMENTE QUALIFICADO. Convide diretamente para reunião ou call. Tom direto e confiante.'
+      ? 'Cliente ALTAMENTE QUALIFICADO. Convide diretamente para reunião ou call. Tom direto e confiante.'
       : c.q === 'com potencial'
-      ? 'Lead com potencial. Gere curiosidade, apresente o diferencial, proponha próximo passo.'
-      : 'Lead frio. Apresente levemente, sem pressão, deixe porta aberta.';
+      ? 'Cliente com potencial. Gere curiosidade, apresente o diferencial, proponha próximo passo.'
+      : 'Cliente ainda frio. Apresente levemente, sem pressão, deixe porta aberta.';
 
-    prompt = `Você escreve e-mails no estilo e voz de Pedro Aranha.
+    prompt = `Você escreve e-mails no estilo de Pedro Aranha — direto, sem enrolação, provocativo, confiante.
 
-${PEDRO_PROFILE}
-
-LEAD:
+DESTINATÁRIO:
 - Nome: ${c.name}
 - Empresa: ${c.emp || 'não informado'}
 - Faturamento mensal: ${c.fat || 'não informado'}
@@ -949,27 +944,26 @@ LEAD:
 
 INSTRUÇÃO: ${inst}
 
-ESTRUTURA OBRIGATÓRIA DO E-MAIL:
-1. ABERTURA: use o texto exato abaixo como apresentação (não altere):
-"${PEDRO_EMAIL_INTRO}"
-
-2. CORPO: escreva 2-3 parágrafos curtos no estilo Pedro — direto, provocativo,
-sem enrolação. Conecte com o contexto do lead (faturamento, especialidade, cidade).
-Use frases curtas. Quebre crença. Traga verdade desconfortável.
-
-3. ENCERRAMENTO: use o texto exato abaixo (não altere):
-"${PEDRO_EMAIL_CLOSING}"
-
-Escreva APENAS o corpo do e-mail. Sem assunto. Sem explicações.`;
+Escreva APENAS o corpo central do e-mail (2 a 3 parágrafos curtos).
+- NÃO inclua saudação inicial, apresentação ou assinatura — isso será adicionado depois
+- NÃO use as palavras "lead" ou "leads" — use "cliente" ou "clientes"
+- Tom: direto, frases curtas, sem enrolação, provocativo quando necessário
+- Conecte com o contexto do destinatário (faturamento, especialidade, cidade)
+- Termine o corpo com uma chamada para ação clara (mas sem incluir WhatsApp ou Instagram — isso vem depois)`;
   }
 
   try {
-    const text = await callClaude([{ role: 'user', content: prompt }], '', 700);
-    ta.value          = text;
-    S.emails[S.sel]   = text;
+    const text = await callClaude([{ role: 'user', content: prompt }], '', 1000);
+
+    // Limpar palavras proibidas e montar e-mail completo: apresentação + corpo + encerramento
+    const corpoLimpo    = _limparPalavrasProibidas(text);
+    const emailCompleto = `${PEDRO_EMAIL_INTRO}\n\n${corpoLimpo}\n\n${PEDRO_EMAIL_CLOSING}`;
+
+    ta.value          = emailCompleto;
+    S.emails[S.sel]   = emailCompleto;
     S.subjects[S.sel] = document.getElementById('ed-subj').value;
     gbtn.classList.add('visible');
-    if (leadRespondeu) toast('✦ Follow-up gerado com base na resposta do lead!');
+    if (leadRespondeu) toast('✦ Follow-up gerado com base na resposta do cliente!');
   } catch(e) {
     ta.value = '⚠ Erro ao gerar: ' + e.message + '\n\nVerifique sua chave em ⚙ API Key.';
     console.error('generateEmail erro:', e);
@@ -1177,7 +1171,7 @@ Responda no estilo Pedro: direto, sem enrolação, com estratégia real.`;
     } else if (reply.includes('===EMAIL===')) {
       const parts = reply.split('===EMAIL===');
       if (parts[0].trim()) addMsg(parts[0].trim(), 'claude');
-      const ne = parts[1].trim();
+      const ne = _limparPalavrasProibidas(parts[1].trim());
       document.getElementById('ed-body').value = ne;
       if (S.sel!==null) {
         S.emails[S.sel] = ne;
@@ -2455,32 +2449,34 @@ async function _executeMassEdit(leadsAlvo, plano) {
 
     try {
       const emailAtual = S.emails[i] || '';
-      const p = `Você escreve e-mails no estilo e voz de Pedro Aranha.
+      const p = `Você escreve e-mails no estilo de Pedro Aranha — direto, sem enrolação, provocativo.
 
-${PEDRO_PROFILE}
-
-LEAD:
+CLIENTE:
 - Nome: ${c.name}
 - Empresa: ${c.emp||'não informado'}
 - Faturamento: ${c.fat||'não informado'}
 - Qualificação: ${c.q}
 - Especialidade: ${c.medium||'não informado'}
 
-${emailAtual ? `E-MAIL ATUAL:\n${emailAtual}\n\nALTERAÇÃO: ${plano.instrucao}` : `INSTRUÇÃO: ${plano.instrucao}`}
+${emailAtual
+  ? `CORPO ATUAL DO E-MAIL:\n${emailAtual}\n\nALTERAÇÃO SOLICITADA: ${plano.instrucao}`
+  : `INSTRUÇÃO: ${plano.instrucao}`}
 
-ESTRUTURA OBRIGATÓRIA:
-- Sempre iniciar com: "${PEDRO_EMAIL_INTRO}"
-- Corpo personalizado no estilo Pedro (direto, provocativo, frases curtas)
-- Sempre terminar com: "${PEDRO_EMAIL_CLOSING}"
+Escreva APENAS o corpo central (2 a 3 parágrafos).
+- NÃO inclua apresentação, saudação ou assinatura — serão adicionadas automaticamente
+- NÃO use "lead" ou "leads" — use "cliente" ou "clientes"
+- Mantenha o tom Pedro: direto, frases curtas, sem enrolação`;
 
-Escreva APENAS o corpo do e-mail.`;
+      const corpoGerado = await callClaude([{ role:'user', content: p }], '', 1000);
 
-      const novoEmail = await callClaude([{ role:'user', content: p }], '', 600);
+      // Limpar e montar e-mail completo
+      const corpoLimpo  = _limparPalavrasProibidas(corpoGerado);
+      const novoEmail   = `${PEDRO_EMAIL_INTRO}\n\n${corpoLimpo}\n\n${PEDRO_EMAIL_CLOSING}`;
 
       // CRÍTICO: salvar localmente ANTES de qualquer outra operação
       S.emails[i] = novoEmail;
 
-      // Atualizar editor se este lead está selecionado
+      // Atualizar editor se este cliente está selecionado
       if (S.sel === i) {
         document.getElementById('ed-body').value = novoEmail;
         document.getElementById('gmail-btn').classList.add('visible');
