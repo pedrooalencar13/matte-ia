@@ -393,7 +393,12 @@ textarea.cta:focus{border-color:var(--acc)}
       <div class="bulk-prog-wrap" id="bulk-prog-wrap"><div class="bulk-prog-bar" id="bulk-prog-bar"></div></div>
       <span class="bulk-status" id="bulk-status"></span>
       <div style="flex:1"></div>
-      <button class="btn btn-g btn-sm" onclick="closeBulk()">Cancelar</button>
+      <button class="btn btn-g btn-sm" onclick="closeBulk()">Fechar</button>
+      <button class="btn btn-d btn-sm" id="bulk-cancel-btn"
+              onclick="cancelBulkSend()"
+              style="display:none;background:#f5734a;color:#fff;border:1px solid #c0452a;font-weight:600">
+        ⏹ Cancelar disparo
+      </button>
       <button class="btn btn-bulk" id="bulk-btn" onclick="startBulkSend()" style="padding:7px 16px;font-size:12px">⚡ Disparar selecionados</button>
     </div>
   </div>
@@ -1206,27 +1211,47 @@ function toast(msg) {
 }
 
 // ── BULK SEND ─────────────────────────────────────────────────────
-let bulkSel = new Set();
-let bulkFilter_ = 'all';
-let bulkRunning = false;
+let bulkSel        = new Set();
+let bulkFilter_    = 'all';
+let bulkRunning    = false;
+let bulkAborted    = false;
+let bulkController = null;
+const BULK_BATCH_SIZE  = 20;
+const BULK_BATCH_PAUSE = 2000;
 
 function openBulk() {
   if (!CONTACTS.length) { toast('Aguarde os contatos carregarem'); return; }
-  bulkSel = new Set();
-  bulkFilter_ = 'all';
-  document.querySelectorAll('.bf').forEach((b,i)=>b.classList.toggle('on',i===0));
-  document.getElementById('bulk-status').textContent = '';
+  bulkSel        = new Set();
+  bulkFilter_    = 'all';
+  bulkAborted    = false;
+  bulkController = null;
+  document.querySelectorAll('.bf').forEach((b,i) => b.classList.toggle('on', i===0));
+  document.getElementById('bulk-status').textContent      = '';
   document.getElementById('bulk-prog-wrap').style.display = 'none';
-  document.getElementById('bulk-prog-bar').style.width = '0%';
-  document.getElementById('bulk-btn').disabled = false;
-  document.getElementById('bulk-btn').textContent = '⚡ Disparar selecionados';
+  document.getElementById('bulk-prog-bar').style.width    = '0%';
+  document.getElementById('bulk-btn').disabled            = false;
+  document.getElementById('bulk-btn').textContent         = '⚡ Disparar selecionados';
+  const cancelBtn = document.getElementById('bulk-cancel-btn');
+  if (cancelBtn) cancelBtn.style.display = 'none';
   renderBulkList();
   document.getElementById('bulk-overlay').classList.add('open');
 }
 
 function closeBulk() {
-  if (bulkRunning) return;
+  if (bulkRunning) { cancelBulkSend(); return; }
   document.getElementById('bulk-overlay').classList.remove('open');
+}
+
+function cancelBulkSend() {
+  if (!bulkRunning) {
+    document.getElementById('bulk-overlay').classList.remove('open');
+    return;
+  }
+  bulkAborted = true;
+  if (bulkController) bulkController.abort();
+  document.getElementById('bulk-status').textContent = '⚠ Cancelando...';
+  const cancelBtn = document.getElementById('bulk-cancel-btn');
+  if (cancelBtn) { cancelBtn.disabled = true; cancelBtn.textContent = '⏳ Cancelando...'; }
 }
 
 function bulkFilter(f, btn) {
@@ -1273,141 +1298,232 @@ function bulkDeselAll() { bulkSel.clear(); renderBulkList(); }
 async function gerarCorpoEmail(c) {
   if (isAdvogado(c)) return { subj: TEMPLATE_ADV_SUBJ, body: TEMPLATE_ADV_BODY };
   if (!API_KEY) throw new Error('Configure a chave da API primeiro (⚙ API Key)');
-  const inst = c.q==='sim'
-    ? 'Lead ALTAMENTE QUALIFICADO. Convide diretamente para reunião. Tom direto e confiante.'
-    : c.q==='com potencial'
-    ? 'Lead com potencial. Reative o interesse, apresente gestão de tráfego pago e gere curiosidade.'
-    : 'Lead não qualificado. Apresente levemente, sem pressão, deixe porta aberta.';
-  const prompt = `Você é especialista em vendas consultivas para gestão de tráfego pago. Escreva um e-mail profissional e personalizado em português brasileiro.
 
-Destinatário: ${c.name}
-Empresa: ${c.emp||'não informado'}
-Faturamento: ${c.fat}
-Perfil: ${c.q}
+  const inst = c.q === 'sim'
+    ? 'Cliente ALTAMENTE QUALIFICADO. Convide diretamente para reunião. Tom direto e confiante.'
+    : c.q === 'com potencial'
+    ? 'Cliente com potencial. Gere curiosidade, apresente o diferencial, proponha próximo passo.'
+    : 'Cliente ainda frio. Apresente levemente, sem pressão, deixe porta aberta.';
 
-Instrução: ${inst}
-Máximo 4 parágrafos curtos. Termine com WhatsApp (11) 99515-7048. Assine como: Equipe Pedro Aranha Gestão de Tráfego.
-Escreva APENAS o corpo do e-mail.`;
+  const prompt = `Você escreve e-mails no estilo de Pedro Aranha — direto, sem enrolação, provocativo, confiante.
+
+DESTINATÁRIO:
+- Nome: ${c.name}
+- Empresa: ${c.emp || 'não informado'}
+- Faturamento: ${c.fat || 'não informado'}
+- Especialidade: ${c.medium || 'não informado'}
+- Cidade: ${c.cidade || 'não informada'}
+- Qualificação: ${c.q}
+
+INSTRUÇÃO: ${inst}
+
+Escreva APENAS o corpo central do e-mail (2 a 3 parágrafos curtos).
+- NÃO inclua saudação, apresentação ou assinatura — serão adicionadas automaticamente
+- NÃO use "lead" ou "leads" — use "cliente" ou "clientes"
+- Tom: direto, frases curtas, sem enrolação
+- Termine com uma chamada para ação clara (sem WhatsApp ou Instagram — vêm depois)`;
+
   const r = await fetch('https://api.anthropic.com/v1/messages', {
-    method:'POST',
-    headers:{
-      'Content-Type':'application/json',
-      'x-api-key':API_KEY,
-      'anthropic-version':'2023-06-01',
-      'anthropic-dangerous-direct-browser-access':'true'
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': API_KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
     },
-    body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:500,messages:[{role:'user',content:prompt}]})
+    body: JSON.stringify({ model: 'claude-haiku-4-5-20251001', max_tokens: 1000, messages: [{ role: 'user', content: prompt }] })
   });
   const d = await r.json();
   if (d.error) throw new Error(d.error.message);
-  const subj = c.q==='sim'
-    ? 'Vamos marcar uma conversa? | Pedro Aranha Gestão de Tráfego'
-    : c.q==='com potencial'
-    ? 'Como negócios estão crescendo com tráfego pago | Pedro Aranha'
-    : 'Uma solução que pode transformar seus resultados';
-  return { subj, body: d.content[0].text };
+
+  // Limpar palavras proibidas e montar e-mail completo
+  const corpoLimpo    = _limparPalavrasProibidas(d.content[0].text);
+  const emailCompleto = `${PEDRO_EMAIL_INTRO}\n\n${corpoLimpo}\n\n${PEDRO_EMAIL_CLOSING}`;
+
+  const subj = c.q === 'sim'
+    ? 'Vamos marcar uma conversa? | Pedro Aranha'
+    : c.q === 'com potencial'
+    ? 'Como negócios crescem com tráfego pago | Pedro Aranha'
+    : 'Uma estrutura que pode mudar seus resultados | Pedro Aranha';
+
+  return { subj, body: emailCompleto };
 }
 
-// ── NOVO: BULK SEND VIA BACKEND (SEM ABRIR ABAS) ──────────────────
+// ── BULK SEND VIA BACKEND ─────────────────────────────────────────
 async function startBulkSend() {
-  if (bulkSel.size === 0) { toast('Selecione ao menos um lead!'); return; }
+  if (bulkSel.size === 0) { toast('Selecione ao menos um cliente!'); return; }
   if (bulkRunning) return;
 
-  const lista = [...bulkSel].map(idx => CONTACTS[idx] ? {...CONTACTS[idx], idx} : null).filter(Boolean);
+  const lista = [...bulkSel]
+    .map(idx => CONTACTS[idx] ? { ...CONTACTS[idx], idx } : null)
+    .filter(Boolean);
   const total = lista.length;
 
-  if (!confirm(`Enviar ${total} e-mail(s) diretamente via Gmail?\n\nOs e-mails serão enviados automaticamente sem abrir abas.`)) return;
+  const jaGerados = lista.filter(c => !!S.emails[c.idx]).length;
+  const aGerar    = total - jaGerados;
 
-  bulkRunning = true;
-  const btnEl = document.getElementById('bulk-btn');
-  btnEl.disabled = true;
-  btnEl.textContent = '⏳ Gerando e-mails...';
-  document.getElementById('bulk-prog-wrap').style.display = 'block';
-  document.getElementById('bulk-status').textContent = 'Gerando conteúdo dos e-mails...';
+  const confirMsg = aGerar > 0
+    ? `Enviar ${total} e-mail(s) via Gmail?\n\n• ${jaGerados} já gerados (serão reutilizados)\n• ${aGerar} serão gerados agora\n\nOs e-mails serão enviados em lotes de ${BULK_BATCH_SIZE}.`
+    : `Enviar ${total} e-mail(s) via Gmail?\n\nTodos já estão gerados e serão enviados em lotes de ${BULK_BATCH_SIZE}.`;
 
-  // Fase 1: Gerar todos os e-mails via Claude
+  if (!confirm(confirMsg)) return;
+
+  bulkRunning    = true;
+  bulkAborted    = false;
+  bulkController = new AbortController();
+
+  const btnEl     = document.getElementById('bulk-btn');
+  const cancelBtn = document.getElementById('bulk-cancel-btn');
+  btnEl.disabled    = true;
+  btnEl.textContent = '⏳ Preparando...';
+  if (cancelBtn) { cancelBtn.style.display = 'inline-flex'; cancelBtn.disabled = false; cancelBtn.textContent = '⏹ Cancelar disparo'; }
+  document.getElementById('bulk-prog-wrap').style.display  = 'block';
+  document.getElementById('bulk-prog-bar').style.width     = '0%';
+  document.getElementById('bulk-prog-bar').style.background = 'var(--acc)';
+
+  // ── FASE 1: Gerar e-mails faltantes ──────────────────────────────
   const emailsParaEnviar = [];
+
   for (let i = 0; i < lista.length; i++) {
+    if (bulkAborted) {
+      document.getElementById('bulk-status').textContent = `⚠ Cancelado após ${emailsParaEnviar.length} e-mails gerados.`;
+      _finalizarBulk(btnEl, cancelBtn);
+      return;
+    }
     const c = lista[i];
+    document.getElementById('bulk-prog-bar').style.width = Math.round((i / total) * 40) + '%';
+
+    if (S.emails[c.idx]) {
+      // Reutilizar e-mail já gerado
+      document.getElementById('bulk-status').textContent = `Reutilizando ${i+1}/${total}: ${c.name}`;
+      emailsParaEnviar.push({ to: c.email, subject: S.subjects[c.idx] || getSubject(c), body: S.emails[c.idx], name: c.name, idx: c.idx });
+      continue;
+    }
+
     document.getElementById('bulk-status').textContent = `Gerando ${i+1}/${total}: ${c.name}`;
-    document.getElementById('bulk-prog-bar').style.width = Math.round((i / total) * 50) + '%';
+    btnEl.textContent = `⏳ Gerando ${i+1}/${total}...`;
     try {
       const { subj, body } = await gerarCorpoEmail(c);
-      emailsParaEnviar.push({ to: c.email, subject: subj, body, name: c.name });
       S.emails[c.idx]   = body;
       S.subjects[c.idx] = subj;
+      emailsParaEnviar.push({ to: c.email, subject: subj, body, name: c.name, idx: c.idx });
     } catch(e) {
-      console.error('Erro gerando email para', c.name, e);
+      console.error('Erro ao gerar para', c.name, ':', e.message);
+      document.getElementById('bulk-status').textContent = `⚠ Erro: ${c.name} — pulando`;
     }
-    if (i < lista.length - 1) await new Promise(r => setTimeout(r, 300));
+    if (i < lista.length - 1 && !bulkAborted) await new Promise(r => setTimeout(r, 250));
   }
 
   if (emailsParaEnviar.length === 0) {
-    toast('Nenhum e-mail gerado!');
-    bulkRunning = false;
-    btnEl.disabled = false;
-    btnEl.textContent = '⚡ Disparar selecionados';
+    toast('Nenhum e-mail foi gerado!');
+    _finalizarBulk(btnEl, cancelBtn);
+    return;
+  }
+  if (bulkAborted) {
+    document.getElementById('bulk-status').textContent = `⚠ Cancelado. ${emailsParaEnviar.length} gerados mas não enviados.`;
+    _finalizarBulk(btnEl, cancelBtn);
     return;
   }
 
-  // Fase 2: Enviar via backend
-  document.getElementById('bulk-status').textContent = `Enviando ${emailsParaEnviar.length} e-mails via Gmail...`;
-  document.getElementById('bulk-prog-bar').style.width = '55%';
+  // ── FASE 2: Enviar em lotes ───────────────────────────────────────
+  document.getElementById('bulk-prog-bar').style.width = '40%';
   btnEl.textContent = '📤 Enviando...';
 
-  try {
-    const r = await fetch(`${BACKEND_URL}/email/bulk`, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ emails: emailsParaEnviar, source: 'manual_bulk' })
-    });
-    const d = await r.json();
+  let totalEnviados = 0, totalErros = 0;
+  const enviadosComSucesso = [];
 
-    if (d.jobId) {
-      await pollBulkStatus(d.jobId, total);
-      lista.forEach(c => { S.approved.add(c.idx); S.sent.add(c.idx); _marcarEnviado(c.email, c.name, S.subjects[c.idx] || ''); });
-    } else {
-      document.getElementById('bulk-prog-bar').style.width = '100%';
-      document.getElementById('bulk-status').textContent = `✓ ${d.sent||0} enviados · ${d.failed||0} erros`;
-      lista.forEach(c => { S.approved.add(c.idx); S.sent.add(c.idx); _marcarEnviado(c.email, c.name, S.subjects[c.idx] || ''); });
-    }
-  } catch(e) {
-    console.error('Erro bulk send:', e);
-    document.getElementById('bulk-prog-bar').style.width = '0%';
-    document.getElementById('bulk-status').textContent = '⚠ Erro: ' + e.message;
-    toast('⚠ Falha no envio em massa. Verifique se o backend está no ar e se o Gmail OAuth2 está configurado.');
-    bulkRunning = false;
-    btnEl.disabled = false;
-    btnEl.textContent = '⚡ Disparar selecionados';
-    return;
+  const lotes = [];
+  for (let i = 0; i < emailsParaEnviar.length; i += BULK_BATCH_SIZE) {
+    lotes.push(emailsParaEnviar.slice(i, i + BULK_BATCH_SIZE));
   }
+
+  for (let li = 0; li < lotes.length; li++) {
+    if (bulkAborted) {
+      document.getElementById('bulk-status').textContent = `⚠ Cancelado. Enviados: ${totalEnviados} | Restantes: ${emailsParaEnviar.length - totalEnviados}`;
+      break;
+    }
+    const lote = lotes[li];
+    document.getElementById('bulk-prog-bar').style.width = (40 + Math.round((li / lotes.length) * 55)) + '%';
+    document.getElementById('bulk-status').textContent   = `Enviando lote ${li+1}/${lotes.length} (${totalEnviados + lote.length}/${emailsParaEnviar.length})...`;
+
+    try {
+      bulkController = new AbortController();
+      const r = await fetch(`${BACKEND_URL}/email/bulk`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        signal: bulkController.signal,
+        body: JSON.stringify({
+          emails: lote.map(e => ({ to: e.to, subject: e.subject, body: e.body, name: e.name })),
+          source: 'manual_bulk'
+        })
+      });
+      const d = await r.json();
+
+      if (d.jobId) {
+        const resultado = await _pollBulkLote(d.jobId, lote.length);
+        totalEnviados += resultado.sent;
+        totalErros    += resultado.failed;
+        lote.slice(0, resultado.sent).forEach(item => enviadosComSucesso.push(item));
+      } else {
+        const sentCount = d.sent !== undefined ? d.sent : lote.length;
+        totalEnviados  += sentCount;
+        totalErros     += (d.failed || 0);
+        lote.slice(0, sentCount).forEach(item => enviadosComSucesso.push(item));
+      }
+    } catch(e) {
+      if (e.name === 'AbortError') {
+        document.getElementById('bulk-status').textContent = `⚠ Lote ${li+1} cancelado. Enviados até agora: ${totalEnviados}`;
+        break;
+      }
+      console.error(`Erro lote ${li+1}:`, e.message);
+      totalErros += lote.length;
+    }
+
+    if (li < lotes.length - 1 && !bulkAborted) await new Promise(r => setTimeout(r, BULK_BATCH_PAUSE));
+  }
+
+  // ── FASE 3: Marcar APENAS enviados confirmados ────────────────────
+  enviadosComSucesso.forEach(item => {
+    S.approved.add(item.idx);
+    S.sent.add(item.idx);
+    _marcarEnviado(item.to, item.name, item.subject);
+  });
+
+  const pctFinal = totalErros === 0 ? 100 : Math.round((totalEnviados / emailsParaEnviar.length) * 100);
+  document.getElementById('bulk-prog-bar').style.width      = pctFinal + '%';
+  document.getElementById('bulk-prog-bar').style.background = totalErros > 0 ? 'var(--gol)' : '#4ade80';
+  document.getElementById('bulk-status').textContent        = bulkAborted
+    ? `⚠ Cancelado — ${totalEnviados} enviados · ${totalErros} erros`
+    : `✓ ${totalEnviados} enviados · ${totalErros} erros`;
 
   renderList();
   renderBulkList();
-  bulkRunning = false;
-  btnEl.disabled = false;
-  btnEl.textContent = '✓ Concluído';
-  toast('Disparo em massa concluído!');
+  _finalizarBulk(btnEl, cancelBtn);
+  toast(bulkAborted ? `⚠ Cancelado. ${totalEnviados} enviados.` : `✓ ${totalEnviados}/${emailsParaEnviar.length} enviados!`);
 }
 
-async function pollBulkStatus(jobId, total) {
+async function _pollBulkLote(jobId, totalLote) {
   return new Promise(resolve => {
+    let tentativas = 0;
     const interval = setInterval(async () => {
+      if (++tentativas > 40) { clearInterval(interval); resolve({ sent: 0, failed: totalLote }); return; }
       try {
         const r = await fetch(`${BACKEND_URL}/email/status?jobId=${jobId}`);
         const d = await r.json();
-        const pct = 55 + Math.round(((d.sent || 0) / total) * 45);
-        document.getElementById('bulk-prog-bar').style.width = pct + '%';
-        document.getElementById('bulk-status').textContent = `Enviando... ${d.sent || 0}/${total}`;
-        if (!d.running) {
-          clearInterval(interval);
-          document.getElementById('bulk-prog-bar').style.width = '100%';
-          document.getElementById('bulk-status').textContent = `✓ ${d.sent || 0} enviados · ${d.failed || 0} erros`;
-          resolve();
-        }
-      } catch(e) { clearInterval(interval); resolve(); }
+        document.getElementById('bulk-prog-bar').style.width = Math.min(40 + Math.round(((d.sent||0)/totalLote)*55), 95) + '%';
+        document.getElementById('bulk-status').textContent   = `Processando... ${d.sent||0}/${totalLote}`;
+        if (!d.running) { clearInterval(interval); resolve({ sent: d.sent||0, failed: d.failed||0 }); }
+      } catch(e) { clearInterval(interval); resolve({ sent: 0, failed: totalLote }); }
     }, 3000);
   });
+}
+
+function _finalizarBulk(btnEl, cancelBtn) {
+  bulkRunning    = false;
+  bulkAborted    = false;
+  bulkController = null;
+  if (btnEl)     { btnEl.disabled = false; btnEl.textContent = '⚡ Disparar selecionados'; }
+  if (cancelBtn) { cancelBtn.style.display = 'none'; cancelBtn.disabled = false; cancelBtn.textContent = '⏹ Cancelar disparo'; }
 }
 
 // ── CAPTAÇÃO DE LEADS ──────────────────────────────────────────────
