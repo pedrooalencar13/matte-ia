@@ -1,0 +1,2505 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pedro Aranha — Painel de E-mails</title>
+<link href="https://fonts.googleapis.com/css2?family=DM+Serif+Display:ital@0;1&family=DM+Mono:wght@400;500&family=Sora:wght@300;400;500;600&display=swap" rel="stylesheet">
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<style>
+*{box-sizing:border-box;margin:0;padding:0}
+:root{
+  --bg:#0d0f0e;--sur:#151817;--sur2:#1c1f1d;--bor:#2a2e2c;
+  --acc:#c8f57a;--txt:#e8ede9;--mut:#6b756d;
+  --dan:#f5734a;--inf:#7ab8f5;--gol:#f5c842;
+}
+body{background:var(--bg);color:var(--txt);font-family:'Sora',sans-serif;font-size:14px;height:100vh;display:flex;flex-direction:column;overflow:hidden}
+::-webkit-scrollbar{width:6px}
+::-webkit-scrollbar-track{background:var(--sur2)}
+::-webkit-scrollbar-thumb{background:var(--mut);border-radius:3px}
+::-webkit-scrollbar-thumb:hover{background:var(--acc)}
+
+/* HEADER */
+header{padding:13px 24px;border-bottom:1px solid var(--bor);background:var(--sur);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.logo{font-family:'DM Serif Display',serif;font-size:20px;color:var(--acc)}
+.logo span{color:var(--mut);font-style:italic}
+.hm{display:flex;align-items:center;gap:12px;font-size:12px;color:var(--mut)}
+.dot{width:7px;height:7px;border-radius:50%;background:var(--acc);box-shadow:0 0 8px var(--acc);animation:pulse 2s infinite}
+@keyframes pulse{0%,100%{opacity:1}50%{opacity:.4}}
+.btn{padding:6px 13px;border-radius:7px;border:none;cursor:pointer;font-family:'Sora',sans-serif;font-size:12px;font-weight:500;transition:all .15s}
+.btn-p{background:var(--acc);color:#0d0f0e}.btn-p:hover{background:#b8e060}
+.btn-g{background:var(--sur2);color:var(--txt);border:1px solid var(--bor)}.btn-g:hover{border-color:var(--acc);color:var(--acc)}
+.btn-d{background:transparent;color:var(--dan);border:1px solid #3a1a10}.btn-d:hover{background:#2a1510}
+.btn-sm{padding:5px 10px;font-size:11px;opacity:.8}
+
+/* LAYOUT */
+.layout{display:grid;grid-template-columns:270px 1fr 330px;flex:1;min-height:0;overflow:hidden}
+
+/* SIDEBAR */
+.sidebar{border-right:1px solid var(--bor);background:var(--sur);display:flex;flex-direction:column;overflow:hidden}
+.sb-head{padding:12px 16px;border-bottom:1px solid var(--bor);display:flex;justify-content:space-between;align-items:center;flex-shrink:0}
+.sb-head h2{font-size:10px;text-transform:uppercase;letter-spacing:1.5px;color:var(--mut);font-weight:600}
+.badge{background:var(--acc);color:#0d0f0e;font-size:10px;font-weight:700;border-radius:20px;padding:2px 8px}
+.sb-list{overflow-y:scroll;flex:1}
+.ci{padding:12px 16px;border-bottom:1px solid var(--bor);cursor:pointer;transition:background .12s;border-left:2px solid transparent;position:relative}
+.ci:hover{background:var(--sur2)}
+.ci.active{background:var(--sur2);border-left-color:var(--acc)}
+.ci-name{font-weight:500;font-size:13px;margin-bottom:2px;display:flex;justify-content:space-between;align-items:center}
+.ci-email{font-size:11px;color:var(--mut);font-family:'DM Mono',monospace;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;margin-bottom:5px}
+.tags{display:flex;gap:4px;flex-wrap:wrap}
+.tag{font-size:10px;padding:2px 6px;border-radius:4px;font-weight:500}
+.t-sim{background:#1a2e0f;color:#8adb4a;border:1px solid #2a4d15}
+.t-pot{background:#1a2410;color:var(--gol);border:1px solid #3d3210}
+.t-nao{background:#2a1510;color:var(--dan);border:1px solid #4a2010}
+.t-fat{background:#101820;color:var(--inf);border:1px solid #1a2d40}
+.ci-check{color:var(--acc);font-size:13px}
+
+/* EDITOR */
+.editor{display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.empty{display:flex;flex-direction:column;align-items:center;justify-content:center;height:100%;color:var(--mut);text-align:center;gap:10px;padding:40px}
+.empty-icon{font-size:48px;opacity:.15}
+.ed-info{padding:14px 22px 12px;border-bottom:1px solid var(--bor);background:var(--sur);flex-shrink:0}
+.ed-recip{display:flex;align-items:center;gap:10px;margin-bottom:10px}
+.av{width:36px;height:36px;border-radius:50%;background:linear-gradient(135deg,#8ab34d,#3a7a1a);display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:16px;color:#0d0f0e;flex-shrink:0}
+.ed-name{font-weight:600;font-size:14px}
+.ed-email{font-size:11px;color:var(--mut);font-family:'DM Mono',monospace}
+.ed-subj{display:flex;align-items:center;gap:8px}
+.ed-subj label{font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:1px;white-space:nowrap}
+.ed-subj input{flex:1;background:var(--sur2);border:1px solid var(--bor);border-radius:6px;padding:6px 10px;color:var(--txt);font-family:'Sora',sans-serif;font-size:13px;outline:none}
+.ed-subj input:focus{border-color:var(--acc)}
+.ed-actions{padding:10px 22px;border-bottom:1px solid var(--bor);background:var(--sur);display:flex;gap:8px;align-items:center;flex-shrink:0}
+.ed-body{flex:1;padding:16px 22px;display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.gen-ind{display:none;align-items:center;gap:8px;color:var(--mut);font-size:12px;font-family:'DM Mono',monospace;margin-bottom:8px;flex-shrink:0}
+.gen-ind.on{display:flex}
+.dots span{display:inline-block;width:4px;height:4px;border-radius:50%;background:var(--acc);margin:0 1px;animation:blink 1.2s infinite}
+.dots span:nth-child(2){animation-delay:.2s}.dots span:nth-child(3){animation-delay:.4s}
+@keyframes blink{0%,100%{opacity:.2}50%{opacity:1}}
+textarea.eta{flex:1;background:var(--sur2);border:1px solid var(--bor);border-radius:8px;padding:12px 14px;color:var(--txt);font-family:'Sora',sans-serif;font-size:14px;line-height:1.8;resize:none;outline:none;min-height:0}
+textarea.eta:focus{border-color:var(--acc)}
+
+/* CHAT */
+.chat{border-left:1px solid var(--bor);background:var(--sur);display:flex;flex-direction:column;overflow:hidden;min-height:0}
+.chat-head{padding:12px 16px;border-bottom:1px solid var(--bor);display:flex;align-items:center;gap:10px;flex-shrink:0}
+.cav{width:28px;height:28px;border-radius:50%;background:linear-gradient(135deg,#534AB7,#7F77DD);display:flex;align-items:center;justify-content:center;font-size:12px;flex-shrink:0}
+.msgs{flex:1;overflow-y:scroll;padding:12px;display:flex;flex-direction:column;gap:10px;min-height:0}
+.msg{max-width:92%;border-radius:10px;padding:9px 12px;font-size:13px;line-height:1.6;word-break:break-word}
+.msg.claude{background:var(--sur2);border:1px solid var(--bor);align-self:flex-start}
+.msg.user{background:var(--acc);color:#0d0f0e;align-self:flex-end;font-weight:500}
+.msg-loading{align-self:flex-start;background:var(--sur2);border:1px solid var(--bor);border-radius:10px;padding:9px 14px;color:var(--mut);font-size:13px}
+.chat-qa{padding:8px 12px 0;display:flex;gap:5px;flex-wrap:wrap;flex-shrink:0}
+.qb{font-size:11px;padding:3px 9px;border-radius:20px;background:var(--sur2);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-family:'Sora',sans-serif;transition:all .12s}
+.qb:hover{border-color:var(--acc);color:var(--acc)}
+.chat-inp{padding:10px 12px;display:flex;gap:8px;align-items:flex-end;flex-shrink:0}
+textarea.cta{flex:1;background:var(--sur2);border:1px solid var(--bor);border-radius:8px;padding:8px 10px;color:var(--txt);font-family:'Sora',sans-serif;font-size:13px;resize:none;outline:none;min-height:38px;max-height:100px;line-height:1.5}
+textarea.cta:focus{border-color:var(--acc)}
+.send-btn{width:34px;height:34px;border-radius:8px;background:var(--acc);border:none;cursor:pointer;display:flex;align-items:center;justify-content:center;flex-shrink:0}
+.send-btn:hover{background:#b8e060}
+
+/* MODAL */
+.modal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.9);z-index:9999;align-items:center;justify-content:center}
+.modal.open{display:flex}
+.modal-box{background:var(--sur);border:1px solid var(--bor);border-radius:16px;padding:36px;width:440px;max-width:92vw}
+.modal-logo{font-family:'DM Serif Display',serif;font-size:22px;color:var(--acc);margin-bottom:6px}
+.modal-sub{font-size:13px;color:var(--mut);margin-bottom:22px;line-height:1.6}
+.modal-label{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--mut);margin-bottom:7px;font-weight:600}
+.modal-inp{width:100%;background:var(--sur2);border:1px solid var(--bor);border-radius:8px;padding:10px 12px;color:var(--txt);font-family:'DM Mono',monospace;font-size:13px;outline:none;margin-bottom:6px}
+.modal-inp:focus{border-color:var(--acc)}
+.modal-err{display:none;font-size:12px;color:var(--dan);margin-bottom:10px}
+.modal-hint{font-size:12px;color:var(--mut);margin-bottom:18px;line-height:1.7}
+.modal-hint a{color:var(--inf);text-decoration:none;font-family:'DM Mono',monospace}
+.modal-btn{width:100%;background:var(--acc);color:#0d0f0e;border:none;border-radius:8px;padding:12px;font-family:'Sora',sans-serif;font-size:14px;font-weight:600;cursor:pointer}
+.modal-btn:hover{background:#b8e060}
+
+/* TOAST */
+.toast{position:fixed;bottom:20px;right:20px;background:var(--acc);color:#0d0f0e;padding:10px 18px;border-radius:8px;font-weight:500;font-size:13px;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;z-index:9998}
+.toast.show{opacity:1;transform:translateY(0)}
+.btn-gmail{background:#0d2b0d;color:#4ade80;border:1px solid #166534;display:none}
+.btn-gmail:hover{background:#14532d}
+.btn-gmail.visible{display:inline-flex;align-items:center;gap:5px}
+.sync-bar{padding:6px 16px;font-size:11px;font-family:'DM Mono',monospace;border-bottom:1px solid var(--bor);flex-shrink:0;color:var(--mut)}
+.sync-bar.ok{color:var(--acc)}.sync-bar.err{color:var(--dan)}.sync-bar.loading{color:var(--gol)}
+.btn-sync{color:var(--acc);border:1px solid var(--acc);background:transparent}
+.btn-sync:hover{background:#1a2e0f}
+.btn-bulk{background:#0d2b0d;color:#4ade80;border:1px solid #166534}
+.btn-bulk:hover{background:#14532d}
+.bulk-overlay{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:9999;align-items:center;justify-content:center}
+.bulk-overlay.open{display:flex}
+.bulk-box{background:var(--sur);border:1px solid var(--bor);border-radius:16px;padding:28px;width:540px;max-width:94vw;max-height:82vh;display:flex;flex-direction:column;gap:0}
+.bulk-title{font-family:'DM Serif Display',serif;font-size:20px;color:var(--acc);margin-bottom:4px}
+.bulk-sub{font-size:12px;color:var(--mut);margin-bottom:14px;line-height:1.6}
+.bulk-filters{display:flex;gap:6px;margin-bottom:10px;flex-wrap:wrap}
+.bf{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--sur2);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-family:'Sora',sans-serif;transition:all .12s}
+.bf.on{background:#1a2e0f;color:var(--acc);border-color:var(--acc)}
+.bulk-sel-bar{display:flex;align-items:center;gap:8px;margin-bottom:8px}
+.bulk-sel-btn{font-size:11px;padding:3px 10px;border-radius:6px;background:transparent;border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-family:'Sora',sans-serif}
+.bulk-sel-btn:hover{border-color:var(--acc);color:var(--acc)}
+.bulk-list{flex:1;overflow-y:scroll;border:1px solid var(--bor);border-radius:8px;margin-bottom:14px;min-height:0}
+.bl-item{display:flex;align-items:center;gap:8px;padding:9px 12px;border-bottom:1px solid var(--bor);cursor:pointer;transition:background .1s;user-select:none}
+.bl-item:last-child{border-bottom:none}
+.bl-item:hover{background:var(--sur2)}
+.bl-item.selected{background:#0d1f0d}
+.bl-check{width:16px;height:16px;border-radius:4px;border:1px solid var(--bor);background:var(--sur2);display:flex;align-items:center;justify-content:center;font-size:10px;flex-shrink:0;transition:all .12s;color:#0d0f0e}
+.bl-item.selected .bl-check{background:var(--acc);border-color:var(--acc)}
+.bl-name{font-size:12px;font-weight:500;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bl-email{font-size:11px;color:var(--mut);font-family:'DM Mono',monospace;flex:1;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.bl-qtag{font-size:10px;padding:1px 6px;border-radius:3px;flex-shrink:0}
+.bulk-footer{display:flex;align-items:center;gap:10px;flex-shrink:0}
+.bulk-prog-wrap{flex:1;height:4px;background:var(--sur2);border-radius:2px;overflow:hidden;display:none}
+.bulk-prog-bar{height:100%;background:var(--acc);width:0%;transition:width .3s}
+.bulk-status{font-size:11px;color:var(--mut);font-family:'DM Mono',monospace;white-space:nowrap}
+
+/* DASHBOARD */
+.dash-overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:9990;flex-direction:column;overflow:hidden}
+.dash-overlay.open{display:flex}
+.dash-header{padding:16px 28px;border-bottom:1px solid var(--bor);background:var(--sur);display:flex;align-items:center;justify-content:space-between;flex-shrink:0}
+.dash-title{font-family:'DM Serif Display',serif;font-size:22px;color:var(--acc)}
+.dash-close{background:var(--sur2);border:1px solid var(--bor);color:var(--txt);border-radius:8px;padding:6px 14px;cursor:pointer;font-family:'Sora',sans-serif;font-size:12px}
+.dash-close:hover{border-color:var(--dan);color:var(--dan)}
+.dash-body{flex:1;overflow-y:auto;padding:24px 28px;display:flex;flex-direction:column;gap:24px}
+.dash-cards{display:grid;grid-template-columns:repeat(auto-fit,minmax(160px,1fr));gap:12px}
+.dash-card{background:var(--sur);border:1px solid var(--bor);border-radius:12px;padding:18px 20px}
+.dash-card-label{font-size:10px;text-transform:uppercase;letter-spacing:1.2px;color:var(--mut);margin-bottom:8px;font-weight:600}
+.dash-card-value{font-family:'DM Serif Display',serif;font-size:32px;color:var(--acc);line-height:1}
+.dash-card-sub{font-size:11px;color:var(--mut);margin-top:4px}
+.dash-row{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+.dash-chart-box{background:var(--sur);border:1px solid var(--bor);border-radius:12px;padding:18px 20px}
+.dash-chart-title{font-size:12px;font-weight:600;color:var(--txt);margin-bottom:14px;letter-spacing:.5px}
+.dash-table-wrap{background:var(--sur);border:1px solid var(--bor);border-radius:12px;overflow:hidden}
+.dash-table-head{padding:12px 16px;border-bottom:1px solid var(--bor);display:flex;align-items:center;justify-content:space-between;gap:8px;flex-wrap:wrap}
+.dash-search{background:var(--sur2);border:1px solid var(--bor);border-radius:6px;padding:5px 10px;color:var(--txt);font-family:'Sora',sans-serif;font-size:12px;outline:none;width:180px}
+.dash-search:focus{border-color:var(--acc)}
+.dash-filter-row{display:flex;gap:6px;flex-wrap:wrap}
+.df{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--sur2);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-family:'Sora',sans-serif;transition:all .12s}
+.df.on{background:#1a2e0f;color:var(--acc);border-color:var(--acc)}
+.dash-table{width:100%;border-collapse:collapse}
+.dash-table th{padding:9px 12px;text-align:left;font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--mut);font-weight:600;border-bottom:1px solid var(--bor);cursor:pointer;user-select:none;white-space:nowrap}
+.dash-table th:hover{color:var(--acc)}
+.dash-table td{padding:9px 12px;font-size:12px;border-bottom:1px solid var(--bor)}
+.dash-table tr:last-child td{border-bottom:none}
+.dash-table tr:hover td{background:var(--sur2)}
+.dash-table .mono{font-family:'DM Mono',monospace;font-size:11px}
+.cad-badge{font-size:10px;padding:2px 7px;border-radius:4px;font-weight:500}
+.cad-ativa{background:#0d1f0d;color:var(--acc);border:1px solid #1a3a1a}
+.cad-pausada{background:#1a2410;color:var(--gol);border:1px solid #3d3210}
+.cad-concluida{background:#101820;color:var(--inf);border:1px solid #1a2d40}
+.cad-respondeu{background:#2a1510;color:var(--dan);border:1px solid #4a2010}
+.dash-loading{text-align:center;padding:40px;color:var(--mut);font-family:'DM Mono',monospace;font-size:13px}
+
+/* ── CAIXA DE ENTRADA ──────────────────────────────────────────── */
+.inbox-overlay{display:none;position:fixed;inset:0;background:var(--bg);z-index:9990;flex-direction:column;overflow:hidden}
+.inbox-overlay.open{display:flex}
+.inbox-hdr{padding:14px 24px;border-bottom:1px solid var(--bor);background:var(--sur);display:flex;align-items:center;justify-content:space-between;flex-shrink:0;gap:12px;flex-wrap:wrap}
+.inbox-title{font-family:'DM Serif Display',serif;font-size:20px;color:var(--acc)}
+.inbox-body{flex:1;overflow-y:auto;padding:20px 28px;display:flex;flex-direction:column;gap:10px}
+.inf{font-size:11px;padding:3px 10px;border-radius:20px;background:var(--sur2);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-family:'Sora',sans-serif;transition:all .12s}
+.inf.on{background:#1a2e0f;color:var(--acc);border-color:var(--acc)}
+/* Cards */
+.reply-card{background:var(--sur);border:1px solid var(--bor);border-radius:12px;padding:14px 18px;cursor:pointer;transition:border-color .15s}
+.reply-card:hover{border-color:var(--acc)}
+.reply-card.nao-lida{border-left:3px solid var(--acc)}
+.reply-card.respondido{opacity:.5}
+.reply-card.tem-followup{border-left:3px solid var(--inf)}
+.rc-top{display:flex;align-items:flex-start;gap:10px;margin-bottom:6px}
+.rc-av{width:34px;height:34px;border-radius:50%;background:linear-gradient(135deg,var(--dan),#8B1A1A);display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:14px;color:#fff;flex-shrink:0}
+.rc-info{flex:1;min-width:0}
+.rc-from{font-weight:600;font-size:13px;margin-bottom:1px;display:flex;align-items:center;gap:6px;flex-wrap:wrap}
+.rc-email{font-size:11px;color:var(--mut);font-family:'DM Mono',monospace;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+.rc-subj{font-size:12px;font-weight:500;margin-bottom:4px}
+.rc-prev{font-size:12px;color:var(--mut);line-height:1.6;display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+.rc-date{font-size:10px;color:var(--mut);font-family:'DM Mono',monospace;white-space:nowrap;flex-shrink:0}
+.rc-dot{width:7px;height:7px;border-radius:50%;background:var(--acc);flex-shrink:0;margin-top:2px}
+.rc-fu-badge{font-size:10px;padding:2px 6px;border-radius:4px;background:#101820;color:var(--inf);border:1px solid #1a2d40;white-space:nowrap}
+.rc-actions{display:flex;gap:6px;margin-top:8px;flex-wrap:wrap}
+.rc-fu-preview{background:var(--sur2);border:1px solid #1a2d40;border-radius:8px;padding:10px 12px;margin-top:8px;font-size:12px;line-height:1.6}
+.rc-fu-label{font-size:10px;text-transform:uppercase;letter-spacing:1px;color:var(--inf);font-weight:600;margin-bottom:4px}
+.rc-fu-subj{font-weight:600;color:var(--txt);margin-bottom:3px;font-size:12px}
+.rc-fu-body{color:var(--mut);display:-webkit-box;-webkit-line-clamp:2;-webkit-box-orient:vertical;overflow:hidden}
+/* Badge header */
+.hdr-btn-wrap{position:relative;display:inline-flex}
+.hdr-notif{position:absolute;top:-5px;right:-6px;background:var(--dan);color:#fff;font-size:9px;font-weight:700;border-radius:10px;padding:1px 4px;min-width:14px;text-align:center;display:none;pointer-events:none}
+.hdr-notif.on{display:block}
+/* Modal de resposta completa */
+.rmodal{display:none;position:fixed;inset:0;background:rgba(0,0,0,.92);z-index:10000;align-items:center;justify-content:center}
+.rmodal.open{display:flex}
+.rmodal-box{background:var(--sur);border:1px solid var(--bor);border-radius:16px;width:680px;max-width:96vw;max-height:90vh;display:flex;flex-direction:column;overflow:hidden}
+.rmodal-hdr{padding:16px 22px;border-bottom:1px solid var(--bor);flex-shrink:0}
+.rmodal-tab{padding:10px 18px;font-size:12px;cursor:pointer;border-bottom:2px solid transparent;color:var(--mut);transition:all .15s;user-select:none;flex-shrink:0;display:inline-block}
+.rmodal-tab.on{color:var(--acc);border-bottom-color:var(--acc)}
+.rmodal-content{flex:1;overflow-y:auto;padding:16px 22px}
+.rmodal-body-text{font-size:13px;line-height:1.8;color:var(--txt);white-space:pre-wrap;word-break:break-word}
+.rmodal-fu-subj{width:100%;background:var(--sur2);border:1px solid var(--bor);border-radius:6px;padding:8px 12px;color:var(--txt);font-family:'Sora',sans-serif;font-size:13px;outline:none;margin-bottom:8px;box-sizing:border-box}
+.rmodal-fu-subj:focus{border-color:var(--acc)}
+.rmodal-fu-corpo{width:100%;background:var(--sur2);border:1px solid var(--bor);border-radius:8px;padding:12px 14px;color:var(--txt);font-family:'Sora',sans-serif;font-size:13px;line-height:1.8;resize:vertical;outline:none;min-height:200px;box-sizing:border-box}
+.rmodal-fu-corpo:focus{border-color:var(--acc)}
+.rmodal-lead-grid{display:grid;grid-template-columns:1fr 1fr;gap:6px 16px;font-size:12px;background:var(--sur2);border-radius:8px;padding:12px 14px;line-height:1.8}
+/* MASS-EDIT */
+.mass-confirm-box{background:var(--sur2);border:1px solid var(--bor);border-radius:10px;padding:14px 16px;margin:6px 0;font-size:12px;line-height:1.6}
+.mass-confirm-box strong{color:var(--acc)}
+.mass-leads-preview{max-height:100px;overflow-y:auto;margin:6px 0;font-size:11px;font-family:'DM Mono',monospace;color:var(--mut)}
+.mass-actions{display:flex;gap:8px;margin-top:10px}
+.mass-btn-confirm{padding:6px 14px;border-radius:6px;background:var(--acc);border:none;color:#0d0f0e;cursor:pointer;font-family:'Sora',sans-serif;font-size:12px;font-weight:600}
+.mass-btn-cancel{padding:6px 14px;border-radius:6px;background:var(--sur);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-family:'Sora',sans-serif;font-size:12px}
+.mass-exec-prog{height:4px;background:var(--sur2);border-radius:2px;overflow:hidden;margin-top:8px}
+.mass-exec-bar{height:100%;background:var(--acc);transition:width .3s;width:0}
+</style>
+</head>
+<body>
+
+<header>
+  <div class="logo">Pedro Aranha Gestão de Tráfego <span>/ painel de disparos</span></div>
+  <div class="hm">
+    <div class="dot"></div>
+    <span id="hdr-count">carregando...</span>
+    <button class="btn btn-sync btn-sm" id="sync-btn" onclick="syncNow()">↻ Sync</button>
+    <button class="btn btn-g btn-sm" id="btn-captar" onclick="startCapture()">🔍 Captar</button>
+    <button class="btn btn-sm" id="btn-parar" onclick="stopCapture()" style="display:none;background:#f5734a;color:#fff;border:1px solid #c0452a;font-weight:600">⏹ Parar captação</button>
+    <span id="capture-indicator" style="display:none;color:#f5c842;font-size:11px;font-family:'DM Mono',monospace" class="dot-anim">● captando</span>
+    <div class="hdr-btn-wrap">
+      <button class="btn btn-g btn-sm" onclick="openInbox()">📬 Respostas</button>
+      <span class="hdr-notif" id="hdr-notif">0</span>
+    </div>
+    <button class="btn btn-sync btn-sm" onclick="pushLeadsToSheet()">⬆ Sync leads</button>
+    <button class="btn btn-bulk btn-sm" onclick="openBulk()">⚡ Disparo em massa</button>
+    <button class="btn btn-g btn-sm" onclick="openDashboard()">📊 Dashboard</button>
+    <button class="btn btn-g btn-sm" onclick="openTasks()">📋 Tarefas</button>
+    <button class="btn btn-g btn-sm" onclick="openModal()">⚙ API Key</button>
+  </div>
+</header>
+
+<div class="layout">
+
+  <!-- SIDEBAR -->
+  <div class="sidebar">
+    <div class="sb-head">
+      <h2>Contatos</h2>
+      <span class="badge" id="sb-badge">—</span>
+    </div>
+    <div class="sync-bar loading" id="sync-bar">⟳ Carregando Google Sheets...</div>
+    <div class="sb-list" id="sb-list"></div>
+  </div>
+
+  <!-- EDITOR -->
+  <div class="editor" id="editor">
+    <div class="empty" id="empty-state">
+      <div class="empty-icon">✉</div>
+      <p style="font-size:15px;font-weight:500;color:var(--txt)">Selecione um contato</p>
+      <p style="font-size:13px;line-height:1.7;color:var(--mut)">Clique para gerar e revisar<br>o e-mail antes de enviar.</p>
+    </div>
+    <div id="ed-content" style="display:none;flex-direction:column;height:100%;min-height:0">
+      <div class="ed-info">
+        <div class="ed-recip">
+          <div class="av" id="ed-av">R</div>
+          <div style="flex:1;min-width:0">
+            <div class="ed-name" id="ed-name">—</div>
+            <div class="ed-email" id="ed-email">—</div>
+          </div>
+          <div id="ed-tags" class="tags"></div>
+        </div>
+        <div class="ed-subj">
+          <label>Assunto</label>
+          <input id="ed-subj" type="text">
+        </div>
+      </div>
+      <div class="ed-actions">
+        <button class="btn btn-p" id="approve-btn" onclick="approveEmail()">✓ Aprovar e-mail</button>
+        <button class="btn btn-g" id="gen-btn" onclick="generateEmail()">⚡ Gerar e-mail</button>
+        <button class="btn btn-g" id="save-btn" onclick="salvarEmail()" title="Salva o e-mail editado sem enviar">💾 Salvar</button>
+        <button class="btn btn-gmail" id="gmail-btn" onclick="enviarEmail()">📤 Enviar e-mail</button>
+        <div style="flex:1"></div>
+        <button class="btn btn-d" onclick="skipContact()">Pular</button>
+      </div>
+      <div class="ed-body">
+        <div class="gen-ind" id="gen-ind">
+          <div class="dots"><span></span><span></span><span></span></div>
+          Claude está redigindo...
+        </div>
+        <textarea class="eta" id="ed-body" placeholder="O e-mail gerado aparecerá aqui..."></textarea>
+      </div>
+    </div>
+  </div>
+
+  <!-- CHAT -->
+  <div class="chat">
+    <div class="chat-head">
+      <div class="cav">✦</div>
+      <div>
+        <div style="font-weight:500;font-size:13px">Assistente Claude</div>
+        <div style="font-size:11px;color:var(--mut)">Peça ajustes ou tire dúvidas</div>
+      </div>
+    </div>
+    <div class="msgs" id="msgs">
+      <div class="msg claude">Olá! Selecione um contato e clique em ⚡ para gerar o e-mail automaticamente. Posso ajustar o tom, corrigir erros ou reescrever qualquer parte. 🚀</div>
+    </div>
+    <div class="chat-qa" id="chat-qa">
+      <div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:1px;width:100%;margin-bottom:2px">Lead atual:</div>
+      <button class="qb" onclick="quickAsk('Deixe o e-mail mais direto e no estilo Pedro — sem enrolação')">+ direto</button>
+      <button class="qb" onclick="quickAsk('Adicione mais urgência, no estilo provocativo do Pedro')">+ urgência</button>
+      <button class="qb" onclick="quickAsk('Deixe o e-mail mais curto — máximo 3 parágrafos')">+ curto</button>
+      <button class="qb" onclick="quickAsk('Revise erros de português mantendo o tom do Pedro')">revisar PT</button>
+      <button class="qb" onclick="quickAsk('Reescreva focando em marcar uma reunião ou call')">marcar call</button>
+      <div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:1px;width:100%;margin-top:6px;margin-bottom:2px">Em massa:</div>
+      <button class="qb" onclick="quickAsk('Adicione a apresentação do Pedro antes do corpo do e-mail de todos os leads')">+ apresentação p/ todos</button>
+      <button class="qb" onclick="quickAsk('Adicione o Instagram @pedrocgaaranha no encerramento de todos os e-mails')">+ Instagram p/ todos</button>
+      <button class="qb" onclick="quickAsk('Reescreva os e-mails de todos os leads qualificados com tom mais direto e urgente')">urgência p/ qualificados</button>
+      <button class="qb" onclick="quickAsk('Reescreva os e-mails de todos os advogados no estilo Pedro — direto e provocativo')">revisar advogados</button>
+    </div>
+    <div class="chat-inp">
+      <textarea class="cta" id="chat-inp" rows="2" placeholder="Peça uma alteração ou faça uma pergunta..." onkeydown="chatKey(event)"></textarea>
+      <button class="send-btn" onclick="sendChat()">
+        <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="#0d0f0e" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round">
+          <line x1="22" y1="2" x2="11" y2="13"/><polygon points="22 2 15 22 11 13 2 9 22 2"/>
+        </svg>
+      </button>
+    </div>
+  </div>
+</div>
+
+<!-- API KEY MODAL -->
+<div class="modal" id="key-modal">
+  <div class="modal-box">
+    <div class="modal-logo">Pedro Aranha Gestão de Tráfego</div>
+    <div class="modal-sub">Insira sua chave da Claude API para ativar a geração automática de e-mails.</div>
+    <div class="modal-label">Chave da API (Claude)</div>
+    <input class="modal-inp" id="key-inp" type="password" placeholder="sk-ant-api03-...">
+    <div class="modal-err" id="key-err">A chave deve começar com "sk-ant-"</div>
+    <div class="modal-hint">
+      Obtenha em <a href="https://console.anthropic.com" target="_blank">console.anthropic.com</a> → API Keys → Create Key.<br>
+      Sua chave fica salva no navegador. Não precisa reinserir.
+    </div>
+    <button class="modal-btn" onclick="saveKey()">Salvar e entrar →</button>
+  </div>
+</div>
+
+<!-- BULK SEND MODAL -->
+<div class="bulk-overlay" id="bulk-overlay">
+  <div class="bulk-box">
+    <div class="bulk-title">⚡ Disparo em massa</div>
+    <div class="bulk-sub">
+      Cada e-mail é gerado pelo Claude e enviado <strong style="color:var(--txt)">diretamente via Gmail API</strong> — sem abrir abas, sem confirmação manual.
+    </div>
+    <div class="bulk-filters">
+      <button class="bf on" onclick="bulkFilter('all',this)">Todos</button>
+      <button class="bf" onclick="bulkFilter('adv',this)">Advogados</button>
+      <button class="bf" onclick="bulkFilter('sim',this)">Qualificados</button>
+      <button class="bf" onclick="bulkFilter('nao_enviados',this)">Não enviados</button>
+    </div>
+    <div class="bulk-sel-bar">
+      <button class="bulk-sel-btn" onclick="bulkSelAll()">Selecionar todos</button>
+      <button class="bulk-sel-btn" onclick="bulkDeselAll()">Limpar</button>
+      <span id="bulk-sel-count" style="font-size:11px;color:var(--mut);margin-left:auto;font-family:'DM Mono',monospace">0 selecionados</span>
+    </div>
+    <div class="bulk-list" id="bulk-list"></div>
+    <div class="bulk-footer">
+      <div class="bulk-prog-wrap" id="bulk-prog-wrap"><div class="bulk-prog-bar" id="bulk-prog-bar"></div></div>
+      <span class="bulk-status" id="bulk-status"></span>
+      <div style="flex:1"></div>
+      <button class="btn btn-g btn-sm" onclick="closeBulk()">Cancelar</button>
+      <button class="btn btn-bulk" id="bulk-btn" onclick="startBulkSend()" style="padding:7px 16px;font-size:12px">⚡ Disparar selecionados</button>
+    </div>
+  </div>
+</div>
+
+<!-- DASHBOARD OVERLAY -->
+<div class="dash-overlay" id="dash-overlay">
+  <div class="dash-header">
+    <div class="dash-title">📊 Dashboard — Métricas de Captação</div>
+    <button class="dash-close" onclick="closeDashboard()">✕ Fechar</button>
+  </div>
+  <div class="dash-body" id="dash-body">
+    <div class="dash-loading" id="dash-loading">Carregando dados...</div>
+  </div>
+</div>
+
+<!-- TASKS OVERLAY -->
+<div class="dash-overlay" id="tasks-overlay">
+  <div class="dash-header">
+    <div class="dash-title">📋 Tarefas do Sistema</div>
+    <button class="dash-close" onclick="closeTasks()">✕ Fechar</button>
+  </div>
+  <div class="dash-body" id="tasks-body">
+    <div class="dash-loading">Carregando tarefas...</div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     CAIXA DE ENTRADA — RESPOSTAS DOS LEADS
+     ══════════════════════════════════════════════════ -->
+<div class="inbox-overlay" id="inbox-overlay">
+  <div class="inbox-hdr">
+    <div style="display:flex;align-items:center;gap:10px">
+      <div class="inbox-title">📬 Caixa de Entrada</div>
+      <span id="inbox-nr" style="display:none;background:var(--dan);color:#fff;font-size:10px;font-weight:700;border-radius:20px;padding:2px 8px">0</span>
+    </div>
+    <div style="display:flex;align-items:center;gap:8px;flex-wrap:wrap">
+      <button class="inf on" onclick="inboxFilter('todas',this)">Todas</button>
+      <button class="inf"    onclick="inboxFilter('nao-lidas',this)">Não lidas</button>
+      <button class="inf"    onclick="inboxFilter('followup',this)">✦ Follow-up pronto</button>
+      <button class="inf"    onclick="inboxFilter('pendentes',this)">Não respondidas</button>
+      <span id="inbox-last" style="font-size:10px;color:var(--mut);font-family:'DM Mono',monospace"></span>
+      <button class="btn btn-sync btn-sm" id="inbox-check-btn" onclick="inboxCheckNow()">🔄 Verificar agora</button>
+      <button class="btn btn-g btn-sm" onclick="closeInbox()">✕ Fechar</button>
+    </div>
+  </div>
+  <div class="inbox-body" id="inbox-body">
+    <div style="text-align:center;padding:60px 20px;color:var(--mut)">
+      <div style="font-size:48px;opacity:.12;margin-bottom:12px">📭</div>
+      <p style="font-size:14px">Carregando respostas...</p>
+    </div>
+  </div>
+</div>
+
+<!-- ══════════════════════════════════════════════════
+     MODAL — RESPOSTA COMPLETA DO LEAD
+     ══════════════════════════════════════════════════ -->
+<div class="rmodal" id="rmodal">
+  <div class="rmodal-box">
+    <div class="rmodal-hdr">
+      <div style="font-size:11px;color:var(--mut);font-family:'DM Mono',monospace;margin-bottom:3px" id="rm-from"></div>
+      <div style="font-size:15px;font-weight:600;margin-bottom:2px" id="rm-subj"></div>
+      <div style="font-size:11px;color:var(--mut);font-family:'DM Mono',monospace" id="rm-date"></div>
+    </div>
+    <div style="display:flex;border-bottom:1px solid var(--bor);flex-shrink:0">
+      <div class="rmodal-tab on" id="rm-tab-resp" onclick="rmodalTab('resposta',this)">Resposta do lead</div>
+      <div class="rmodal-tab"   id="rm-tab-fu"   onclick="rmodalTab('followup',this)">✦ Follow-up gerado</div>
+      <div class="rmodal-tab"   id="rm-tab-lead" onclick="rmodalTab('lead',this)">Dados do lead</div>
+    </div>
+    <div class="rmodal-content" id="rm-content"></div>
+    <div style="padding:12px 22px;border-top:1px solid var(--bor);display:flex;gap:8px;flex-shrink:0;flex-wrap:wrap">
+      <button class="btn btn-p"        id="rm-usar-fu" onclick="usarFollowUp()">⚡ Usar follow-up no editor</button>
+      <button class="btn btn-g btn-sm" id="rm-regen"   onclick="regenerarFollowUp()">↻ Regenerar</button>
+      <button class="btn btn-g btn-sm"                 onclick="responderNoEditor()">↗ Responder do zero</button>
+      <button class="btn btn-g btn-sm"                 onclick="markAnsweredModal()">✓ Marcar respondido</button>
+      <div style="flex:1"></div>
+      <button class="btn btn-d btn-sm"                 onclick="closeRmodal()">Fechar</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>
+// ── CONFIGURAÇÕES ─────────────────────────────────────────────────
+const SHEET_ID    = '1r7vob1TvEY8P9G6wm5NcfNFg_r1aUwqvBSS7mrSt9Oo';
+const SHEET_NAME  = 'Página1';
+const SYNC_MS     = 60000;
+const COL         = { NOME:0, SOBRENOME:1, TELEFONE:2, EMAIL:3, EMPRESA:4, CREATED:5,
+                      ACTIVITY:6, TAGS:7, SOURCE:8, MEDIUM:9, CAMPAIGN:10, CONTENT:11,
+                      FAT:12, URG:13, QUALIF:14, CAD_STATUS:15, CAD_ETAPA:16, CAD_PROXIMO:17,
+                      ABERTO:18, RESPONDIDO:19, DT_RESPOSTA:20 };
+const BACKEND_URL = 'https://matte-ia-production.up.railway.app';
+
+// ── PERFIL COMPLETO DE PEDRO ARANHA (alimenta toda a IA do sistema) ──
+const PEDRO_PROFILE = `
+QUEM É PEDRO ARANHA:
+Pedro Aranha é estrategista de marketing digital focado em performance real.
+Já gerenciou mais de R$20MM em anúncios e gerou mais de R$100MM em vendas.
+Formado em Administração (UDESC). Trabalha com Meta Ads, Google Ads, funis,
+WhatsApp como canal de conversão e copy orientada a venda.
+
+NÃO se posiciona como "gestor de tráfego comum". Se posiciona como alguém
+que entende negócio, venda e margem — e usa tráfego como ferramenta, não
+como fim. Seu diferencial: transformar anúncio em contrato fechado.
+
+FILOSOFIA:
+- CPM, CTR e CPC são métricas secundárias. O que importa: CAC, LTV, margem,
+  qualidade do lead, taxa de fechamento.
+- "Anúncio não é pra performar bonito. É pra vender."
+- "Lead não vale nada se não vira cliente."
+- "Criativo ruim atrai cliente ruim."
+- Criativo segmenta mais que público. Mensagem define quem entra.
+- Trabalha com nível de consciência (Eugene Schwartz) e nível de sofisticação.
+
+ESTILO DE COMUNICAÇÃO (SEMPRE usar este tom):
+- Direto, sem enrolação, confiante, provocativo, anti-"coachzinho"
+- Fala como pensa. Frases curtas. Ritmo natural, não robótico.
+- Começa com gancho forte → quebra crença → explica simples → fecha com CTA
+- Agressivo quando necessário. Prefere verdade desconfortável ao discurso bonito.
+- Exemplos de abertura: "Vou te falar a real…" / "Ninguém te conta isso…"
+
+DIFERENCIAL COMPETITIVO:
+Não vende tráfego. Vende: diagnóstico de negócio, clareza de gargalo,
+estrutura de aquisição previsível, melhoria na conversão, aumento de receita.
+Conecta Marketing + Vendas + Operação.
+
+CONTATO:
+- WhatsApp: (11) 99515-7048
+- Instagram: @pedrocgaaranha
+- Assinar e-mails como: Pedro Aranha | Gestão de Tráfego
+`;
+
+const PEDRO_EMAIL_INTRO = `Pedro Aranha aqui — estrategista de tráfego pago.
+
+Já gerenciei mais de R$20MM em anúncios e ajudei a gerar mais de R$100MM em vendas para negócios como o seu. Trabalho com Meta Ads, Google Ads e estruturação de funis com foco em resultado real: cliente fechado, não curiosidade vazia.`;
+
+const PEDRO_EMAIL_CLOSING = `Se quiser conversar sobre como estruturar isso no seu negócio, me chama direto no WhatsApp: (11) 99515-7048
+
+E se quiser acompanhar conteúdo sobre tráfego e vendas sem enrolação, me segue no Instagram: @pedrocgaaranha
+
+Pedro Aranha | Gestão de Tráfego`;
+
+// ── TEMPLATE FIXO PARA ADVOGADOS ──────────────────────────────────
+const TEMPLATE_ADV_SUBJ = 'O tipo de cliente que você atrai depende do que você fala no anúncio';
+const TEMPLATE_ADV_BODY = `${PEDRO_EMAIL_INTRO}
+
+A maioria dos escritórios ainda erra na base da campanha.
+
+Não é o orçamento.
+Não é o criativo.
+Não é nem o tráfego.
+
+É a comunicação.
+
+Vejo muitos anúncios genéricos tentando falar com todo mundo:
+
+"Teve seu direito negado?"
+"Precisa de ajuda jurídica?"
+
+Isso até gera volume.
+Mas atrai o tipo errado de cliente.
+
+Gente curiosa.
+Sem urgência.
+Sem clareza do problema.
+Que entra na conversa só pra "entender melhor".
+
+E isso trava o comercial.
+
+Agora compara com uma comunicação direcionada:
+
+"Plano de saúde negou cirurgia ou medicamento de alto custo?"
+"Seu benefício do INSS foi cortado recentemente?"
+
+Percebe a diferença?
+
+Aqui você não está chamando qualquer pessoa.
+Você está falando diretamente com quem:
+já tem o problema
+já sentiu o impacto
+já está buscando solução
+
+Esse é o cliente que chega diferente.
+Ele não pergunta "isso funciona?"
+Ele pergunta "como resolvemos isso?"
+
+E tem outro ponto importante:
+Esse tipo de comunicação não precisa ser agressiva.
+Pelo contrário.
+
+Funciona muito melhor quando tem caráter descritivo e informativo — mostrando
+o cenário com clareza e deixando o próximo passo natural.
+
+Sem pressão. Com CTAs neutros:
+
+"Fale com um advogado especialista"
+"Consulte um escritório especializado"
+
+Isso gera mais confiança e atrai cliente com nível de consciência muito mais alto.
+
+No fim do dia, o jogo não é sobre gerar mais clientes.
+É sobre atrair as pessoas certas, no momento certo.
+
+${PEDRO_EMAIL_CLOSING}`;
+
+function isAdvogado(c) {
+  const tags = (c.tags||'').toLowerCase();
+  const emp  = (c.emp||c.empresa||'').toLowerCase();
+  const name = (c.name||c.nome||'').toLowerCase();
+  const camp = (c.campaign||'').toLowerCase();
+  return camp === 'advogados'
+      || tags.includes('adv') || emp.includes('adv') || name.includes('adv')
+      || tags.includes('jurídic') || emp.includes('jurídic')
+      || tags.includes('oab') || emp.includes('oab');
+}
+
+// ── STATE ─────────────────────────────────────────────────────────
+let CONTACTS = [];
+const S = { sel:null, approved:new Set(), sent:new Set(), skipped:new Set(), emails:{}, subjects:{}, history:[] };
+let API_KEY = localStorage.getItem('matte_key') || '';
+
+// ── INIT ──────────────────────────────────────────────────────────
+window.addEventListener('DOMContentLoaded', () => {
+  document.getElementById('key-inp').addEventListener('keydown', e => {
+    if (e.key === 'Enter') saveKey();
+    document.getElementById('key-err').style.display = 'none';
+  });
+  if (!API_KEY) openModal();
+  _carregarEnviados();
+  loadSheet();
+  setInterval(() => loadSheet(false), SYNC_MS);
+  // Carregar badge da inbox ao iniciar (silencioso, após 4s)
+  setTimeout(() => loadInbox(true), 4000);
+});
+
+// ── GOOGLE SHEETS SYNC ────────────────────────────────────────────
+function cleanCell(v) { return (v||'').replace(/^"|"$/g,'').trim(); }
+function normQ(v) {
+  const l = (v||'').toLowerCase();
+  if (l === 'sim') return 'sim';
+  if (l.includes('potencial')) return 'com potencial';
+  if (l === 'não' || l === 'nao') return 'não';
+  return l || 'com potencial';
+}
+function parseCSV(text) {
+  const rows = [];
+  const lines = text.split(/\r?\n/);
+  for (const line of lines) {
+    if (!line.trim()) continue;
+    const cols = [];
+    let cur = '', inQ = false, i = 0;
+    while (i < line.length) {
+      const ch = line[i];
+      if (ch === '"') {
+        if (inQ && line[i + 1] === '"') { cur += '"'; i += 2; continue; } // aspas escapadas ""
+        inQ = !inQ; // não adiciona a aspa ao valor
+      } else if (ch === ',' && !inQ) {
+        cols.push(cur); cur = '';
+      } else {
+        cur += ch;
+      }
+      i++;
+    }
+    cols.push(cur);
+    rows.push(cols);
+  }
+  return rows;
+}
+
+async function loadSheet(showLoading=true) {
+  if (showLoading) setSyncBar('loading', '⟳ Sincronizando...');
+  const url = `https://docs.google.com/spreadsheets/d/${SHEET_ID}/gviz/tq?tqx=out:csv&sheet=${encodeURIComponent(SHEET_NAME)}&t=${Date.now()}`;
+  try {
+    const r = await fetch(url, { cache: 'no-store' });
+    if (!r.ok) throw new Error('Planilha inacessível — torne-a pública para leitura.');
+    const csv  = await r.text();
+    const rows = parseCSV(csv);
+    if (rows.length < 2) throw new Error('Planilha sem dados.');
+    const prevEmail = S.sel !== null ? CONTACTS[S.sel]?.email : null;
+    CONTACTS = rows.slice(1)
+      .map(r => ({
+        name:         cleanCell(r[COL.NOME])       || 'Sem nome',
+        email:        cleanCell(r[COL.EMAIL]),
+        emp:          cleanCell(r[COL.EMPRESA]),
+        fat:          cleanCell(r[COL.FAT])         || 'não informado',
+        urg:          cleanCell(r[COL.URG]),
+        q:            normQ(cleanCell(r[COL.QUALIF])),
+        tags:         cleanCell(r[COL.TAGS]),
+        campaign:     cleanCell(r[COL.CAMPAIGN]),
+        medium:       cleanCell(r[COL.MEDIUM]),
+        cidade:       cleanCell(r[COL.ACTIVITY]),
+        cadStatus:    cleanCell(r[COL.CAD_STATUS]),
+        cadEtapa:     cleanCell(r[COL.CAD_ETAPA]),
+        aberto:       cleanCell(r[COL.ABERTO]),
+        respondido:   cleanCell(r[COL.RESPONDIDO]),
+      }))
+      .filter(c => c.email && c.email.includes('@'));
+    // Restaurar aprovados/enviados confirmados pela planilha
+    CONTACTS.forEach((c, i) => {
+      if (c.aberto === 'sim' || c.respondido === 'sim') {
+        S.approved.add(i); S.sent.add(i);
+      }
+    });
+    renderList();
+    if (prevEmail) {
+      const idx = CONTACTS.findIndex(c => c.email === prevEmail);
+      if (idx >= 0 && idx !== S.sel) { S.sel = idx; renderList(); }
+    }
+    const t = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+    setSyncBar('ok', `✓ ${CONTACTS.length} contatos · ${t}`);
+  } catch(e) {
+    setSyncBar('err', '⚠ ' + e.message);
+  }
+}
+
+async function syncNow() {
+  const btn = document.getElementById('sync-btn');
+  if (btn) { btn.textContent = '⟳'; btn.disabled = true; }
+  await loadSheet(true);
+  if (btn) { btn.textContent = '↻ Sync'; btn.disabled = false; }
+  toast('Sincronizado! ✓');
+}
+
+function setSyncBar(state, msg) {
+  const el = document.getElementById('sync-bar');
+  if (!el) return;
+  el.className = 'sync-bar ' + state;
+  el.textContent = msg;
+}
+
+// ── API KEY ───────────────────────────────────────────────────────
+function openModal() {
+  document.getElementById('key-inp').value = API_KEY;
+  document.getElementById('key-modal').classList.add('open');
+  setTimeout(() => document.getElementById('key-inp').focus(), 100);
+}
+function saveKey() {
+  const v = document.getElementById('key-inp').value.trim();
+  if (!v.startsWith('sk-ant-')) { document.getElementById('key-err').style.display = 'block'; return; }
+  API_KEY = v;
+  localStorage.setItem('matte_key', v);
+  document.getElementById('key-modal').classList.remove('open');
+  toast('Chave salva! ✓');
+}
+
+// ── CLAUDE API ────────────────────────────────────────────────────
+async function callClaude(messages, system='', maxTokens=600) {
+  const body = { model:'claude-haiku-4-5-20251001', max_tokens:maxTokens, messages };
+  if (system) body.system = system;
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': API_KEY,
+      'anthropic-version': '2023-06-01',
+      'anthropic-dangerous-direct-browser-access': 'true'
+    },
+    body: JSON.stringify(body)
+  });
+  const d = await r.json();
+  if (d.error) throw new Error(d.error.message);
+  return d.content[0].text;
+}
+
+// ── RENDER LIST ───────────────────────────────────────────────────
+function fatShort(f) {
+  return f.replace('Entre R$ ','R$').replace(' mil e ','-').replace(' mil','k')
+          .replace('Acima de R$ ','>R$').replace('Iniciando, menos de R$ ','<R$');
+}
+function tagClass(q) { return q==='sim'?'t-sim':q==='com potencial'?'t-pot':'t-nao'; }
+function esc(s) { return String(s||'').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;'); }
+
+// ── SUBSTITUIÇÕES OBRIGATÓRIAS NOS E-MAILS GERADOS ───────────────────
+function _limparPalavrasProibidas(texto) {
+  if (!texto) return texto;
+  return texto
+    .replace(/\bLeads\b/g, 'Clientes')
+    .replace(/\bleads\b/g, 'clientes')
+    .replace(/\bLead\b/g,  'Cliente')
+    .replace(/\blead\b/g,  'cliente')
+    .replace(/\bléads\b/gi, 'clientes')
+    .replace(/\bléad\b/gi,  'cliente');
+}
+
+function renderList() {
+  const el = document.getElementById('sb-list');
+  const st = el.scrollTop;
+  el.innerHTML = '';
+  let visible = 0;
+  CONTACTS.forEach((c, i) => {
+    if (S.skipped.has(i)) return;
+    visible++;
+    const d = document.createElement('div');
+    d.className = 'ci' + (S.sel===i?' active':'');
+    d.onclick = () => selectContact(i);
+    const advBadge = isAdvogado(c) ? '<span class="tag" style="background:#101820;color:#7ab8f5;border:1px solid #1a2d40;font-size:9px">ADV</span>' : '';
+    const cadBadge = c.cadStatus === 'ativa' ? '<span class="tag" style="background:#0d1f0d;color:var(--acc);border:1px solid #1a3a1a;font-size:9px">cad</span>' : '';
+    d.innerHTML = `
+      <div class="ci-name">
+        <span>${esc(c.name)}</span>
+        ${S.sent.has(i) ? '<span class="ci-check" title="Enviado">✓</span>' : S.approved.has(i) ? '<span class="ci-check" style="color:#b8860b" title="Gerado, não enviado">⏸</span>' : ''}
+      </div>
+      <div class="ci-email">${esc(c.email)}</div>
+      <div class="tags">
+        <span class="tag ${tagClass(c.q)}">${esc(c.q)}</span>
+        <span class="tag t-fat">${esc(fatShort(c.fat))}</span>
+        ${advBadge}${cadBadge}
+      </div>`;
+    el.appendChild(d);
+  });
+  el.scrollTop = st;
+  document.getElementById('sb-badge').textContent = visible;
+  document.getElementById('hdr-count').textContent = `${S.approved.size} aprovados · ${visible} contatos`;
+}
+
+// ── SELECT CONTACT ────────────────────────────────────────────────
+function selectContact(i) {
+  S.sel = i;
+  document.getElementById('gmail-btn').classList.remove('visible');
+  renderList();
+  const c = CONTACTS[i];
+  document.getElementById('empty-state').style.display = 'none';
+  document.getElementById('ed-content').style.display = 'flex';
+  document.getElementById('ed-av').textContent = c.name[0].toUpperCase();
+  document.getElementById('ed-name').textContent = c.name;
+  document.getElementById('ed-email').textContent = c.email;
+  document.getElementById('ed-tags').innerHTML = `
+    <span class="tag ${tagClass(c.q)}">${esc(c.q)}</span>
+    <span class="tag t-fat" style="margin-left:4px">${esc(c.fat)}</span>
+    ${isAdvogado(c) ? '<span class="tag" style="background:#101820;color:#7ab8f5;border:1px solid #1a2d40;font-size:9px;margin-left:4px">ADV</span>' : ''}`;
+  document.getElementById('ed-subj').value = S.subjects[i] || getSubject(c);
+  document.getElementById('ed-body').value = S.emails[i] || '';
+  document.getElementById('approve-btn').textContent = S.approved.has(i) ? '✓ Aprovado' : '✓ Aprovar e-mail';
+  if (!S.emails[i]) generateEmail();
+  else document.getElementById('gmail-btn').classList.add('visible');
+}
+
+function getSubject(c) {
+  if (isAdvogado(c)) return TEMPLATE_ADV_SUBJ;
+  if (c.q==='sim') return 'Vamos marcar uma conversa? | Pedro Aranha Gestão de Tráfego';
+  if (c.q==='com potencial') return 'Como negócios estão crescendo com tráfego pago | Pedro Aranha';
+  return 'Uma solução que pode transformar seus resultados';
+}
+
+// ── GENERATE EMAIL ────────────────────────────────────────────────
+// ── Cache de respostas recebidas (preenchido por loadInbox) ──────────────────
+const _respostasCache = {};
+function _getRespostaDoLead(email) { return _respostasCache[(email||'').toLowerCase()] || null; }
+function _cacheRespostas(replies) {
+  (replies || []).forEach(r => { if (r.email) _respostasCache[r.email.toLowerCase()] = r; });
+}
+
+async function generateEmail() {
+  if (S.sel === null) return;
+  const c    = CONTACTS[S.sel];
+  const ind  = document.getElementById('gen-ind');
+  const ta   = document.getElementById('ed-body');
+  const btn  = document.getElementById('gen-btn');
+  const gbtn = document.getElementById('gmail-btn');
+
+  ind.classList.add('on');
+  ta.value = ''; ta.style.display = 'none';
+  btn.disabled = true; btn.textContent = '⏳ Gerando...';
+  gbtn.classList.remove('visible');
+
+  // Template fixo para advogados (sem chamar API)
+  if (isAdvogado(c)) {
+    ta.value          = TEMPLATE_ADV_BODY;
+    S.emails[S.sel]   = TEMPLATE_ADV_BODY;
+    S.subjects[S.sel] = TEMPLATE_ADV_SUBJ;
+    document.getElementById('ed-subj').value = TEMPLATE_ADV_SUBJ;
+    ind.classList.remove('on'); ta.style.display = 'block';
+    btn.disabled = false; btn.textContent = '⚡ Gerar e-mail';
+    gbtn.classList.add('visible');
+    return;
+  }
+
+  if (!API_KEY) {
+    openModal();
+    ind.classList.remove('on'); ta.style.display = 'block';
+    btn.disabled = false; btn.textContent = '⚡ Gerar e-mail';
+    return;
+  }
+
+  // Verificar se lead respondeu → modo follow-up
+  const respostaLocal = _getRespostaDoLead(c.email);
+  const leadRespondeu = c.emailRespondido === 'sim' || !!respostaLocal;
+
+  let prompt;
+
+  if (leadRespondeu && respostaLocal) {
+    btn.textContent = '⏳ Analisando resposta...';
+
+    prompt = `Você escreve e-mails no estilo de Pedro Aranha — direto, sem enrolação, confiante.
+
+DESTINATÁRIO:
+- Nome: ${c.name}
+- Empresa: ${c.emp || 'não informado'}
+- Faturamento: ${c.fat || 'não informado'}
+- Qualificação: ${c.q}
+- Especialidade: ${c.medium || 'não informado'}
+
+O QUE ESTE CLIENTE RESPONDEU:
+${respostaLocal.bodyClean || respostaLocal.body || '(sem conteúdo)'}
+
+E-MAIL ANTERIOR ENVIADO:
+${S.emails[S.sel] || '(sem histórico)'}
+
+INSTRUÇÃO: ${c.q === 'sim'
+  ? 'Cliente qualificado. Avance diretamente para marcar reunião ou call.'
+  : 'Aprofunde o interesse. Proponha próximo passo concreto.'}
+
+Escreva APENAS o corpo central da resposta (2 parágrafos curtos).
+- NÃO inclua apresentação ou assinatura — serão adicionadas depois
+- NÃO use as palavras "lead" ou "leads" — use "cliente" ou "clientes"
+- Responda ao que o cliente disse, mostre que leu com atenção
+- Tom: direto, caloroso, sem enrolação
+- Termine com proposta de próximo passo clara`;
+
+  } else if (leadRespondeu) {
+    prompt = `Você escreve e-mails no estilo de Pedro Aranha — direto, sem enrolação, confiante.
+
+Cliente: ${c.name} | Empresa: ${c.emp||'—'} | Faturamento: ${c.fat||'—'} | Qualificação: ${c.q}
+Este cliente respondeu seu e-mail. Escreva um follow-up direto no estilo Pedro,
+aprofundando o interesse e propondo reunião ou call. Máximo 2 parágrafos.
+NÃO inclua apresentação ou assinatura. NÃO use "lead" ou "leads".
+Escreva APENAS o corpo central.`;
+
+  } else {
+    // Primeiro contato
+    const inst = c.q === 'sim'
+      ? 'Cliente ALTAMENTE QUALIFICADO. Convide diretamente para reunião ou call. Tom direto e confiante.'
+      : c.q === 'com potencial'
+      ? 'Cliente com potencial. Gere curiosidade, apresente o diferencial, proponha próximo passo.'
+      : 'Cliente ainda frio. Apresente levemente, sem pressão, deixe porta aberta.';
+
+    prompt = `Você escreve e-mails no estilo de Pedro Aranha — direto, sem enrolação, provocativo, confiante.
+
+DESTINATÁRIO:
+- Nome: ${c.name}
+- Empresa: ${c.emp || 'não informado'}
+- Faturamento mensal: ${c.fat || 'não informado'}
+- Urgência: ${c.urg || 'não informada'}
+- Especialidade: ${c.medium || 'não informado'}
+- Cidade: ${c.cidade || 'não informada'}
+- Qualificação: ${c.q}
+
+INSTRUÇÃO: ${inst}
+
+Escreva APENAS o corpo central do e-mail (2 a 3 parágrafos curtos).
+- NÃO inclua saudação inicial, apresentação ou assinatura — isso será adicionado depois
+- NÃO use as palavras "lead" ou "leads" — use "cliente" ou "clientes"
+- Tom: direto, frases curtas, sem enrolação, provocativo quando necessário
+- Conecte com o contexto do destinatário (faturamento, especialidade, cidade)
+- Termine o corpo com uma chamada para ação clara (mas sem incluir WhatsApp ou Instagram — isso vem depois)`;
+  }
+
+  try {
+    const text = await callClaude([{ role: 'user', content: prompt }], '', 1000);
+
+    // Limpar palavras proibidas e montar e-mail completo: apresentação + corpo + encerramento
+    const corpoLimpo    = _limparPalavrasProibidas(text);
+    const emailCompleto = `${PEDRO_EMAIL_INTRO}\n\n${corpoLimpo}\n\n${PEDRO_EMAIL_CLOSING}`;
+
+    ta.value          = emailCompleto;
+    S.emails[S.sel]   = emailCompleto;
+    S.subjects[S.sel] = document.getElementById('ed-subj').value;
+    gbtn.classList.add('visible');
+    if (leadRespondeu) toast('✦ Follow-up gerado com base na resposta do cliente!');
+  } catch(e) {
+    ta.value = '⚠ Erro ao gerar: ' + e.message + '\n\nVerifique sua chave em ⚙ API Key.';
+    console.error('generateEmail erro:', e);
+  }
+
+  ind.classList.remove('on'); ta.style.display = 'block';
+  btn.disabled = false;
+  btn.textContent = leadRespondeu ? '↻ Regerar follow-up' : '⚡ Gerar e-mail';
+}
+
+// ── APPROVE / SKIP ────────────────────────────────────────────────
+function approveEmail() {
+  if (S.sel===null) return;
+  S.emails[S.sel]   = document.getElementById('ed-body').value;
+  S.subjects[S.sel] = document.getElementById('ed-subj').value;
+  S.approved.add(S.sel);
+  document.getElementById('approve-btn').textContent = '✓ Aprovado';
+  renderList(); toast('E-mail aprovado! ✓');
+  setTimeout(() => {
+    const nxt = CONTACTS.findIndex((_,i) => i>S.sel && !S.skipped.has(i) && !S.approved.has(i));
+    if (nxt>=0) selectContact(nxt);
+  }, 500);
+}
+
+function salvarEmail() {
+  if (S.sel === null) { toast('Selecione um lead primeiro'); return; }
+  S.emails[S.sel]   = document.getElementById('ed-body').value;
+  S.subjects[S.sel] = document.getElementById('ed-subj').value;
+  S.approved.add(S.sel);
+  document.getElementById('approve-btn').textContent = '✓ Aprovado';
+  document.getElementById('gmail-btn').classList.add('visible');
+  renderList();
+  toast('💾 E-mail salvo!');
+}
+
+function skipContact() {
+  if (S.sel===null) return;
+  S.skipped.add(S.sel); S.approved.delete(S.sel);
+  renderList(); toast('Contato pulado');
+  const nxt = CONTACTS.findIndex((_,i) => i>S.sel && !S.skipped.has(i));
+  if (nxt>=0) selectContact(nxt);
+}
+
+// ── ENVIAR EMAIL ──────────────────────────────────────────────────
+async function enviarEmail() {
+  if (S.sel === null) return;
+  const body = document.getElementById('ed-body').value.trim();
+  if (!body) { toast('Gere o e-mail primeiro!'); return; }
+  const c    = CONTACTS[S.sel];
+  const subj = document.getElementById('ed-subj').value;
+  const btn  = document.getElementById('gmail-btn');
+
+  btn.disabled = true;
+  btn.textContent = '⏳ Enviando...';
+
+  try {
+    const r = await fetch(`${BACKEND_URL}/email/send`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ to: c.email, subject: subj, body, name: c.name, source: 'manual_individual' })
+    });
+    const d = await r.json();
+    if (!r.ok) throw new Error(d.error || `Erro ${r.status} no servidor`);
+
+    S.approved.add(S.sel);
+    S.sent.add(S.sel);
+    S.emails[S.sel]   = body;
+    S.subjects[S.sel] = subj;
+    document.getElementById('approve-btn').textContent = '✓ Aprovado';
+    _marcarEnviado(c.email, c.name, subj);
+    renderList();
+    toast('✓ E-mail enviado para ' + c.name + '!');
+
+    setTimeout(() => {
+      const nxt = CONTACTS.findIndex((_,i) => i > S.sel && !S.skipped.has(i) && !S.approved.has(i));
+      if (nxt >= 0) selectContact(nxt);
+    }, 1000);
+  } catch(e) {
+    toast('⚠ Erro no envio: ' + e.message + ' — verifique as credenciais Gmail no backend.');
+    console.error('Erro enviarEmail:', e);
+  } finally {
+    btn.disabled = false;
+    btn.textContent = '📤 Enviar e-mail';
+  }
+}
+
+function _marcarEnviado(email, nome, assunto) {
+  try {
+    const map = JSON.parse(localStorage.getItem('matte_sent_v2') || '{}');
+    map[email.toLowerCase().trim()] = { nome, assunto, dt: new Date().toISOString() };
+    localStorage.setItem('matte_sent_v2', JSON.stringify(map));
+  } catch(e) {}
+  // Persiste no backend (melhor esforço)
+  fetch(`${BACKEND_URL}/email/mark-sent`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ email, nome, assunto, source: 'manual_individual' }),
+  }).catch(() => {});
+}
+
+async function _carregarEnviados() {
+  // Restaura do localStorage primeiro (imediato)
+  try {
+    const map = JSON.parse(localStorage.getItem('matte_sent_v2') || '{}');
+    const emails = Object.keys(map);
+    if (emails.length > 0 && CONTACTS.length > 0) {
+      CONTACTS.forEach((c, i) => {
+        if (map[c.email?.toLowerCase()?.trim()]) { S.approved.add(i); S.sent.add(i); }
+      });
+      renderList();
+    }
+  } catch(e) {}
+  // Complementa com dados do backend
+  try {
+    const r = await fetch(`${BACKEND_URL}/email/sent`);
+    if (!r.ok) return;
+    const list = await r.json();
+    const emailSet = new Set(list.map(e => (e.email || '').toLowerCase().trim()));
+    if (emailSet.size > 0 && CONTACTS.length > 0) {
+      CONTACTS.forEach((c, i) => {
+        if (emailSet.has(c.email?.toLowerCase()?.trim())) { S.approved.add(i); S.sent.add(i); }
+      });
+      renderList();
+    }
+  } catch(e) {}
+}
+
+// ── CHAT ──────────────────────────────────────────────────────────
+async function sendChat() {
+  const inp = document.getElementById('chat-inp');
+  const msg = inp.value.trim();
+  if (!msg) return;
+  if (!API_KEY) { openModal(); return; }
+  inp.value = '';
+  addMsg(msg, 'user');
+
+  // Detecta comando de edição em massa
+  if (_detectMassCommand(msg)) {
+    await _handleMassEdit(msg);
+    return;
+  }
+
+  const c = S.sel!==null ? CONTACTS[S.sel] : null;
+  const emailAtual = document.getElementById('ed-body').value;
+  const sys = c
+    ? `Você é o assistente pessoal de Pedro Aranha, estrategista de tráfego pago.
+
+${PEDRO_PROFILE}
+
+CONTATO SELECIONADO AGORA:
+- Nome: ${c.name}
+- Empresa: ${c.emp || 'não informado'}
+- Faturamento: ${c.fat}
+- Qualificação: ${c.q}
+- Especialidade: ${c.medium || 'não informado'}
+- Cidade: ${c.cidade || 'não informado'}
+
+E-MAIL ATUAL NO EDITOR:
+${emailAtual || '(vazio)'}
+
+SUAS FUNÇÕES:
+1. Ajustar e-mails do contato selecionado quando Pedro pedir
+2. Aplicar mudanças em MASSA quando Pedro mencionar "todos", "em massa", etc.
+3. Responder perguntas sobre estratégia, copy e tráfego no estilo Pedro
+
+PARA ALTERAÇÕES NO E-MAIL INDIVIDUAL:
+Responda com o e-mail COMPLETO reescrito, precedido pela linha exata: ===EMAIL===
+
+PARA COMANDOS EM MASSA (todos os leads, qualificados, advogados, etc.):
+Responda com o plano em JSON, precedido pela linha exata: ===MASSA===
+Formato JSON:
+{
+  "filtro": "todos" | "qualificados" | "potencial" | "nao_qualificados" | "advogados" | "especificos",
+  "nomesEspecificos": [],
+  "instrucao": "descrição clara da alteração",
+  "confirmacao": "mensagem explicando o que será feito e para quantos leads"
+}
+
+REGRAS DE ESTILO (sempre aplicar nos e-mails):
+- Tom Pedro: direto, sem enrolação, provocativo, confiante
+- Frases curtas. Ritmo natural.
+- Sempre incluir apresentação no início (já está no PEDRO_EMAIL_INTRO)
+- Sempre terminar com PEDRO_EMAIL_CLOSING (WhatsApp + Instagram @pedrocgaaranha)
+- Nunca tom professoral ou formal demais`
+    : `Você é o assistente pessoal de Pedro Aranha, estrategista de tráfego pago.
+${PEDRO_PROFILE}
+Responda no estilo Pedro: direto, sem enrolação, com estratégia real.`;
+
+  const loadEl = document.createElement('div');
+  loadEl.className = 'msg-loading'; loadEl.textContent = '● ● ●';
+  document.getElementById('msgs').appendChild(loadEl);
+  scrollMsgs();
+
+  S.history.push({role:'user', content:msg});
+  try {
+    const reply = await callClaude(S.history, sys, 800);
+    S.history.push({role:'assistant', content:reply});
+    loadEl.remove();
+    if (reply.includes('===MASSA===')) {
+      // Passa para _handleMassEdit processar via JSON estruturado
+      const jsonStr = reply.split('===MASSA===')[1].trim().replace(/```json|```/g,'').trim();
+      let plano;
+      try { plano = JSON.parse(jsonStr); } catch(e) { addMsg(reply, 'claude'); return; }
+      await _processarPlanoMassa(plano);
+    } else if (reply.includes('===EMAIL===')) {
+      const parts = reply.split('===EMAIL===');
+      if (parts[0].trim()) addMsg(parts[0].trim(), 'claude');
+      const ne = _limparPalavrasProibidas(parts[1].trim());
+      document.getElementById('ed-body').value = ne;
+      if (S.sel!==null) {
+        S.emails[S.sel] = ne;
+        document.getElementById('gmail-btn').classList.add('visible');
+      }
+      addMsg('✓ E-mail atualizado no editor!', 'claude');
+    } else {
+      addMsg(reply, 'claude');
+    }
+  } catch(e) {
+    loadEl.remove();
+    addMsg('⚠ Erro: ' + e.message, 'claude');
+  }
+}
+
+function quickAsk(msg) { document.getElementById('chat-inp').value = msg; sendChat(); }
+function addMsg(text, who) {
+  const d = document.createElement('div');
+  d.className = 'msg ' + who;
+  d.innerHTML = text.replace(/\n/g,'<br>');
+  document.getElementById('msgs').appendChild(d);
+  scrollMsgs();
+}
+function scrollMsgs() { const m = document.getElementById('msgs'); m.scrollTop = m.scrollHeight; }
+function chatKey(e) { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } }
+
+// ── TOAST ─────────────────────────────────────────────────────────
+function toast(msg) {
+  const t = document.getElementById('toast');
+  t.textContent = msg; t.classList.add('show');
+  setTimeout(() => t.classList.remove('show'), 2800);
+}
+
+// ── BULK SEND ─────────────────────────────────────────────────────
+let bulkSel = new Set();
+let bulkFilter_ = 'all';
+let bulkRunning = false;
+
+function openBulk() {
+  if (!CONTACTS.length) { toast('Aguarde os contatos carregarem'); return; }
+  bulkSel = new Set();
+  bulkFilter_ = 'all';
+  document.querySelectorAll('.bf').forEach((b,i)=>b.classList.toggle('on',i===0));
+  document.getElementById('bulk-status').textContent = '';
+  document.getElementById('bulk-prog-wrap').style.display = 'none';
+  document.getElementById('bulk-prog-bar').style.width = '0%';
+  document.getElementById('bulk-btn').disabled = false;
+  document.getElementById('bulk-btn').textContent = '⚡ Disparar selecionados';
+  renderBulkList();
+  document.getElementById('bulk-overlay').classList.add('open');
+}
+
+function closeBulk() {
+  if (bulkRunning) return;
+  document.getElementById('bulk-overlay').classList.remove('open');
+}
+
+function bulkFilter(f, btn) {
+  bulkFilter_ = f;
+  document.querySelectorAll('.bf').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderBulkList();
+}
+
+function bulkFiltered() {
+  return CONTACTS.map((c,i)=>({...c,idx:i})).filter(c => {
+    if (S.skipped.has(c.idx)) return false;
+    if (bulkFilter_ === 'adv')          return isAdvogado(c);
+    if (bulkFilter_ === 'sim')          return c.q === 'sim';
+    if (bulkFilter_ === 'nao_enviados') return !S.approved.has(c.idx);
+    return true;
+  });
+}
+
+function renderBulkList() {
+  const el = document.getElementById('bulk-list');
+  el.innerHTML = '';
+  bulkFiltered().forEach(c => {
+    const d = document.createElement('div');
+    const on = bulkSel.has(c.idx);
+    d.className = 'bl-item' + (on?' selected':'');
+    d.onclick = () => { on ? bulkSel.delete(c.idx) : bulkSel.add(c.idx); renderBulkList(); };
+    const qc = c.q==='sim'?'t-sim':c.q==='com potencial'?'t-pot':'t-nao';
+    d.innerHTML = `
+      <div class="bl-check">${on?'✓':''}</div>
+      <span class="bl-name">${esc(c.name)}</span>
+      <span class="bl-email">${esc(c.email)}</span>
+      <span class="bl-qtag ${qc}">${esc(c.q)}</span>
+      ${isAdvogado(c)?'<span class="bl-qtag" style="background:#0a1628;color:#7ab8f5;border:1px solid #1a2d40">ADV</span>':''}
+      ${S.approved.has(c.idx)?'<span class="bl-qtag" style="background:#0d1f0d;color:var(--acc);border:1px solid #1a3a1a">✓</span>':''}`;
+    el.appendChild(d);
+  });
+  document.getElementById('bulk-sel-count').textContent = bulkSel.size + ' selecionados';
+}
+
+function bulkSelAll()   { bulkFiltered().forEach(c => bulkSel.add(c.idx)); renderBulkList(); }
+function bulkDeselAll() { bulkSel.clear(); renderBulkList(); }
+
+async function gerarCorpoEmail(c) {
+  if (isAdvogado(c)) return { subj: TEMPLATE_ADV_SUBJ, body: TEMPLATE_ADV_BODY };
+  if (!API_KEY) throw new Error('Configure a chave da API primeiro (⚙ API Key)');
+  const inst = c.q==='sim'
+    ? 'Lead ALTAMENTE QUALIFICADO. Convide diretamente para reunião. Tom direto e confiante.'
+    : c.q==='com potencial'
+    ? 'Lead com potencial. Reative o interesse, apresente gestão de tráfego pago e gere curiosidade.'
+    : 'Lead não qualificado. Apresente levemente, sem pressão, deixe porta aberta.';
+  const prompt = `Você é especialista em vendas consultivas para gestão de tráfego pago. Escreva um e-mail profissional e personalizado em português brasileiro.
+
+Destinatário: ${c.name}
+Empresa: ${c.emp||'não informado'}
+Faturamento: ${c.fat}
+Perfil: ${c.q}
+
+Instrução: ${inst}
+Máximo 4 parágrafos curtos. Termine com WhatsApp (11) 99515-7048. Assine como: Equipe Pedro Aranha Gestão de Tráfego.
+Escreva APENAS o corpo do e-mail.`;
+  const r = await fetch('https://api.anthropic.com/v1/messages', {
+    method:'POST',
+    headers:{
+      'Content-Type':'application/json',
+      'x-api-key':API_KEY,
+      'anthropic-version':'2023-06-01',
+      'anthropic-dangerous-direct-browser-access':'true'
+    },
+    body:JSON.stringify({model:'claude-haiku-4-5-20251001',max_tokens:500,messages:[{role:'user',content:prompt}]})
+  });
+  const d = await r.json();
+  if (d.error) throw new Error(d.error.message);
+  const subj = c.q==='sim'
+    ? 'Vamos marcar uma conversa? | Pedro Aranha Gestão de Tráfego'
+    : c.q==='com potencial'
+    ? 'Como negócios estão crescendo com tráfego pago | Pedro Aranha'
+    : 'Uma solução que pode transformar seus resultados';
+  return { subj, body: d.content[0].text };
+}
+
+// ── NOVO: BULK SEND VIA BACKEND (SEM ABRIR ABAS) ──────────────────
+async function startBulkSend() {
+  if (bulkSel.size === 0) { toast('Selecione ao menos um lead!'); return; }
+  if (bulkRunning) return;
+
+  const lista = [...bulkSel].map(idx => CONTACTS[idx] ? {...CONTACTS[idx], idx} : null).filter(Boolean);
+  const total = lista.length;
+
+  if (!confirm(`Enviar ${total} e-mail(s) diretamente via Gmail?\n\nOs e-mails serão enviados automaticamente sem abrir abas.`)) return;
+
+  bulkRunning = true;
+  const btnEl = document.getElementById('bulk-btn');
+  btnEl.disabled = true;
+  btnEl.textContent = '⏳ Gerando e-mails...';
+  document.getElementById('bulk-prog-wrap').style.display = 'block';
+  document.getElementById('bulk-status').textContent = 'Gerando conteúdo dos e-mails...';
+
+  // Fase 1: Gerar todos os e-mails via Claude
+  const emailsParaEnviar = [];
+  for (let i = 0; i < lista.length; i++) {
+    const c = lista[i];
+    document.getElementById('bulk-status').textContent = `Gerando ${i+1}/${total}: ${c.name}`;
+    document.getElementById('bulk-prog-bar').style.width = Math.round((i / total) * 50) + '%';
+    try {
+      const { subj, body } = await gerarCorpoEmail(c);
+      emailsParaEnviar.push({ to: c.email, subject: subj, body, name: c.name });
+      S.emails[c.idx]   = body;
+      S.subjects[c.idx] = subj;
+    } catch(e) {
+      console.error('Erro gerando email para', c.name, e);
+    }
+    if (i < lista.length - 1) await new Promise(r => setTimeout(r, 300));
+  }
+
+  if (emailsParaEnviar.length === 0) {
+    toast('Nenhum e-mail gerado!');
+    bulkRunning = false;
+    btnEl.disabled = false;
+    btnEl.textContent = '⚡ Disparar selecionados';
+    return;
+  }
+
+  // Fase 2: Enviar via backend
+  document.getElementById('bulk-status').textContent = `Enviando ${emailsParaEnviar.length} e-mails via Gmail...`;
+  document.getElementById('bulk-prog-bar').style.width = '55%';
+  btnEl.textContent = '📤 Enviando...';
+
+  try {
+    const r = await fetch(`${BACKEND_URL}/email/bulk`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ emails: emailsParaEnviar, source: 'manual_bulk' })
+    });
+    const d = await r.json();
+
+    if (d.jobId) {
+      await pollBulkStatus(d.jobId, total);
+      lista.forEach(c => { S.approved.add(c.idx); S.sent.add(c.idx); _marcarEnviado(c.email, c.name, S.subjects[c.idx] || ''); });
+    } else {
+      document.getElementById('bulk-prog-bar').style.width = '100%';
+      document.getElementById('bulk-status').textContent = `✓ ${d.sent||0} enviados · ${d.failed||0} erros`;
+      lista.forEach(c => { S.approved.add(c.idx); S.sent.add(c.idx); _marcarEnviado(c.email, c.name, S.subjects[c.idx] || ''); });
+    }
+  } catch(e) {
+    console.error('Erro bulk send:', e);
+    document.getElementById('bulk-prog-bar').style.width = '0%';
+    document.getElementById('bulk-status').textContent = '⚠ Erro: ' + e.message;
+    toast('⚠ Falha no envio em massa. Verifique se o backend está no ar e se o Gmail OAuth2 está configurado.');
+    bulkRunning = false;
+    btnEl.disabled = false;
+    btnEl.textContent = '⚡ Disparar selecionados';
+    return;
+  }
+
+  renderList();
+  renderBulkList();
+  bulkRunning = false;
+  btnEl.disabled = false;
+  btnEl.textContent = '✓ Concluído';
+  toast('Disparo em massa concluído!');
+}
+
+async function pollBulkStatus(jobId, total) {
+  return new Promise(resolve => {
+    const interval = setInterval(async () => {
+      try {
+        const r = await fetch(`${BACKEND_URL}/email/status?jobId=${jobId}`);
+        const d = await r.json();
+        const pct = 55 + Math.round(((d.sent || 0) / total) * 45);
+        document.getElementById('bulk-prog-bar').style.width = pct + '%';
+        document.getElementById('bulk-status').textContent = `Enviando... ${d.sent || 0}/${total}`;
+        if (!d.running) {
+          clearInterval(interval);
+          document.getElementById('bulk-prog-bar').style.width = '100%';
+          document.getElementById('bulk-status').textContent = `✓ ${d.sent || 0} enviados · ${d.failed || 0} erros`;
+          resolve();
+        }
+      } catch(e) { clearInterval(interval); resolve(); }
+    }, 3000);
+  });
+}
+
+// ── CAPTAÇÃO DE LEADS ──────────────────────────────────────────────
+async function startCapture() {
+  // Feedback otimista: mostrar botão Parar ANTES da chamada ao backend
+  document.getElementById('btn-captar').style.display = 'none';
+  document.getElementById('btn-parar').style.display = 'inline-flex';
+  document.getElementById('capture-indicator').style.display = 'inline';
+
+  try {
+    const r = await fetch(`${BACKEND_URL}/scraper/start`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' }
+    });
+    if (r.status === 409) {
+      toast('Captação já está rodando!');
+      checkCaptureStatus();
+      return;
+    }
+    if (!r.ok) {
+      const d = await r.json().catch(() => ({}));
+      throw new Error(d.error || `Servidor retornou ${r.status}`);
+    }
+    toast('🔍 Captação iniciada! Novos leads em ~2 min.');
+    checkCaptureStatus();
+  } catch(e) {
+    toast('⚠ Erro ao iniciar captação: ' + e.message);
+    console.error('Erro startCapture:', e);
+    // Rollback do estado dos botões
+    document.getElementById('btn-captar').style.display = 'inline-flex';
+    document.getElementById('btn-parar').style.display = 'none';
+    document.getElementById('capture-indicator').style.display = 'none';
+  }
+}
+
+async function stopCapture() {
+  const btnParar = document.getElementById('btn-parar');
+  btnParar.disabled = true;
+  btnParar.textContent = '⏳ Parando...';
+
+  try {
+    await fetch(`${BACKEND_URL}/scraper/stop`, { method: 'POST' });
+    toast('⬆ Sincronizando leads com a planilha...');
+    const r = await fetch(`${BACKEND_URL}/sheets/push`, { method: 'POST' });
+    const d = await r.json().catch(() => ({}));
+    toast(`✓ Captação parada. ${d.pushed || 0} novos leads enviados à planilha.`);
+    await loadSheet(true);
+  } catch(e) {
+    toast('Erro ao parar: ' + e.message);
+    console.error('Erro stopCapture:', e);
+  }
+
+  document.getElementById('btn-captar').style.display = 'inline-flex';
+  document.getElementById('btn-parar').style.display = 'none';
+  document.getElementById('btn-parar').disabled = false;
+  document.getElementById('btn-parar').textContent = '⏹ Parar captação';
+  document.getElementById('capture-indicator').style.display = 'none';
+}
+
+async function checkCaptureStatus() {
+  try {
+    const r = await fetch(`${BACKEND_URL}/scraper/status`);
+    const d = await r.json();
+    if (d.running) {
+      document.getElementById('hdr-count').textContent =
+        `🔍 ${d.found || 0} encontrados · ${d.valid || 0} válidos`;
+      setTimeout(checkCaptureStatus, 4000);
+    } else {
+      if ((d.valid || 0) > 0) {
+        toast(`✓ ${d.valid} leads captados! Sincronizando...`);
+        try { await fetch(`${BACKEND_URL}/sheets/push`, { method: 'POST' }); } catch(e) {}
+        await loadSheet(true);
+      } else {
+        toast('Captação finalizada. Nenhum lead novo encontrado.');
+      }
+      document.getElementById('btn-captar').style.display = 'inline-flex';
+      document.getElementById('btn-parar').style.display = 'none';
+      document.getElementById('capture-indicator').style.display = 'none';
+    }
+  } catch(e) {
+    // Em erro de rede, manter botão Parar (captação pode ainda estar rodando)
+    console.warn('Erro checkCaptureStatus:', e);
+    setTimeout(checkCaptureStatus, 8000);
+  }
+}
+
+async function pushLeadsToSheet() {
+  try {
+    toast('⏳ Enviando leads para a planilha...');
+    const r = await fetch(`${BACKEND_URL}/sheets/push`, {method:'POST'});
+    const d = await r.json();
+    if (d.pushed === 0) { toast('Nenhum lead novo para enviar.'); return; }
+    toast(`✓ ${d.pushed} leads enviados para a planilha!`);
+    setTimeout(() => loadSheet(), 2000);
+  } catch(e) { toast('Erro ao sincronizar leads com a planilha.'); }
+}
+
+// ── DASHBOARD ─────────────────────────────────────────────────────
+let dashCharts = [];
+let _dashAutoRefresh = null;
+
+function openDashboard() {
+  document.getElementById('dash-overlay').classList.add('open');
+  loadDashboard();
+  _dashAutoRefresh = setInterval(() => loadDashboard(false), 30000);
+}
+
+function closeDashboard() {
+  document.getElementById('dash-overlay').classList.remove('open');
+  dashCharts.forEach(c => c.destroy());
+  dashCharts = [];
+  if (_dashAutoRefresh) { clearInterval(_dashAutoRefresh); _dashAutoRefresh = null; }
+}
+
+async function loadDashboard(showLoading=true) {
+  const body = document.getElementById('dash-body');
+  if (showLoading) {
+    body.innerHTML = '<div class="dash-loading">⟳ Carregando métricas...</div>';
+    dashCharts.forEach(c => c.destroy()); dashCharts = [];
+  }
+
+  // ── Buscar dados em paralelo ──────────────────────────────────────
+  let stats = {}, cadStatus = {}, sheetData = { contacts:[], meta:{} };
+  const [statsRes, cadRes, sheetRes] = await Promise.allSettled([
+    fetch(`${BACKEND_URL}/track/stats`).then(r => r.json()),
+    fetch(`${BACKEND_URL}/cadence/status`).then(r => r.json()),
+    fetch(`${BACKEND_URL}/sheets/pull`).then(r => r.json()),
+  ]);
+  if (statsRes.status === 'fulfilled') stats     = statsRes.value;
+  if (cadRes.status  === 'fulfilled') cadStatus  = cadRes.value;
+  if (sheetRes.status === 'fulfilled') sheetData = sheetRes.value;
+
+  const contacts = sheetData.contacts || CONTACTS.map(c => ({
+    nome:c.name, email:c.email, empresa:c.emp, medium:c.medium, cidade:c.cidade,
+    faturamento:c.fat||'', qualificacao:c.q||'', cadenciaStatus:c.cadStatus,
+    cadenciaEtapa:parseInt(c.cadEtapa)||0, emailAberto:c.aberto,
+    emailRespondido:c.respondido, dataResposta:c.dataResposta||'', created:c.created||''
+  }));
+
+  const total    = contacts.length;
+  const abriram  = stats.abriram    || contacts.filter(c=>c.emailAberto==='sim').length;
+  const respond  = stats.responderam|| contacts.filter(c=>c.emailRespondido==='sim').length;
+  const emCad    = cadStatus.ativa  || contacts.filter(c=>c.cadenciaStatus==='ativa').length;
+  const conclu   = cadStatus.concluida || contacts.filter(c=>c.cadenciaStatus==='concluida').length;
+  const qualSim  = contacts.filter(c=>c.qualificacao==='sim').length;
+  const enviados = emCad + conclu;
+  const taxaAb   = total > 0 ? ((abriram/total)*100).toFixed(1) : '0.0';
+  const taxaResp = total > 0 ? ((respond/total)*100).toFixed(1) : '0.0';
+  const agora    = new Date().toLocaleTimeString('pt-BR',{hour:'2-digit',minute:'2-digit'});
+
+  // ── Distribuições ─────────────────────────────────────────────────
+  const porEsp={}, porCid={}, porEtapa={0:0,1:0,2:0,3:0,4:0,5:0,6:0};
+  contacts.forEach(c => {
+    const esp = c.medium||'não informado';    porEsp[esp] = (porEsp[esp]||0)+1;
+    const cid = c.cidade||'não informado';    porCid[cid] = (porCid[cid]||0)+1;
+    const et  = parseInt(c.cadenciaEtapa)||0;
+    if (et >= 0 && et <= 6) porEtapa[et] = (porEtapa[et]||0)+1;
+  });
+  const topEsp = Object.entries(porEsp).sort((a,b)=>b[1]-a[1]).slice(0,8);
+  const topCid = Object.entries(porCid).sort((a,b)=>b[1]-a[1]).slice(0,8);
+
+  // ── Dados temporais (últimos 30 dias) ────────────────────────────
+  const hoje = new Date();
+  const diasLabel=[], diasLeads=[];
+  for (let i=29;i>=0;i--) {
+    const d=new Date(hoje); d.setDate(d.getDate()-i);
+    const dStr=d.toISOString().slice(0,10);
+    diasLabel.push(d.toLocaleDateString('pt-BR',{day:'2-digit',month:'2-digit'}));
+    diasLeads.push(contacts.filter(c=>(c.created||'').startsWith(dStr)).length);
+  }
+
+  const CHART_COLORS=['#c8f57a','#7ab8f5','#f5c842','#f5734a','#8adb4a','#7F77DD','#4ade80','#fb923c'];
+  const responderam = contacts.filter(c=>c.emailRespondido==='sim').slice(0,20);
+  const maxEtapa    = Math.max(...Object.values(porEtapa),1);
+
+  body.innerHTML = `
+  <div style="display:flex;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:4px">
+    <div style="font-size:11px;color:var(--mut)">Saúde:</div>
+    <div style="display:flex;gap:12px;flex-wrap:wrap" id="dash-health">
+      <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:'DM Mono',monospace">
+        <div id="hd-backend" style="width:6px;height:6px;border-radius:50%;background:var(--gol);animation:pulse 2s infinite;flex-shrink:0"></div>
+        <span id="hd-backend-txt">Verificando...</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:'DM Mono',monospace">
+        <div id="hd-gmail" style="width:6px;height:6px;border-radius:50%;background:var(--gol);animation:pulse 2s infinite;flex-shrink:0"></div>
+        <span id="hd-gmail-txt">Gmail...</span>
+      </div>
+      <div style="display:flex;align-items:center;gap:5px;font-size:11px;font-family:'DM Mono',monospace">
+        <div id="hd-sheet" style="width:6px;height:6px;border-radius:50%;background:var(--gol);animation:pulse 2s infinite;flex-shrink:0"></div>
+        <span id="hd-sheet-txt">Planilha...</span>
+      </div>
+    </div>
+    <span style="margin-left:auto;font-size:10px;color:var(--mut);font-family:'DM Mono',monospace">↻ auto-refresh 30s · ${agora}</span>
+    <button onclick="exportDashCSV()" style="font-size:11px;padding:5px 12px;border-radius:6px;background:var(--sur2);border:1px solid var(--bor);color:var(--acc);cursor:pointer;font-family:'Sora',sans-serif">⬇ CSV</button>
+  </div>
+
+  <!-- 8 KPI CARDS -->
+  <div style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px">
+    <div class="dash-card"><div class="dash-card-label">Total de leads</div><div class="dash-card-value">${total}</div><div class="dash-card-sub">na planilha</div></div>
+    <div class="dash-card"><div class="dash-card-label">E-mails enviados</div><div class="dash-card-value" style="color:var(--inf)">${enviados}</div><div class="dash-card-sub">na cadência</div></div>
+    <div class="dash-card"><div class="dash-card-label">Taxa de abertura</div>
+      <div class="dash-card-value" style="color:${parseFloat(taxaAb)>=20?'var(--acc)':'var(--gol)'}">${taxaAb}%</div>
+      <div class="dash-card-sub">${parseFloat(taxaAb)>=20?'▲ acima da média':'▼ meta: 20%'}</div></div>
+    <div class="dash-card"><div class="dash-card-label">Taxa de resposta</div>
+      <div class="dash-card-value" style="color:${parseFloat(taxaResp)>=10?'var(--acc)':'var(--dan)'}">${taxaResp}%</div>
+      <div class="dash-card-sub">${parseFloat(taxaResp)>=10?'▲ meta atingida':'▼ meta: >10%'}</div></div>
+    <div class="dash-card"><div class="dash-card-label">Em cadência ativa</div><div class="dash-card-value" style="color:var(--inf)">${emCad}</div><div class="dash-card-sub">recebendo e-mails</div></div>
+    <div class="dash-card"><div class="dash-card-label">Cadência concluída</div><div class="dash-card-value" style="color:var(--mut)">${conclu}</div><div class="dash-card-sub">ciclo completo</div></div>
+    <div class="dash-card"><div class="dash-card-label">Qualificados</div><div class="dash-card-value" style="color:var(--acc)">${qualSim}</div><div class="dash-card-sub">${total>0?((qualSim/total)*100).toFixed(0):0}% do total</div></div>
+    <div class="dash-card"><div class="dash-card-label">Aprovados (sessão)</div><div class="dash-card-value">${S.approved.size}</div><div class="dash-card-sub">nesta sessão</div></div>
+  </div>
+
+  <!-- GRÁFICO TEMPORAL -->
+  <div class="dash-chart-box">
+    <div class="dash-chart-title">Evolução — Leads captados nos últimos 30 dias</div>
+    <canvas id="chart-timeline" height="75"></canvas>
+  </div>
+
+  <!-- 3 GRÁFICOS -->
+  <div style="display:grid;grid-template-columns:1fr 1fr 1fr;gap:14px">
+    <div class="dash-chart-box">
+      <div class="dash-chart-title">Distribuição por Especialidade</div>
+      <canvas id="chart-esp" height="200"></canvas>
+    </div>
+    <div class="dash-chart-box">
+      <div class="dash-chart-title">Top Cidades</div>
+      <canvas id="chart-cid" height="200"></canvas>
+    </div>
+    <div class="dash-chart-box">
+      <div class="dash-chart-title">Leads por Etapa da Cadência</div>
+      <div style="display:flex;align-items:flex-end;gap:4px;height:100px;padding-top:8px">
+        ${[0,1,2,3,4,5,6].map(et=>{const n=porEtapa[et]||0;const pct=Math.round((n/maxEtapa)*100);return`<div style="flex:1;background:var(--inf);border-radius:3px 3px 0 0;height:${Math.max(pct,4)}%;display:flex;align-items:flex-end;justify-content:center;padding-bottom:2px;font-size:9px;color:#0d0f0e;font-weight:700" title="Etapa ${et}: ${n}">${n>0?n:''}</div>`;}).join('')}
+      </div>
+      <div style="display:flex;gap:4px;margin-top:4px">${[0,1,2,3,4,5,6].map(et=>`<div style="flex:1;text-align:center;font-size:9px;color:var(--mut);font-family:'DM Mono',monospace">E${et}</div>`).join('')}</div>
+    </div>
+  </div>
+
+  <!-- FUNIL VISUAL -->
+  <div class="dash-chart-box">
+    <div class="dash-chart-title">Funil de Conversão</div>
+    <div style="display:flex;flex-direction:column;gap:7px;padding:6px 0">
+      ${[['Captados',total,null,'#c8f57a'],['Em cadência',emCad,total,'#7ab8f5'],['Abriram',abriram,emCad,'#f5c842'],['Responderam',respond,abriram,'#f5734a']].map(([lbl,n,prev,cor])=>{
+        const pct=total>0?((n/total)*100).toFixed(0):0;
+        const pctPrev=prev>0?((n/prev)*100).toFixed(0):100;
+        return`<div style="display:flex;align-items:center;gap:10px">
+          <div style="width:110px;font-size:12px;color:var(--txt);text-align:right">${lbl}</div>
+          <div style="flex:1;background:var(--sur2);border-radius:4px;height:30px;overflow:hidden">
+            <div style="width:${pct}%;height:100%;background:${cor};border-radius:4px;display:flex;align-items:center;padding-left:10px;font-size:12px;font-weight:600;color:#0d0f0e;min-width:${n>0?36:0}px">${n>0?n:''}</div>
+          </div>
+          <div style="width:36px;font-size:13px;font-weight:600;font-family:'DM Serif Display',serif">${n}</div>
+          <div style="width:44px;font-size:11px;color:var(--mut);font-family:'DM Mono',monospace">${prev!==null?pctPrev+'%':'100%'}</div>
+        </div>`;
+      }).join('')}
+    </div>
+  </div>
+
+  <!-- RESPONDERAM -->
+  ${responderam.length>0?`
+  <div class="dash-chart-box">
+    <div class="dash-chart-title">Leads que Responderam — acao necessaria</div>
+    <div style="display:flex;flex-direction:column;gap:8px;max-height:240px;overflow-y:auto">
+      ${responderam.map(c=>`
+        <div style="background:var(--sur2);border:1px solid var(--bor);border-radius:8px;padding:10px 12px;display:flex;align-items:center;gap:10px">
+          <div style="width:30px;height:30px;border-radius:50%;background:linear-gradient(135deg,var(--dan),#8B2222);display:flex;align-items:center;justify-content:center;font-family:'DM Serif Display',serif;font-size:13px;color:#fff;flex-shrink:0">${(c.nome||'?')[0].toUpperCase()}</div>
+          <div style="flex:1;min-width:0">
+            <div style="font-size:13px;font-weight:600">${esc(c.nome||'')} <span style="color:var(--mut);font-size:11px">· ${esc(c.empresa||'')}</span></div>
+            <div style="font-size:11px;color:var(--mut);white-space:nowrap;overflow:hidden;text-overflow:ellipsis">${esc(c.email||'')}</div>
+            <div style="font-size:10px;color:var(--mut);font-family:'DM Mono',monospace">${c.dataResposta?new Date(c.dataResposta).toLocaleDateString('pt-BR'):'data desconhecida'}</div>
+          </div>
+          <button onclick="closeDashboard();selectContactByEmail('${esc(c.email)}')" style="font-size:11px;padding:4px 10px;border-radius:6px;background:var(--sur);border:1px solid var(--bor);color:var(--acc);cursor:pointer;white-space:nowrap;font-family:'Sora',sans-serif">↗ Responder</button>
+        </div>`).join('')}
+    </div>
+  </div>`:''}
+
+  <!-- TABELA DETALHADA -->
+  <div class="dash-table-wrap">
+    <div class="dash-table-head">
+      <span style="font-size:13px;font-weight:600;color:var(--txt)">Detalhamento por Lead</span>
+      <input class="dash-search" id="dash-search" placeholder="Nome, empresa ou e-mail..." oninput="renderDashTable()">
+      <div class="dash-filter-row">
+        <button class="df on" onclick="dashFilter('',this)">Todos</button>
+        <button class="df" onclick="dashFilter('ativa',this)">Em cadência</button>
+        <button class="df" onclick="dashFilter('respondeu',this)">Responderam</button>
+        <button class="df" onclick="dashFilter('concluida',this)">Concluídos</button>
+        <button class="df" onclick="dashFilter('aberto',this)">Abriram</button>
+      </div>
+    </div>
+    <div style="overflow-x:auto">
+      <table class="dash-table" id="dash-table">
+        <thead><tr>
+          <th onclick="sortDash('nome')">Nome ↕</th>
+          <th onclick="sortDash('empresa')">Empresa ↕</th>
+          <th onclick="sortDash('medium')">Especialidade ↕</th>
+          <th onclick="sortDash('cidade')">Cidade ↕</th>
+          <th onclick="sortDash('qualificacao')">Qualif. ↕</th>
+          <th onclick="sortDash('cadenciaStatus')">Cadência ↕</th>
+          <th onclick="sortDash('cadenciaEtapa')">Etapa ↕</th>
+          <th>Abriu</th>
+          <th>Respondeu</th>
+          <th>Ações</th>
+        </tr></thead>
+        <tbody id="dash-tbody"></tbody>
+      </table>
+    </div>
+    <div id="dash-paginator" style="display:flex;align-items:center;gap:8px;padding:10px 16px;border-top:1px solid var(--bor);font-size:12px;color:var(--mut)"></div>
+  </div>`;
+
+  // ── Gráfico temporal ─────────────────────────────────────────────
+  const ctxTL = document.getElementById('chart-timeline').getContext('2d');
+  dashCharts.push(new Chart(ctxTL, {
+    type: 'line',
+    data: {
+      labels: diasLabel,
+      datasets: [{ label:'Leads captados', data:diasLeads, borderColor:'#c8f57a',
+        backgroundColor:'rgba(200,245,122,0.07)', tension:0.4, fill:true,
+        pointRadius:3, pointBackgroundColor:'#c8f57a' }]
+    },
+    options: {
+      plugins:{ legend:{ labels:{ color:'#e8ede9', font:{family:'Sora',size:11} } } },
+      scales:{
+        x:{ ticks:{ color:'#6b756d', font:{size:10}, maxTicksLimit:10 }, grid:{ color:'#2a2e2c' } },
+        y:{ ticks:{ color:'#6b756d' }, grid:{ color:'#2a2e2c' }, beginAtZero:true }
+      }
+    }
+  }));
+
+  // ── Gráfico especialidade ─────────────────────────────────────────
+  const ctxEsp = document.getElementById('chart-esp').getContext('2d');
+  dashCharts.push(new Chart(ctxEsp, {
+    type: 'doughnut',
+    data: { labels:topEsp.map(([k])=>k), datasets:[{ data:topEsp.map(([,v])=>v), backgroundColor:CHART_COLORS, borderWidth:0 }] },
+    options: { plugins:{ legend:{ labels:{ color:'#e8ede9', font:{family:'Sora',size:10} } } }, cutout:'62%' }
+  }));
+
+  // ── Gráfico cidades ───────────────────────────────────────────────
+  const ctxCid = document.getElementById('chart-cid').getContext('2d');
+  dashCharts.push(new Chart(ctxCid, {
+    type: 'bar',
+    data: { labels:topCid.map(([k])=>k), datasets:[{ data:topCid.map(([,v])=>v), backgroundColor:'#7ab8f5', borderRadius:4 }] },
+    options: {
+      indexAxis:'y',
+      plugins:{ legend:{ display:false } },
+      scales:{
+        x:{ ticks:{ color:'#6b756d' }, grid:{ color:'#2a2e2c' } },
+        y:{ ticks:{ color:'#e8ede9', font:{family:'DM Mono',size:10} }, grid:{ display:false } }
+      }
+    }
+  }));
+
+  // ── Init tabela ───────────────────────────────────────────────────
+  window._dashContacts = contacts;
+  window._dashSort = { key:'nome', asc:true };
+  window._dashPage = 0;
+  renderDashTable();
+
+  // ── Verificar saúde em background ────────────────────────────────
+  _checkDashHealth();
+}
+
+async function _checkDashHealth() {
+  try {
+    const r = await fetch(`${BACKEND_URL}/health`,{signal:AbortSignal.timeout(4000)});
+    const ok = r.ok;
+    document.getElementById('hd-backend').style.background = ok ? '#4ade80' : '#f5734a';
+    document.getElementById('hd-backend').style.animation  = ok ? 'none' : 'pulse 2s infinite';
+    document.getElementById('hd-backend-txt').textContent  = ok ? 'Backend online' : 'Backend offline';
+  } catch(e) {
+    document.getElementById('hd-backend').style.background = '#f5734a';
+    document.getElementById('hd-backend-txt').textContent  = 'Backend offline';
+  }
+  try {
+    const r = await fetch(`${BACKEND_URL}/email/test`,{signal:AbortSignal.timeout(4000)});
+    const d = await r.json();
+    const ok = d.gmail_configured && d.token_valid;
+    document.getElementById('hd-gmail').style.background = ok ? '#4ade80' : '#f5734a';
+    document.getElementById('hd-gmail').style.animation  = ok ? 'none' : 'pulse 2s infinite';
+    document.getElementById('hd-gmail-txt').textContent  = ok ? 'Gmail OK' : 'Gmail: sem credenciais';
+  } catch(e) {
+    document.getElementById('hd-gmail').style.background = '#f5734a';
+    document.getElementById('hd-gmail-txt').textContent  = 'Gmail: erro';
+  }
+  const sheetOk = window._dashContacts && window._dashContacts.length > 0;
+  document.getElementById('hd-sheet').style.background = sheetOk ? '#4ade80' : '#f5734a';
+  document.getElementById('hd-sheet').style.animation  = sheetOk ? 'none' : 'pulse 2s infinite';
+  document.getElementById('hd-sheet-txt').textContent  = sheetOk ? `Planilha: ${window._dashContacts.length} leads` : 'Planilha: sem dados';
+}
+
+const DASH_PAGE_SIZE = 50;
+let _dashFilterStatus = '';
+
+function dashFilter(status, btn) {
+  _dashFilterStatus = status;
+  window._dashPage = 0;
+  document.querySelectorAll('.df').forEach(b => b.classList.remove('on'));
+  btn.classList.add('on');
+  renderDashTable();
+}
+
+function sortDash(key) {
+  if (window._dashSort.key === key) window._dashSort.asc = !window._dashSort.asc;
+  else window._dashSort = { key, asc:true };
+  renderDashTable();
+}
+
+function selectContactByEmail(email) {
+  const idx = CONTACTS.findIndex(c => c.email === email);
+  if (idx >= 0) selectContact(idx);
+}
+
+function exportDashCSV() {
+  const data = window._dashContacts || [];
+  const headers = ['Nome','Email','Empresa','Especialidade','Cidade','Qualificacao','Faturamento','Cadencia','Etapa','Abriu','Respondeu','Data Resposta'];
+  const rows = data.map(c => [c.nome,c.email,c.empresa,c.medium,c.cidade,c.qualificacao,c.faturamento,c.cadenciaStatus,c.cadenciaEtapa,c.emailAberto,c.emailRespondido,c.dataResposta]);
+  const csv  = [headers,...rows].map(r=>r.map(v=>`"${(v||'').toString().replace(/"/g,'""')}"`).join(',')).join('\n');
+  const blob = new Blob(['\uFEFF'+csv],{type:'text/csv;charset=utf-8'});
+  const a    = document.createElement('a');
+  a.href     = URL.createObjectURL(blob);
+  a.download = `leads_${new Date().toISOString().slice(0,10)}.csv`;
+  a.click();
+  toast('CSV exportado!');
+}
+
+function renderDashTable() {
+  const tbody = document.getElementById('dash-tbody');
+  const pag   = document.getElementById('dash-paginator');
+  if (!tbody) return;
+  const search = (document.getElementById('dash-search')?.value||'').toLowerCase();
+  let data = (window._dashContacts||[]).filter(c => {
+    const ms = !search || [c.nome,c.empresa,c.email].some(v=>(v||'').toLowerCase().includes(search));
+    const mf = !_dashFilterStatus
+      || (_dashFilterStatus==='aberto' && c.emailAberto==='sim')
+      || c.cadenciaStatus === _dashFilterStatus;
+    return ms && mf;
+  });
+  const {key,asc} = window._dashSort||{key:'nome',asc:true};
+  data.sort((a,b)=>{ const va=String(a[key]||'').toLowerCase(), vb=String(b[key]||'').toLowerCase(); return asc?va.localeCompare(vb):vb.localeCompare(va); });
+  const page  = window._dashPage||0;
+  const total = data.length;
+  const pages = Math.ceil(total/DASH_PAGE_SIZE);
+  const slice = data.slice(page*DASH_PAGE_SIZE,(page+1)*DASH_PAGE_SIZE);
+  const cadClass = { ativa:'cad-ativa', pausada:'cad-pausada', concluida:'cad-concluida', respondeu:'cad-respondeu' };
+  const qClass   = { sim:'t-sim', 'com potencial':'t-pot', nao:'t-nao', 'não':'t-nao' };
+  tbody.innerHTML = slice.map(c=>`
+    <tr>
+      <td>${esc(c.nome||'')}</td>
+      <td style="color:var(--mut);font-size:11px">${esc(c.empresa||'')}</td>
+      <td class="mono">${esc(c.medium||'—')}</td>
+      <td class="mono">${esc(c.cidade||'—')}</td>
+      <td><span class="tag ${qClass[c.qualificacao]||'t-nao'}" style="font-size:10px">${esc(c.qualificacao||'—')}</span></td>
+      <td>${c.cadenciaStatus?`<span class="cad-badge ${cadClass[c.cadenciaStatus]||''}">${c.cadenciaStatus}</span>`:'<span style="color:var(--bor)">—</span>'}</td>
+      <td style="text-align:center">${c.cadenciaEtapa||'0'}/6</td>
+      <td style="text-align:center">${c.emailAberto==='sim'?'<span style="color:var(--acc)">✓</span>':'<span style="color:var(--bor)">—</span>'}</td>
+      <td style="text-align:center">${c.emailRespondido==='sim'?'<span style="color:var(--dan)">✓</span>':'<span style="color:var(--bor)">—</span>'}</td>
+      <td><button onclick="closeDashboard();selectContactByEmail('${esc(c.email)}')" style="font-size:10px;padding:2px 7px;border-radius:4px;background:transparent;border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-family:'Sora',sans-serif">↗ ver</button></td>
+    </tr>`).join('');
+  if (pag) {
+    pag.innerHTML = `
+      <button onclick="window._dashPage=Math.max(0,(window._dashPage||0)-1);renderDashTable()" ${page===0?'disabled':''} style="padding:4px 10px;border-radius:5px;background:var(--sur2);border:1px solid var(--bor);color:var(--txt);cursor:pointer;font-size:12px;font-family:'Sora',sans-serif">← Ant.</button>
+      <span>${page+1} de ${Math.max(1,pages)} · ${total} leads</span>
+      <button onclick="window._dashPage=Math.min(${pages-1},(window._dashPage||0)+1);renderDashTable()" ${page>=pages-1?'disabled':''} style="padding:4px 10px;border-radius:5px;background:var(--sur2);border:1px solid var(--bor);color:var(--txt);cursor:pointer;font-size:12px;font-family:'Sora',sans-serif">Próx. →</button>`;
+  }
+}
+
+// ── TAREFAS ───────────────────────────────────────────────────────
+const PRIO_LABEL = { 1:'Critica', 2:'Alta', 3:'Media', 4:'Baixa' };
+const PRIO_COLOR = { 1:'var(--dan)', 2:'var(--gol)', 3:'var(--inf)', 4:'var(--mut)' };
+
+async function openTasks() {
+  document.getElementById('tasks-overlay').classList.add('open');
+  await loadTasks();
+}
+
+function closeTasks() {
+  document.getElementById('tasks-overlay').classList.remove('open');
+}
+
+async function loadTasks() {
+  const body = document.getElementById('tasks-body');
+  try {
+    const r = await fetch(`${BACKEND_URL}/tasks`);
+    const d = await r.json();
+    const tasks = d.tasks || [];
+    const pending   = tasks.filter(t=>t.status!=='completed');
+    const completed = tasks.filter(t=>t.status==='completed').slice(0,20);
+
+    body.innerHTML = `
+      <div style="display:flex;gap:10px;margin-bottom:14px;flex-wrap:wrap">
+        <button onclick="showAddTask()" style="padding:7px 16px;border-radius:7px;background:var(--acc);border:none;color:#0d0f0e;cursor:pointer;font-family:'Sora',sans-serif;font-size:12px;font-weight:600">+ Nova tarefa</button>
+        <div id="task-form" style="display:none;background:var(--sur2);border:1px solid var(--bor);border-radius:10px;padding:14px;flex:1;min-width:280px">
+          <input id="task-title" placeholder="Titulo da tarefa" style="width:100%;background:var(--sur);border:1px solid var(--bor);border-radius:6px;padding:7px 10px;color:var(--txt);font-family:'Sora',sans-serif;font-size:13px;margin-bottom:8px;outline:none">
+          <input id="task-desc"  placeholder="Descricao (opcional)" style="width:100%;background:var(--sur);border:1px solid var(--bor);border-radius:6px;padding:7px 10px;color:var(--txt);font-family:'Sora',sans-serif;font-size:12px;margin-bottom:8px;outline:none">
+          <div style="display:flex;gap:8px;align-items:center">
+            <select id="task-prio" style="background:var(--sur);border:1px solid var(--bor);border-radius:6px;padding:6px 8px;color:var(--txt);font-family:'Sora',sans-serif;font-size:12px">
+              <option value="1">1 - Critica</option><option value="2">2 - Alta</option>
+              <option value="3" selected>3 - Media</option><option value="4">4 - Baixa</option>
+            </select>
+            <button onclick="saveTask()" style="padding:6px 14px;border-radius:6px;background:var(--acc);border:none;color:#0d0f0e;cursor:pointer;font-family:'Sora',sans-serif;font-size:12px;font-weight:600">Salvar</button>
+            <button onclick="document.getElementById('task-form').style.display='none'" style="padding:6px 14px;border-radius:6px;background:var(--sur);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-family:'Sora',sans-serif;font-size:12px">Cancelar</button>
+          </div>
+        </div>
+      </div>
+
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--mut);font-weight:700;margin-bottom:10px">Pendentes (${pending.length})</div>
+      <div style="display:flex;flex-direction:column;gap:8px;margin-bottom:20px">
+        ${pending.length===0?'<div style="color:var(--mut);font-size:13px;padding:10px">Nenhuma tarefa pendente.</div>':
+          pending.map(t=>`
+            <div style="background:var(--sur2);border:1px solid var(--bor);border-radius:8px;padding:10px 14px;display:flex;align-items:flex-start;gap:10px">
+              <div style="flex:1;min-width:0">
+                <div style="display:flex;align-items:center;gap:8px;margin-bottom:3px">
+                  <span style="font-size:10px;padding:2px 7px;border-radius:4px;background:var(--sur);border:1px solid var(--bor);color:${PRIO_COLOR[t.priority]};font-family:'DM Mono',monospace;white-space:nowrap">P${t.priority} ${PRIO_LABEL[t.priority]||''}</span>
+                  <span style="font-size:13px;font-weight:600">${esc(t.title)}</span>
+                </div>
+                ${t.description?`<div style="font-size:11px;color:var(--mut)">${esc(t.description)}</div>`:''}
+                <div style="font-size:10px;color:var(--bor);font-family:'DM Mono',monospace;margin-top:3px">${new Date(t.created).toLocaleDateString('pt-BR')}</div>
+              </div>
+              <button onclick="completeTask('${t.id}')" style="font-size:11px;padding:4px 10px;border-radius:5px;background:transparent;border:1px solid #2a4d15;color:#8adb4a;cursor:pointer;font-family:'Sora',sans-serif;white-space:nowrap">✓ Concluir</button>
+              <button onclick="deleteTask('${t.id}')" style="font-size:11px;padding:4px 10px;border-radius:5px;background:transparent;border:1px solid #3a1a10;color:var(--dan);cursor:pointer;font-family:'Sora',sans-serif">✕</button>
+            </div>`).join('')}
+      </div>
+
+      ${completed.length>0?`
+      <div style="font-size:11px;text-transform:uppercase;letter-spacing:1.5px;color:var(--mut);font-weight:700;margin-bottom:10px">Concluidas (${completed.length})</div>
+      <div style="display:flex;flex-direction:column;gap:6px">
+        ${completed.map(t=>`
+          <div style="background:var(--sur);border:1px solid var(--bor);border-radius:8px;padding:8px 14px;display:flex;align-items:center;gap:10px;opacity:.6">
+            <span style="color:#4ade80;font-size:13px">✓</span>
+            <span style="font-size:13px;text-decoration:line-through;color:var(--mut)">${esc(t.title)}</span>
+            <span style="margin-left:auto;font-size:10px;color:var(--bor);font-family:'DM Mono',monospace">${t.completed?new Date(t.completed).toLocaleDateString('pt-BR'):''}</span>
+          </div>`).join('')}
+      </div>`:''}
+    `;
+  } catch(e) {
+    body.innerHTML = `<div style="color:var(--dan);padding:20px">Erro ao carregar tarefas: ${e.message}</div>`;
+  }
+}
+
+function showAddTask() {
+  document.getElementById('task-form').style.display='block';
+  document.getElementById('task-title').focus();
+}
+
+async function saveTask() {
+  const title = document.getElementById('task-title').value.trim();
+  const desc  = document.getElementById('task-desc').value.trim();
+  const prio  = parseInt(document.getElementById('task-prio').value);
+  if (!title) { toast('Informe o titulo da tarefa'); return; }
+  try {
+    await fetch(`${BACKEND_URL}/tasks`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,description:desc,priority:prio})});
+    toast('Tarefa criada!');
+    document.getElementById('task-form').style.display='none';
+    document.getElementById('task-title').value='';
+    document.getElementById('task-desc').value='';
+    await loadTasks();
+  } catch(e) { toast('Erro ao criar tarefa: '+e.message); }
+}
+
+async function completeTask(id) {
+  try {
+    await fetch(`${BACKEND_URL}/tasks/${id}/complete`,{method:'POST'});
+    toast('Tarefa concluida!');
+    await loadTasks();
+  } catch(e) { toast('Erro: '+e.message); }
+}
+
+async function deleteTask(id) {
+  if (!confirm('Remover esta tarefa?')) return;
+  try {
+    await fetch(`${BACKEND_URL}/tasks/${id}`,{method:'DELETE'});
+    await loadTasks();
+  } catch(e) { toast('Erro: '+e.message); }
+}
+
+// ══════════════════════════════════════════════════════════════
+// CAIXA DE ENTRADA + FOLLOW-UP INTELIGENTE
+// ══════════════════════════════════════════════════════════════
+let _inboxFilter  = 'todas';
+let _inboxData    = [];
+let _currentReply = null;
+let _rmodalTab_   = 'resposta';
+let _inboxTimer   = null;
+
+function openInbox() {
+  document.getElementById('inbox-overlay').classList.add('open');
+  loadInbox();
+  _inboxTimer = setInterval(() => loadInbox(true), 3 * 60 * 1000);
+}
+
+function closeInbox() {
+  document.getElementById('inbox-overlay').classList.remove('open');
+  if (_inboxTimer) { clearInterval(_inboxTimer); _inboxTimer = null; }
+}
+
+async function loadInbox(silent) {
+  try {
+    const r = await fetch(`${BACKEND_URL}/replies`);
+    if (!r.ok) throw new Error('Backend retornou ' + r.status);
+    const d    = await r.json();
+    _inboxData = d.replies || [];
+    _cacheRespostas(_inboxData);
+
+    // Atualizar badges
+    const nr      = d.naoLidas || 0;
+    const nrEl    = document.getElementById('inbox-nr');
+    const notifEl = document.getElementById('hdr-notif');
+    if (nrEl)    { nrEl.textContent = nr; nrEl.style.display = nr > 0 ? 'inline-block' : 'none'; }
+    if (notifEl) { notifEl.textContent = nr; notifEl.classList.toggle('on', nr > 0); }
+
+    if (d.lastCheck) {
+      const dt = new Date(d.lastCheck).toLocaleString('pt-BR',
+        { day:'2-digit', month:'2-digit', hour:'2-digit', minute:'2-digit' });
+      const el = document.getElementById('inbox-last');
+      if (el) el.textContent = `Última verificação: ${dt}`;
+    }
+
+    renderInbox();
+
+    // Atualizar label do botão Gerar se lead selecionado respondeu
+    if (S.sel !== null) {
+      const c = CONTACTS[S.sel];
+      if (c) {
+        const respondeu = _inboxData.some(rep =>
+          (rep.email||'').toLowerCase() === (c.email||'').toLowerCase()
+        );
+        const genBtn = document.getElementById('gen-btn');
+        if (genBtn && respondeu) genBtn.textContent = '↻ Gerar follow-up';
+      }
+    }
+  } catch(e) {
+    if (!silent) {
+      const body = document.getElementById('inbox-body');
+      if (body) body.innerHTML = `
+        <div style="text-align:center;padding:40px;color:var(--mut)">
+          <p style="font-size:14px;margin-bottom:8px">⚠ Erro ao carregar respostas</p>
+          <p style="font-size:12px">${esc(e.message)}</p>
+        </div>`;
+    }
+  }
+}
+
+function inboxFilter(f, btn) {
+  _inboxFilter = f;
+  document.querySelectorAll('.inf').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  renderInbox();
+}
+
+function renderInbox() {
+  const body = document.getElementById('inbox-body');
+  if (!body) return;
+
+  let data = [..._inboxData];
+  if (_inboxFilter === 'nao-lidas') data = data.filter(r => !r.lido);
+  if (_inboxFilter === 'followup')  data = data.filter(r => r.followUpGerado);
+  if (_inboxFilter === 'pendentes') data = data.filter(r => !r.respondido);
+
+  const msgs = {
+    'todas':     'Nenhuma resposta ainda.<br>Clique em 🔄 Verificar agora para checar o Gmail.',
+    'nao-lidas': 'Todas as respostas já foram lidas.',
+    'followup':  'Nenhum follow-up pendente de aprovação.',
+    'pendentes': 'Nenhuma resposta pendente de retorno.',
+  };
+
+  if (data.length === 0) {
+    body.innerHTML = `
+      <div style="text-align:center;padding:60px 20px;color:var(--mut)">
+        <div style="font-size:48px;opacity:.12;margin-bottom:12px">📭</div>
+        <p style="font-size:14px;font-weight:500;color:var(--txt);margin-bottom:6px">
+          ${_inboxFilter === 'todas' ? 'Caixa de entrada vazia' : 'Nenhum resultado'}
+        </p>
+        <p style="font-size:13px">${msgs[_inboxFilter] || ''}</p>
+      </div>`;
+    return;
+  }
+
+  body.innerHTML = data.map(r => {
+    const ini    = ((r.leadData?.nome || r.from || '?')[0] || '?').toUpperCase();
+    const temFU  = r.followUpGerado;
+    const naoLida = !r.lido;
+
+    const fuPreview = temFU ? `
+      <div class="rc-fu-preview">
+        <div class="rc-fu-label">✦ Follow-up gerado pela IA</div>
+        <div class="rc-fu-subj">${esc(r.followUpAssunto || r.subject || '')}</div>
+        <div class="rc-fu-body">${esc((r.followUpCorpo || '').slice(0, 160))}...</div>
+      </div>` : '';
+
+    return `
+      <div class="reply-card ${naoLida?'nao-lida':''} ${r.respondido?'respondido':''} ${temFU?'tem-followup':''}"
+           onclick="openRmodal('${r.id}')">
+        <div class="rc-top">
+          <div class="rc-av">${ini}</div>
+          <div class="rc-info">
+            <div class="rc-from">
+              ${naoLida ? '<div class="rc-dot"></div>' : ''}
+              <span>${esc(r.leadData?.nome || r.from || r.email)}</span>
+              ${temFU ? '<span class="rc-fu-badge">✦ Follow-up pronto</span>' : ''}
+              ${r.respondido ? '<span style="font-size:10px;padding:1px 6px;border-radius:4px;background:var(--sur2);border:1px solid var(--bor);color:var(--mut)">respondido</span>' : ''}
+            </div>
+            <div class="rc-email">${esc(r.email || '')}</div>
+          </div>
+          <div class="rc-date">${r.dateFormatted || ''}</div>
+        </div>
+        <div class="rc-subj">${esc(r.subject || '')}</div>
+        <div class="rc-prev">${esc(r.bodyClean || r.body || '')}</div>
+        ${fuPreview}
+        <div class="rc-actions" onclick="event.stopPropagation()">
+          ${temFU
+            ? `<button class="btn btn-p btn-sm" onclick="usarFollowUpDireto('${r.id}');event.stopPropagation()">⚡ Usar no editor</button>`
+            : `<button class="btn btn-g btn-sm" onclick="_abrirNoEditor('${esc(r.email)}','','');closeInbox();event.stopPropagation()">↗ Abrir no editor</button>`
+          }
+          ${!r.respondido ? `<button class="btn btn-g btn-sm" onclick="markAnswered('${r.id}');event.stopPropagation()">✓ Respondido</button>` : ''}
+          ${!r.lido ? `<button class="btn btn-g btn-sm" onclick="markRead('${r.id}');event.stopPropagation()">👁 Lida</button>` : ''}
+        </div>
+      </div>`;
+  }).join('');
+}
+
+function openRmodal(id) {
+  const r = _inboxData.find(x => x.id === id);
+  if (!r) return;
+  _currentReply = r;
+  document.getElementById('rm-from').textContent = r.from || r.email;
+  document.getElementById('rm-subj').textContent = r.subject || '';
+  document.getElementById('rm-date').textContent = r.dateFormatted || '';
+  const tabFu = document.getElementById('rm-tab-fu');
+  if (tabFu) {
+    tabFu.textContent = r.followUpGerado ? '✦ Follow-up gerado' : '✦ Follow-up';
+    tabFu.style.color = r.followUpGerado ? 'var(--inf)' : 'var(--mut)';
+  }
+  document.getElementById('rmodal').classList.add('open');
+  rmodalTab('resposta', document.getElementById('rm-tab-resp'));
+  if (!r.lido) markRead(id, true);
+}
+
+function closeRmodal() {
+  document.getElementById('rmodal').classList.remove('open');
+  _currentReply = null;
+  renderInbox();
+}
+
+function rmodalTab(tab, btn) {
+  _rmodalTab_ = tab;
+  document.querySelectorAll('.rmodal-tab').forEach(b => b.classList.remove('on'));
+  if (btn) btn.classList.add('on');
+  const content = document.getElementById('rm-content');
+  const r = _currentReply;
+  if (!r || !content) return;
+
+  if (tab === 'resposta') {
+    content.innerHTML = `<div class="rmodal-body-text">${esc(r.fullBody || r.bodyClean || r.body || '(sem conteúdo)')}</div>`;
+  } else if (tab === 'followup') {
+    if (!r.followUpGerado) {
+      content.innerHTML = `
+        <div style="text-align:center;padding:30px;color:var(--mut)">
+          <p style="margin-bottom:12px;font-size:13px">Follow-up não gerado automaticamente.</p>
+          <button class="btn btn-p btn-sm" onclick="regenerarFollowUp()">✦ Gerar agora</button>
+        </div>`;
+    } else {
+      content.innerHTML = `
+        <div style="display:flex;flex-direction:column;gap:10px">
+          <div>
+            <div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Assunto</div>
+            <input class="rmodal-fu-subj" id="rm-fu-subj" value="${esc(r.followUpAssunto||'')}">
+          </div>
+          <div>
+            <div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:1px;margin-bottom:5px">Corpo do e-mail</div>
+            <textarea class="rmodal-fu-corpo" id="rm-fu-corpo">${esc(r.followUpCorpo||'')}</textarea>
+          </div>
+          <p style="font-size:11px;color:var(--mut);font-style:italic">
+            ✦ Gerado com base na resposta, dados da planilha e estilo de Pedro. Edite à vontade.
+          </p>
+        </div>`;
+    }
+  } else if (tab === 'lead') {
+    const d = r.leadData || {};
+    content.innerHTML = `
+      <div class="rmodal-lead-grid">
+        <div><span style="color:var(--mut)">Nome: </span><strong>${esc(d.nome||r.from||'—')}</strong></div>
+        <div><span style="color:var(--mut)">Empresa: </span><strong>${esc(d.empresa||'—')}</strong></div>
+        <div><span style="color:var(--mut)">Faturamento: </span><strong>${esc(d.faturamento||'—')}</strong></div>
+        <div><span style="color:var(--mut)">Qualificação: </span><strong>${esc(d.qualificacao||'—')}</strong></div>
+        <div><span style="color:var(--mut)">Especialidade: </span><strong>${esc(d.medium||'—')}</strong></div>
+        <div><span style="color:var(--mut)">Cidade: </span><strong>${esc(d.cidade||'—')}</strong></div>
+        <div><span style="color:var(--mut)">Urgência: </span><strong>${esc(d.urgencia||'—')}</strong></div>
+        <div><span style="color:var(--mut)">Etapa cadência: </span><strong>${esc(d.cadenciaEtapa||'0')}/6</strong></div>
+        <div><span style="color:var(--mut)">E-mail: </span><strong style="font-family:'DM Mono',monospace;font-size:11px">${esc(r.email||'—')}</strong></div>
+        <div><span style="color:var(--mut)">Respondeu em: </span><strong>${esc(r.dateFormatted||'—')}</strong></div>
+      </div>`;
+  }
+}
+
+function usarFollowUp() {
+  if (!_currentReply) return;
+  const r       = _currentReply;
+  const assunto = document.getElementById('rm-fu-subj')?.value || r.followUpAssunto || `Re: ${r.subject}`;
+  const corpo   = document.getElementById('rm-fu-corpo')?.value || r.followUpCorpo || '';
+  _abrirNoEditor(r.email, assunto, corpo);
+  closeRmodal();
+}
+
+function usarFollowUpDireto(id) {
+  const r = _inboxData.find(x => x.id === id);
+  if (!r || !r.followUpGerado) return;
+  _abrirNoEditor(r.email, r.followUpAssunto, r.followUpCorpo);
+}
+
+function responderNoEditor() {
+  if (!_currentReply) return;
+  _abrirNoEditor(_currentReply.email, `Re: ${_currentReply.subject}`, '');
+  closeRmodal();
+}
+
+function _abrirNoEditor(email, assunto, corpo) {
+  closeInbox();
+  const idx = CONTACTS.findIndex(c => (c.email||'').toLowerCase() === (email||'').toLowerCase());
+  if (idx < 0) { toast('⚠ Lead não encontrado na lista atual'); return; }
+
+  S.sel = idx;
+  if (assunto) S.subjects[idx] = assunto;
+  if (corpo)   S.emails[idx]   = corpo;
+  renderList();
+
+  const c = CONTACTS[idx];
+  document.getElementById('empty-state').style.display  = 'none';
+  document.getElementById('ed-content').style.display   = 'flex';
+  document.getElementById('ed-av').textContent          = (c.name||'?')[0].toUpperCase();
+  document.getElementById('ed-name').textContent        = c.name;
+  document.getElementById('ed-email').textContent       = c.email;
+  document.getElementById('ed-subj').value              = assunto || S.subjects[idx] || getSubject(c);
+  document.getElementById('ed-body').value              = corpo   || S.emails[idx]   || '';
+  document.getElementById('approve-btn').textContent    = S.approved.has(idx) ? '✓ Aprovado' : '✓ Aprovar e-mail';
+
+  const respondeu = _inboxData.some(rep => (rep.email||'').toLowerCase() === (email||'').toLowerCase());
+  const genBtn    = document.getElementById('gen-btn');
+  if (genBtn) genBtn.textContent = respondeu ? '↻ Gerar follow-up' : '⚡ Gerar e-mail';
+
+  if (corpo) {
+    document.getElementById('gmail-btn').classList.add('visible');
+    toast('✦ Follow-up carregado — revise e envie!');
+  } else {
+    document.getElementById('gmail-btn').classList.remove('visible');
+    if (!S.emails[idx]) generateEmail();
+  }
+}
+
+function markAnsweredModal() {
+  if (_currentReply) markAnswered(_currentReply.id);
+  closeRmodal();
+}
+
+async function markRead(id, silent) {
+  try {
+    await fetch(`${BACKEND_URL}/replies/${id}/read`, { method: 'POST' });
+    const r = _inboxData.find(x => x.id === id);
+    if (r) r.lido = true;
+    if (!silent) { renderInbox(); loadInbox(true); }
+  } catch(e) { if (!silent) toast('Erro: ' + e.message); }
+}
+
+async function markAnswered(id) {
+  try {
+    await fetch(`${BACKEND_URL}/replies/${id}/answered`, { method: 'POST' });
+    const r = _inboxData.find(x => x.id === id);
+    if (r) { r.respondido = true; r.lido = true; }
+    toast('✓ Marcado como respondido');
+    renderInbox(); loadInbox(true);
+  } catch(e) { toast('Erro: ' + e.message); }
+}
+
+async function regenerarFollowUp() {
+  if (!_currentReply) return;
+  const btn = document.getElementById('rm-regen');
+  if (btn) { btn.disabled = true; btn.textContent = '⟳ Gerando...'; }
+  try {
+    const r = await fetch(`${BACKEND_URL}/replies/${_currentReply.id}/regenerate`, { method: 'POST' });
+    const d = await r.json();
+    if (d.success) {
+      _currentReply.followUpGerado  = true;
+      _currentReply.followUpAssunto = d.followUpAssunto;
+      _currentReply.followUpCorpo   = d.followUpCorpo;
+      const idx = _inboxData.findIndex(x => x.id === _currentReply.id);
+      if (idx >= 0) Object.assign(_inboxData[idx], _currentReply);
+      rmodalTab('followup', document.getElementById('rm-tab-fu'));
+      toast('✦ Follow-up regenerado!');
+    } else { toast('Erro: ' + (d.error || 'Falha')); }
+  } catch(e) { toast('Erro: ' + e.message); }
+  if (btn) { btn.disabled = false; btn.textContent = '↻ Regenerar'; }
+}
+
+async function inboxCheckNow() {
+  const btn = document.getElementById('inbox-check-btn');
+  if (btn) { btn.disabled = true; btn.textContent = '⟳ Verificando...'; }
+  try {
+    const r = await fetch(`${BACKEND_URL}/replies/check`, { method: 'POST' });
+    const d = await r.json();
+    toast(d.newReplies > 0
+      ? `📬 ${d.newReplies} nova(s) resposta(s)!`
+      : '✓ Nenhuma resposta nova');
+    await loadInbox();
+  } catch(e) { toast('Erro: ' + e.message); }
+  if (btn) { btn.disabled = false; btn.textContent = '🔄 Verificar agora'; }
+}
+
+// Polling silencioso a cada 5min (badge sempre atualizado)
+setInterval(() => loadInbox(true), 5 * 60 * 1000);
+
+// ── MASS-EDIT CHAT ─────────────────────────────────────────────────
+function _detectMassCommand(msg) {
+  const lower = msg.toLowerCase();
+  const massKeywords = [
+    'todos os leads', 'todos os contatos', 'todos os e-mails', 'todos os emails',
+    'para todos', 'em massa', 'para cada lead', 'para os leads',
+    'aplique para', 'aplicar para', 'mude para todos', 'altere para todos',
+    'adicione para todos', 'para os advogados',
+    'leads qualificados', 'leads com potencial', 'reescreva para',
+    'todos os advogados', 'cada contato', 'para cada contato',
+    'atualiza todos', 'atualizar todos', 'mudar todos',
+    'todos que', 'todos com', 'pausar todos', 'ativar todos',
+    'marcar todos', 'atualizar todos', 'mude todos', 'altere todos', 'edite todos'
+  ];
+  return massKeywords.some(kw => lower.includes(kw));
+}
+
+async function _handleMassEdit(instrucao) {
+  if (!CONTACTS.length) { addMsg('⚠ Carregue os contatos primeiro.', 'claude'); return; }
+
+  const loadEl = document.createElement('div');
+  loadEl.className = 'msg claude';
+  loadEl.innerHTML = '<div class="dots"><span></span><span></span><span></span></div> Analisando instrução...';
+  document.getElementById('msgs').appendChild(loadEl);
+  scrollMsgs();
+
+  try {
+    const sys = `Você é assistente de Pedro Aranha.
+${PEDRO_PROFILE}
+
+Leads disponíveis (amostra dos primeiros 15):
+${CONTACTS.slice(0,15).map((c,i)=>`[${i}] ${c.name} | ${c.emp||''} | q:${c.q} | camp:${c.campaign||''} | adv:${isAdvogado(c)?'sim':'não'}`).join('\n')}
+Total: ${CONTACTS.length} leads
+
+Analise a instrução de edição em massa e retorne um JSON precedido por ===MASSA===
+Campos obrigatórios:
+{
+  "filtro": "todos" | "qualificados" | "potencial" | "nao_qualificados" | "advogados" | "especificos",
+  "nomesEspecificos": [],
+  "instrucao": "o que fazer em cada e-mail",
+  "confirmacao": "texto explicando o que será feito e para quantos leads (estime)"
+}
+Retorne APENAS ===MASSA=== seguido do JSON. Nada mais.`;
+
+    const resposta = await callClaude([{ role: 'user', content: instrucao }], sys, 600);
+    loadEl.remove();
+
+    if (!resposta.includes('===MASSA===')) {
+      addMsg(resposta, 'claude');
+      return;
+    }
+
+    const jsonStr = resposta.split('===MASSA===')[1].trim().replace(/```json|```/g,'').trim();
+    let plano;
+    try { plano = JSON.parse(jsonStr); }
+    catch(e) {
+      addMsg('⚠ Não consegui interpretar a instrução. Tente: "Adicione uma apresentação antes do e-mail de todos os leads qualificados"', 'claude');
+      return;
+    }
+
+    await _processarPlanoMassa(plano);
+
+  } catch(e) {
+    loadEl.remove();
+    addMsg('⚠ Erro: ' + e.message, 'claude');
+  }
+}
+
+async function _processarPlanoMassa(plano) {
+  // Identificar leads alvo
+  let leadsAlvo = [];
+  if (plano.filtro === 'todos')            leadsAlvo = CONTACTS.map((_,i)=>i).filter(i=>!S.skipped.has(i));
+  else if (plano.filtro === 'qualificados')leadsAlvo = CONTACTS.map((_,i)=>i).filter(i=>CONTACTS[i].q==='sim'&&!S.skipped.has(i));
+  else if (plano.filtro === 'potencial')   leadsAlvo = CONTACTS.map((_,i)=>i).filter(i=>CONTACTS[i].q==='com potencial'&&!S.skipped.has(i));
+  else if (plano.filtro === 'nao_qualificados') leadsAlvo = CONTACTS.map((_,i)=>i).filter(i=>CONTACTS[i].q==='não'&&!S.skipped.has(i));
+  else if (plano.filtro === 'advogados')   leadsAlvo = CONTACTS.map((_,i)=>i).filter(i=>isAdvogado(CONTACTS[i])&&!S.skipped.has(i));
+  else if (plano.filtro === 'especificos' && plano.nomesEspecificos?.length) {
+    leadsAlvo = CONTACTS.map((_,i)=>i).filter(i => {
+      const nome = (CONTACTS[i].name||'').toLowerCase();
+      const emp  = (CONTACTS[i].emp||'').toLowerCase();
+      return plano.nomesEspecificos.some(n=>nome.includes(n.toLowerCase())||emp.includes(n.toLowerCase()));
+    });
+  }
+
+  if (leadsAlvo.length === 0) {
+    addMsg('Nenhum lead encontrado com esse filtro.', 'claude');
+    return;
+  }
+
+  const preview = leadsAlvo.slice(0,5).map(i=>`• ${CONTACTS[i].name} (${CONTACTS[i].emp||'sem empresa'})`).join('\n');
+  const mais = leadsAlvo.length > 5 ? `\n...e mais ${leadsAlvo.length-5} leads.` : '';
+  addMsg(`${plano.confirmacao}\n\n**Leads afetados (${leadsAlvo.length} total):**\n${preview}${mais}\n\nConfirma?`, 'claude');
+
+  const confirmDiv = document.createElement('div');
+  confirmDiv.style.cssText = 'display:flex;gap:8px;padding:4px 0';
+  confirmDiv.innerHTML = `
+    <button class="btn btn-p btn-sm" id="mass-ok-btn">⚡ Aplicar para ${leadsAlvo.length} leads</button>
+    <button class="btn btn-d btn-sm" onclick="this.parentElement.remove();addMsg('Cancelado.','claude')">✕ Cancelar</button>`;
+  document.getElementById('msgs').appendChild(confirmDiv);
+  scrollMsgs();
+
+  document.getElementById('mass-ok-btn').onclick = () => {
+    confirmDiv.remove();
+    _executeMassEdit(leadsAlvo, plano);
+  };
+}
+
+async function _executeMassEdit(leadsAlvo, plano) {
+  const total = leadsAlvo.length;
+  addMsg(`⚙ Editando ${total} e-mails...`, 'claude');
+
+  const progDiv = document.createElement('div');
+  progDiv.className = 'msg claude';
+  progDiv.innerHTML = `
+    <div style="font-size:12px;color:var(--mut);margin-bottom:6px" id="mass-prog-txt">Processando 0/${total}...</div>
+    <div style="background:var(--sur2);border-radius:4px;height:6px;overflow:hidden">
+      <div id="mass-prog-bar" style="height:100%;background:var(--acc);width:0%;transition:width .3s"></div>
+    </div>`;
+  document.getElementById('msgs').appendChild(progDiv);
+  scrollMsgs();
+
+  let ok = 0, erros = 0;
+
+  for (let idx = 0; idx < leadsAlvo.length; idx++) {
+    const i = leadsAlvo[idx];
+    const c = CONTACTS[i];
+
+    const pct = Math.round(((idx+1)/total)*100);
+    const pt  = document.getElementById('mass-prog-txt');
+    const pb  = document.getElementById('mass-prog-bar');
+    if (pt) pt.textContent = `Processando ${idx+1}/${total}: ${c.name}...`;
+    if (pb) pb.style.width = pct + '%';
+
+    try {
+      const emailAtual = S.emails[i] || '';
+      const p = `Você escreve e-mails no estilo de Pedro Aranha — direto, sem enrolação, provocativo.
+
+CLIENTE:
+- Nome: ${c.name}
+- Empresa: ${c.emp||'não informado'}
+- Faturamento: ${c.fat||'não informado'}
+- Qualificação: ${c.q}
+- Especialidade: ${c.medium||'não informado'}
+
+${emailAtual
+  ? `CORPO ATUAL DO E-MAIL:\n${emailAtual}\n\nALTERAÇÃO SOLICITADA: ${plano.instrucao}`
+  : `INSTRUÇÃO: ${plano.instrucao}`}
+
+Escreva APENAS o corpo central (2 a 3 parágrafos).
+- NÃO inclua apresentação, saudação ou assinatura — serão adicionadas automaticamente
+- NÃO use "lead" ou "leads" — use "cliente" ou "clientes"
+- Mantenha o tom Pedro: direto, frases curtas, sem enrolação`;
+
+      const corpoGerado = await callClaude([{ role:'user', content: p }], '', 1000);
+
+      // Limpar e montar e-mail completo
+      const corpoLimpo  = _limparPalavrasProibidas(corpoGerado);
+      const novoEmail   = `${PEDRO_EMAIL_INTRO}\n\n${corpoLimpo}\n\n${PEDRO_EMAIL_CLOSING}`;
+
+      // CRÍTICO: salvar localmente ANTES de qualquer outra operação
+      S.emails[i] = novoEmail;
+
+      // Atualizar editor se este cliente está selecionado
+      if (S.sel === i) {
+        document.getElementById('ed-body').value = novoEmail;
+        document.getElementById('gmail-btn').classList.add('visible');
+      }
+
+      ok++;
+    } catch(e) {
+      erros++;
+      console.error(`Erro lead ${c.name}:`, e.message);
+    }
+
+    if (idx < leadsAlvo.length - 1) await new Promise(r => setTimeout(r, 350));
+  }
+
+  const pt2 = document.getElementById('mass-prog-txt');
+  const pb2 = document.getElementById('mass-prog-bar');
+  if (pt2) pt2.textContent = '✓ Concluído!';
+  if (pb2) pb2.style.cssText = 'height:100%;background:#4ade80;width:100%';
+
+  renderList();
+  addMsg(`✅ Edição em massa concluída!\n✓ ${ok} e-mails editados${erros > 0 ? `\n⚠ ${erros} com erro` : ''}\n\nSelecione qualquer lead para revisar antes de enviar.`, 'claude');
+  toast(`✓ ${ok}/${total} e-mails editados!`);
+}
+</script>
+</body>
+</html>
