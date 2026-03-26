@@ -4,15 +4,36 @@
 - **Nome:** Pedro Aranha (Pedro Oliveira de Alencar)
 - **Email:** pedrooalencar13@gmail.com
 - **WhatsApp:** (11) 99515-7048
+- **Instagram:** @pedrocgaaranha
 - **Localização:** São Paulo, SP
-- **Profissão:** Gestor de tráfego pago especializado em advocacia
+- **Profissão:** Estrategista de marketing digital / gestor de tráfego pago
 
-## Marca
+## Posicionamento Profissional
+Estrategista de marketing digital focado em performance real.
+Mais de R$20MM gerenciados em anúncios. Mais de R$100MM em vendas geradas.
+Formado em Administração (UDESC).
+
+NÃO é "gestor de tráfego comum". Vende resultado: diagnóstico de negócio,
+estrutura de aquisição previsível, melhoria na conversão.
+Diferencial: transformar anúncio em contrato fechado, não lead vazio.
+
+## Filosofia de Marketing
+- CPM/CTR/CPC são métricas secundárias. O que importa: CAC, LTV, margem.
+- "Anúncio não é pra performar bonito. É pra vender."
+- "Lead não vale nada se não vira cliente."
+- "Criativo ruim atrai cliente ruim."
+- Trabalha com nível de consciência (Eugene Schwartz)
+
+## Tom de comunicação (SEMPRE usar nos e-mails gerados)
+- Direto, sem enrolação, provocativo, confiante, anti-"coachzinho"
+- Frases curtas. Começa com gancho → quebra crença → fecha com CTA
+- Assinatura: Pedro Aranha | Gestão de Tráfego
+- Sempre incluir Instagram @pedrocgaaranha nos e-mails
+
+## Marca e Infraestrutura
 - **Nome comercial:** Pedro Aranha Gestão de Tráfego
 - **Sistema:** MATTE — captação e disparo de leads
 - **Foco:** escritórios de advocacia (trabalhistas, previdenciários, cíveis, tributários)
-
-## Infraestrutura
 - Frontend: https://pedrooalencar13.github.io/matte-ia
 - Backend: https://matte-ia-production.up.railway.app
 - Repositório: https://github.com/pedrooalencar13/matte-ia

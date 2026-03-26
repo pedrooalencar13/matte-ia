@@ -1,17 +1,26 @@
 # Preferências e Padrões
 
-## Comunicação nos e-mails
-- Tom: consultivo, confiante, sem pressão
-- Máximo 4 parágrafos por e-mail
-- CTA preferido: WhatsApp (11) 99515-7048
-- Assinatura: "Equipe Pedro Aranha Gestão de Tráfego"
+## Tom obrigatório nos e-mails
+- Estilo Pedro: direto, provocativo, frases curtas, sem enrolação
+- SEMPRE iniciar com apresentação do Pedro (PEDRO_EMAIL_INTRO)
+- SEMPRE terminar com WhatsApp (11) 99515-7048 + Instagram @pedrocgaaranha
+- Assinatura: Pedro Aranha | Gestão de Tráfego
+- Máximo 4 parágrafos por e-mail de primeiro contato
+- Máximo 3 parágrafos em follow-ups
 
-## Tecnologia
-- Frontend: HTML puro, single-file (sem frameworks, sem build tools)
+## Regras de negócio
+- NUNCA enviar e-mail automaticamente sem source='manual_individual'|'manual_bulk'
+- Advogados sempre recebem TEMPLATE_ADV_BODY (template fixo)
+- cadenceJob.js está DESATIVADO — envio apenas manual (hotfix 25/03/2026)
+- Leads qualificados (q=sim) têm prioridade máxima
+- Planilha Google Sheets é a fonte de verdade dos dados
+
+## Stack
+- Frontend: HTML/CSS/JS puro (index.html único, sem frameworks)
 - Backend: Node.js + Express no Railway
-- IA: Claude API, model claude-haiku-4-5-20251001
-- Scraping: SerpAPI
+- Claude model: claude-haiku-4-5-20251001
 - Design: dark theme, verde #c8f57a, fontes Sora + DM Serif + DM Mono
+- Scraping: SerpAPI
 
 ## Preferências de UX
 - Não abrir várias abas — automação total preferida
@@ -19,9 +28,3 @@
 - Notificações via toast, não alerts nativos
 - Confirmação antes de envios em massa e ações irreversíveis
 - Tudo em um único arquivo HTML
-
-## Regras de negócio
-- NUNCA enviar e-mails automaticamente sem confirmação humana
-- Leads qualificados (qualificacao=sim) têm prioridade máxima
-- Advogados sempre recebem template fixo (não gerado por IA quando campaign=advogados)
-- Planilha Google Sheets é a fonte de verdade dos dados

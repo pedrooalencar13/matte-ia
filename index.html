@@ -331,14 +331,17 @@ textarea.cta:focus{border-color:var(--acc)}
       <div class="msg claude">Olá! Selecione um contato e clique em ⚡ para gerar o e-mail automaticamente. Posso ajustar o tom, corrigir erros ou reescrever qualquer parte. 🚀</div>
     </div>
     <div class="chat-qa" id="chat-qa">
-      <button class="qb" onclick="quickAsk('Deixe o e-mail mais formal e profissional')">+ formal</button>
-      <button class="qb" onclick="quickAsk('Deixe o e-mail mais curto e direto')">+ curto</button>
-      <button class="qb" onclick="quickAsk('Adicione mais urgência ao e-mail')">+ urgência</button>
-      <button class="qb" onclick="quickAsk('Revise erros de português no e-mail')">revisar PT</button>
+      <div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:1px;width:100%;margin-bottom:2px">Lead atual:</div>
+      <button class="qb" onclick="quickAsk('Deixe o e-mail mais direto e no estilo Pedro — sem enrolação')">+ direto</button>
+      <button class="qb" onclick="quickAsk('Adicione mais urgência, no estilo provocativo do Pedro')">+ urgência</button>
+      <button class="qb" onclick="quickAsk('Deixe o e-mail mais curto — máximo 3 parágrafos')">+ curto</button>
+      <button class="qb" onclick="quickAsk('Revise erros de português mantendo o tom do Pedro')">revisar PT</button>
       <button class="qb" onclick="quickAsk('Reescreva focando em marcar uma reunião ou call')">marcar call</button>
-      <button class="qb" style="border-color:#3a2e10;color:var(--gol)" onclick="quickAsk('Pause a cadência de todos os leads que ainda não abriram o e-mail')">pausar sem abertura</button>
-      <button class="qb" style="border-color:#1a3a1a;color:var(--acc)" onclick="quickAsk('Ative a cadência de todos os leads que estão pausados')">ativar pausados</button>
-      <button class="qb" style="border-color:#1a2d40;color:var(--inf)" onclick="quickAsk('Liste todos os leads que responderam o e-mail')">ver responderam</button>
+      <div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:1px;width:100%;margin-top:6px;margin-bottom:2px">Em massa:</div>
+      <button class="qb" onclick="quickAsk('Adicione a apresentação do Pedro antes do corpo do e-mail de todos os leads')">+ apresentação p/ todos</button>
+      <button class="qb" onclick="quickAsk('Adicione o Instagram @pedrocgaaranha no encerramento de todos os e-mails')">+ Instagram p/ todos</button>
+      <button class="qb" onclick="quickAsk('Reescreva os e-mails de todos os leads qualificados com tom mais direto e urgente')">urgência p/ qualificados</button>
+      <button class="qb" onclick="quickAsk('Reescreva os e-mails de todos os advogados no estilo Pedro — direto e provocativo')">revisar advogados</button>
     </div>
     <div class="chat-inp">
       <textarea class="cta" id="chat-inp" rows="2" placeholder="Peça uma alteração ou faça uma pergunta..." onkeydown="chatKey(event)"></textarea>
@@ -485,9 +488,60 @@ const COL         = { NOME:0, SOBRENOME:1, TELEFONE:2, EMAIL:3, EMPRESA:4, CREAT
                       ABERTO:18, RESPONDIDO:19, DT_RESPOSTA:20 };
 const BACKEND_URL = 'https://matte-ia-production.up.railway.app';
 
+// ── PERFIL COMPLETO DE PEDRO ARANHA (alimenta toda a IA do sistema) ──
+const PEDRO_PROFILE = `
+QUEM É PEDRO ARANHA:
+Pedro Aranha é estrategista de marketing digital focado em performance real.
+Já gerenciou mais de R$20MM em anúncios e gerou mais de R$100MM em vendas.
+Formado em Administração (UDESC). Trabalha com Meta Ads, Google Ads, funis,
+WhatsApp como canal de conversão e copy orientada a venda.
+
+NÃO se posiciona como "gestor de tráfego comum". Se posiciona como alguém
+que entende negócio, venda e margem — e usa tráfego como ferramenta, não
+como fim. Seu diferencial: transformar anúncio em contrato fechado.
+
+FILOSOFIA:
+- CPM, CTR e CPC são métricas secundárias. O que importa: CAC, LTV, margem,
+  qualidade do lead, taxa de fechamento.
+- "Anúncio não é pra performar bonito. É pra vender."
+- "Lead não vale nada se não vira cliente."
+- "Criativo ruim atrai cliente ruim."
+- Criativo segmenta mais que público. Mensagem define quem entra.
+- Trabalha com nível de consciência (Eugene Schwartz) e nível de sofisticação.
+
+ESTILO DE COMUNICAÇÃO (SEMPRE usar este tom):
+- Direto, sem enrolação, confiante, provocativo, anti-"coachzinho"
+- Fala como pensa. Frases curtas. Ritmo natural, não robótico.
+- Começa com gancho forte → quebra crença → explica simples → fecha com CTA
+- Agressivo quando necessário. Prefere verdade desconfortável ao discurso bonito.
+- Exemplos de abertura: "Vou te falar a real…" / "Ninguém te conta isso…"
+
+DIFERENCIAL COMPETITIVO:
+Não vende tráfego. Vende: diagnóstico de negócio, clareza de gargalo,
+estrutura de aquisição previsível, melhoria na conversão, aumento de receita.
+Conecta Marketing + Vendas + Operação.
+
+CONTATO:
+- WhatsApp: (11) 99515-7048
+- Instagram: @pedrocgaaranha
+- Assinar e-mails como: Pedro Aranha | Gestão de Tráfego
+`;
+
+const PEDRO_EMAIL_INTRO = `Pedro Aranha aqui.
+
+Estrategista de tráfego pago com mais de R$20MM gerenciados em anúncios e R$100MM em vendas geradas. Trabalho com Meta Ads, Google Ads, funis e WhatsApp — com foco em resultado real: cliente fechado, não lead curioso.`;
+
+const PEDRO_EMAIL_CLOSING = `Qualquer dúvida, me chama direto no WhatsApp: (11) 99515-7048
+
+E se quiser acompanhar conteúdo direto sobre tráfego e vendas — sem enrolação — me segue no Instagram: @pedrocgaaranha
+
+Pedro Aranha | Gestão de Tráfego`;
+
 // ── TEMPLATE FIXO PARA ADVOGADOS ──────────────────────────────────
 const TEMPLATE_ADV_SUBJ = 'O tipo de cliente que você atrai depende do que você fala no anúncio';
-const TEMPLATE_ADV_BODY = `A maioria dos escritórios ainda erra na base da campanha.
+const TEMPLATE_ADV_BODY = `${PEDRO_EMAIL_INTRO}
+
+A maioria dos escritórios ainda erra na base da campanha.
 
 Não é o orçamento.
 Não é o criativo.
@@ -531,24 +585,23 @@ E tem outro ponto importante:
 Esse tipo de comunicação não precisa ser agressiva.
 Pelo contrário.
 
-Funciona muito melhor quando tem caráter descritivo e informativo, mostrando o cenário com clareza e deixando o próximo passo natural.
+Funciona muito melhor quando tem caráter descritivo e informativo, mostrando
+o cenário com clareza e deixando o próximo passo natural.
 
-Sem pressão.
-Com CTAs neutros, como:
+Sem pressão. Com CTAs neutros:
 
 "Fale com um advogado especialista"
 "Consulte um escritório especializado"
 
-Isso gera mais confiança…
-e atrai um cliente com nível de consciência muito mais alto.
+Isso gera mais confiança… e atrai cliente com nível de consciência muito mais alto.
 
 No fim do dia, o jogo não é sobre gerar mais leads.
 É sobre atrair as pessoas certas, no momento certo.
 
-Se fizer sentido ajustar a comunicação dos seus anúncios para começar a atrair clientes já prontos para contratar,
-me chama no WhatsApp que eu te explico como estruturar isso no seu escritório:
+Se fizer sentido estruturar a comunicação dos seus anúncios para começar a
+atrair clientes já prontos para contratar, me chama no WhatsApp:
 
-👉 (11) 99515-7048`;
+${PEDRO_EMAIL_CLOSING}`;
 
 function isAdvogado(c) {
   const tags = (c.tags||'').toLowerCase();
@@ -825,70 +878,89 @@ async function generateEmail() {
 
   if (leadRespondeu && respostaLocal) {
     btn.textContent = '⏳ Analisando resposta...';
-    const instrQual = c.q === 'sim'
-      ? 'Lead ALTAMENTE QUALIFICADO. Avance diretamente para marcar reunião ou call.'
-      : c.q === 'com potencial'
-      ? 'Lead com potencial. Aprofunde o interesse e proponha próximo passo concreto.'
-      : 'Lead em avaliação. Seja consultivo, foque em entender mais sobre ele.';
 
-    prompt = `Você é Pedro Aranha, especialista em gestão de tráfego pago para advogados.
+    prompt = `Você escreve e-mails no estilo e voz de Pedro Aranha.
 
-## DADOS DO LEAD
-Nome: ${c.name}
-Empresa: ${c.emp || 'não informado'}
-Faturamento: ${c.fat || 'não informado'}
-Qualificação: ${c.q}
-Especialidade: ${c.medium || 'não informado'}
-Cidade: ${c.cidade || 'não informado'}
-Urgência: ${c.urg || 'não informada'}
+${PEDRO_PROFILE}
 
-## O QUE O LEAD RESPONDEU
-${respostaLocal.bodyClean || respostaLocal.body || '(conteúdo não disponível)'}
+LEAD QUE RESPONDEU:
+- Nome: ${c.name}
+- Empresa: ${c.emp || 'não informado'}
+- Faturamento: ${c.fat || 'não informado'}
+- Qualificação: ${c.q}
+- Especialidade: ${c.medium || 'não informado'}
+- Cidade: ${c.cidade || 'não informado'}
+- Urgência: ${c.urg || 'não informada'}
 
-## E-MAIL QUE VOCÊ HAVIA ENVIADO
-${S.emails[S.sel] || '(sem histórico local)'}
+O QUE O LEAD RESPONDEU:
+${respostaLocal.bodyClean || respostaLocal.body || '(sem conteúdo)'}
 
-## INSTRUÇÃO: ${instrQual}
+E-MAIL QUE VOCÊ HAVIA ENVIADO:
+${S.emails[S.sel] || '(sem histórico)'}
 
-Escreva um follow-up que:
-1. Responda diretamente ao que o lead disse
-2. Avance para o próximo passo (reunião, call, proposta)
-3. Seja humano e consultivo — máximo 3 parágrafos
-4. CTA: WhatsApp (11) 99515-7048
+INSTRUÇÃO: ${c.q === 'sim'
+  ? 'Lead qualificado. Avance para marcar reunião ou call. Seja direto.'
+  : 'Aprofunde o interesse. Proponha próximo passo concreto.'}
 
-Escreva APENAS o corpo do e-mail. Assine como: Pedro Aranha Gestão de Tráfego`;
+ESTRUTURA OBRIGATÓRIA:
+1. ABERTURA: responda diretamente ao que o lead disse (1 parágrafo curto, sem
+   repetir a apresentação — ele já te conhece).
+2. CORPO: avance a conversa para o próximo passo. Tom Pedro: direto, confiante,
+   sem enrolação. Máximo 2 parágrafos.
+3. ENCERRAMENTO: use o texto exato abaixo (não altere):
+"${PEDRO_EMAIL_CLOSING}"
+
+Escreva APENAS o corpo do e-mail.`;
 
   } else if (leadRespondeu) {
-    prompt = `Você é Pedro Aranha, gestor de tráfego pago para advogados.
+    prompt = `Você escreve e-mails no estilo e voz de Pedro Aranha.
+
+${PEDRO_PROFILE}
+
 Lead: ${c.name} | Empresa: ${c.emp||'—'} | Faturamento: ${c.fat||'—'} | Qualificação: ${c.q}
-Este lead respondeu seu e-mail. Escreva um follow-up caloroso que agradece a resposta,
-aprofunda o interesse e propõe uma reunião ou call.
-Máximo 3 parágrafos. CTA: WhatsApp (11) 99515-7048.
-Assine como: Pedro Aranha Gestão de Tráfego. Escreva APENAS o corpo.`;
+Este lead respondeu seu e-mail. Responda com follow-up direto no estilo Pedro,
+aprofundando o interesse e propondo reunião ou call. Máximo 3 parágrafos.
+
+ENCERRAMENTO OBRIGATÓRIO (use exatamente):
+"${PEDRO_EMAIL_CLOSING}"
+
+Escreva APENAS o corpo do e-mail.`;
 
   } else {
     // Primeiro contato
     const inst = c.q === 'sim'
-      ? 'Lead ALTAMENTE QUALIFICADO. Convide diretamente para reunião ou demo. Tom direto e confiante.'
+      ? 'Lead ALTAMENTE QUALIFICADO. Convide diretamente para reunião ou call. Tom direto e confiante.'
       : c.q === 'com potencial'
-      ? 'Lead com potencial. Reative o interesse, apresente gestão de tráfego pago e gere curiosidade.'
-      : 'Lead não qualificado. Apresente levemente, sem pressão, deixe porta aberta.';
+      ? 'Lead com potencial. Gere curiosidade, apresente o diferencial, proponha próximo passo.'
+      : 'Lead frio. Apresente levemente, sem pressão, deixe porta aberta.';
 
-    prompt = `Você é especialista em vendas consultivas para gestão de tráfego pago.
-Escreva um e-mail profissional, caloroso e personalizado em português brasileiro.
+    prompt = `Você escreve e-mails no estilo e voz de Pedro Aranha.
 
-Destinatário: ${c.name}
-Empresa: ${c.emp || 'não informado'}
-Faturamento mensal: ${c.fat || 'não informado'}
-Urgência: ${c.urg || 'não informada'}
-Especialidade: ${c.medium || 'não informado'}
-Cidade: ${c.cidade || 'não informada'}
-Perfil: ${c.q}
+${PEDRO_PROFILE}
 
-Instrução: ${inst}
-Regras: máximo 4 parágrafos curtos, tom humano, termine com CTA claro.
-WhatsApp: (11) 99515-7048. Assine como: Equipe Pedro Aranha Gestão de Tráfego
-Escreva APENAS o corpo do e-mail, sem assunto nem explicações.`;
+LEAD:
+- Nome: ${c.name}
+- Empresa: ${c.emp || 'não informado'}
+- Faturamento mensal: ${c.fat || 'não informado'}
+- Urgência: ${c.urg || 'não informada'}
+- Especialidade: ${c.medium || 'não informado'}
+- Cidade: ${c.cidade || 'não informada'}
+- Qualificação: ${c.q}
+
+INSTRUÇÃO: ${inst}
+
+ESTRUTURA OBRIGATÓRIA DO E-MAIL:
+1. ABERTURA: use o texto exato abaixo como apresentação (não altere):
+"${PEDRO_EMAIL_INTRO}"
+
+2. CORPO: escreva 2-3 parágrafos curtos no estilo Pedro — direto, provocativo,
+sem enrolação. Conecte com o contexto do lead (faturamento, especialidade, cidade).
+Use frases curtas. Quebre crença. Traga verdade desconfortável.
+
+3. ENCERRAMENTO: use o texto exato abaixo (não altere):
+"${PEDRO_EMAIL_CLOSING}"
+
+Escreva APENAS o corpo do e-mail. Sem assunto. Sem explicações.`;
   }
 
   try {
@@ -1043,13 +1115,48 @@ async function sendChat() {
   const c = S.sel!==null ? CONTACTS[S.sel] : null;
   const emailAtual = document.getElementById('ed-body').value;
   const sys = c
-    ? `Você é assistente de Pedro Aranha Gestão de Tráfego ajudando a revisar e-mails de prospecção.
-Contato: ${c.name}, faturamento: ${c.fat}, qualificação: ${c.q}.
-E-mail atual no editor:\n\n${emailAtual}
+    ? `Você é o assistente pessoal de Pedro Aranha, estrategista de tráfego pago.
 
-Se pedirem alterações no e-mail, responda com o e-mail COMPLETO reescrito precedido pela linha exata: ===EMAIL===
-Caso contrário, responda normalmente.`
-    : 'Você é assistente de Pedro Aranha Gestão de Tráfego, ajudando com campanhas de e-mail.';
+${PEDRO_PROFILE}
+
+CONTATO SELECIONADO AGORA:
+- Nome: ${c.name}
+- Empresa: ${c.emp || 'não informado'}
+- Faturamento: ${c.fat}
+- Qualificação: ${c.q}
+- Especialidade: ${c.medium || 'não informado'}
+- Cidade: ${c.cidade || 'não informado'}
+
+E-MAIL ATUAL NO EDITOR:
+${emailAtual || '(vazio)'}
+
+SUAS FUNÇÕES:
+1. Ajustar e-mails do contato selecionado quando Pedro pedir
+2. Aplicar mudanças em MASSA quando Pedro mencionar "todos", "em massa", etc.
+3. Responder perguntas sobre estratégia, copy e tráfego no estilo Pedro
+
+PARA ALTERAÇÕES NO E-MAIL INDIVIDUAL:
+Responda com o e-mail COMPLETO reescrito, precedido pela linha exata: ===EMAIL===
+
+PARA COMANDOS EM MASSA (todos os leads, qualificados, advogados, etc.):
+Responda com o plano em JSON, precedido pela linha exata: ===MASSA===
+Formato JSON:
+{
+  "filtro": "todos" | "qualificados" | "potencial" | "nao_qualificados" | "advogados" | "especificos",
+  "nomesEspecificos": [],
+  "instrucao": "descrição clara da alteração",
+  "confirmacao": "mensagem explicando o que será feito e para quantos leads"
+}
+
+REGRAS DE ESTILO (sempre aplicar nos e-mails):
+- Tom Pedro: direto, sem enrolação, provocativo, confiante
+- Frases curtas. Ritmo natural.
+- Sempre incluir apresentação no início (já está no PEDRO_EMAIL_INTRO)
+- Sempre terminar com PEDRO_EMAIL_CLOSING (WhatsApp + Instagram @pedrocgaaranha)
+- Nunca tom professoral ou formal demais`
+    : `Você é o assistente pessoal de Pedro Aranha, estrategista de tráfego pago.
+${PEDRO_PROFILE}
+Responda no estilo Pedro: direto, sem enrolação, com estratégia real.`;
 
   const loadEl = document.createElement('div');
   loadEl.className = 'msg-loading'; loadEl.textContent = '● ● ●';
@@ -1061,7 +1168,13 @@ Caso contrário, responda normalmente.`
     const reply = await callClaude(S.history, sys, 800);
     S.history.push({role:'assistant', content:reply});
     loadEl.remove();
-    if (reply.includes('===EMAIL===')) {
+    if (reply.includes('===MASSA===')) {
+      // Passa para _handleMassEdit processar via JSON estruturado
+      const jsonStr = reply.split('===MASSA===')[1].trim().replace(/```json|```/g,'').trim();
+      let plano;
+      try { plano = JSON.parse(jsonStr); } catch(e) { addMsg(reply, 'claude'); return; }
+      await _processarPlanoMassa(plano);
+    } else if (reply.includes('===EMAIL===')) {
       const parts = reply.split('===EMAIL===');
       if (parts[0].trim()) addMsg(parts[0].trim(), 'claude');
       const ne = parts[1].trim();
@@ -2208,164 +2321,188 @@ async function inboxCheckNow() {
 setInterval(() => loadInbox(true), 5 * 60 * 1000);
 
 // ── MASS-EDIT CHAT ─────────────────────────────────────────────────
-const MASS_KEYWORDS = [
-  'todos os leads','todos que','todos com','pausar todos','ativar todos',
-  'marcar todos','atualizar todos','mude todos','altere todos','edite todos',
-  'para todos','em massa','bulk','lote'
-];
-
 function _detectMassCommand(msg) {
   const lower = msg.toLowerCase();
-  return MASS_KEYWORDS.some(k => lower.includes(k));
+  const massKeywords = [
+    'todos os leads', 'todos os contatos', 'todos os e-mails', 'todos os emails',
+    'para todos', 'em massa', 'para cada lead', 'para os leads',
+    'aplique para', 'aplicar para', 'mude para todos', 'altere para todos',
+    'adicione para todos', 'para os advogados',
+    'leads qualificados', 'leads com potencial', 'reescreva para',
+    'todos os advogados', 'cada contato', 'para cada contato',
+    'atualiza todos', 'atualizar todos', 'mudar todos',
+    'todos que', 'todos com', 'pausar todos', 'ativar todos',
+    'marcar todos', 'atualizar todos', 'mude todos', 'altere todos', 'edite todos'
+  ];
+  return massKeywords.some(kw => lower.includes(kw));
 }
 
-async function _handleMassEdit(userMsg) {
+async function _handleMassEdit(instrucao) {
   if (!CONTACTS.length) { addMsg('⚠ Carregue os contatos primeiro.', 'claude'); return; }
 
   const loadEl = document.createElement('div');
-  loadEl.className = 'msg-loading'; loadEl.textContent = '● ● ●';
+  loadEl.className = 'msg claude';
+  loadEl.innerHTML = '<div class="dots"><span></span><span></span><span></span></div> Analisando instrução...';
   document.getElementById('msgs').appendChild(loadEl);
   scrollMsgs();
 
-  // Envia sumário de contatos para o Claude analisar
-  const contactSummary = CONTACTS.map((c, i) => ({
-    i, email: c.email,
-    nome: c.name,
-    cad: c.cadenciaStatus || 'sem cadência',
-    etapa: c.cadenciaEtapa || '0',
-    aberto: c.emailAberto === 'sim' ? 'sim' : 'não',
-    respondido: c.emailRespondido === 'sim' ? 'sim' : 'não',
-    qualif: c.q || '',
-  }));
-
-  const sys = `Você é assistente de Pedro Aranha analisando comandos de edição em massa de leads.
-Você vai receber uma instrução e uma lista de contatos. Retorne APENAS um JSON válido no formato:
-{
-  "description": "descrição legível do que será feito",
-  "emails": ["email1@ex.com", "email2@ex.com"],
-  "updates": { "cadenciaStatus": "pausada" }
-}
-- "emails": lista dos e-mails dos leads afetados pela instrução
-- "updates": objeto com as colunas a atualizar (pode conter: cadenciaStatus, cadenciaEtapa, emailRespondido, dataResposta)
-  Valores válidos para cadenciaStatus: "ativa", "pausada", "concluida", "respondeu"
-- Se a instrução for apenas informativa (listar, contar), use "updates": null e coloque a resposta em "description"
-- NÃO inclua nenhum texto fora do JSON`;
-
-  const prompt = `Instrução: "${userMsg}"
-
-Contatos disponíveis (${contactSummary.length} total):
-${JSON.stringify(contactSummary, null, 1)}`;
-
   try {
-    const reply = await callClaude([{role:'user',content:prompt}], sys, 1000);
+    const sys = `Você é assistente de Pedro Aranha.
+${PEDRO_PROFILE}
+
+Leads disponíveis (amostra dos primeiros 15):
+${CONTACTS.slice(0,15).map((c,i)=>`[${i}] ${c.name} | ${c.emp||''} | q:${c.q} | camp:${c.campaign||''} | adv:${isAdvogado(c)?'sim':'não'}`).join('\n')}
+Total: ${CONTACTS.length} leads
+
+Analise a instrução de edição em massa e retorne um JSON precedido por ===MASSA===
+Campos obrigatórios:
+{
+  "filtro": "todos" | "qualificados" | "potencial" | "nao_qualificados" | "advogados" | "especificos",
+  "nomesEspecificos": [],
+  "instrucao": "o que fazer em cada e-mail",
+  "confirmacao": "texto explicando o que será feito e para quantos leads (estime)"
+}
+Retorne APENAS ===MASSA=== seguido do JSON. Nada mais.`;
+
+    const resposta = await callClaude([{ role: 'user', content: instrucao }], sys, 600);
     loadEl.remove();
 
-    let parsed;
-    try {
-      const jsonMatch = reply.match(/\{[\s\S]*\}/);
-      parsed = JSON.parse(jsonMatch ? jsonMatch[0] : reply);
-    } catch(e) {
-      addMsg(reply, 'claude');
+    if (!resposta.includes('===MASSA===')) {
+      addMsg(resposta, 'claude');
       return;
     }
 
-    if (!parsed.updates || !parsed.emails?.length) {
-      // Comando informativo — só mostra descrição
-      addMsg(parsed.description || reply, 'claude');
+    const jsonStr = resposta.split('===MASSA===')[1].trim().replace(/```json|```/g,'').trim();
+    let plano;
+    try { plano = JSON.parse(jsonStr); }
+    catch(e) {
+      addMsg('⚠ Não consegui interpretar a instrução. Tente: "Adicione uma apresentação antes do e-mail de todos os leads qualificados"', 'claude');
       return;
     }
 
-    // Filtra para emails que existem em CONTACTS
-    const validEmails = parsed.emails.filter(em =>
-      CONTACTS.some(c => (c.email||'').toLowerCase().trim() === em.toLowerCase().trim())
-    );
-
-    if (!validEmails.length) {
-      addMsg(`Nenhum lead corresponde a esse critério. ${parsed.description}`, 'claude');
-      return;
-    }
-
-    // Mostra confirmação
-    const confirmId = 'mass-' + Date.now();
-    const prevBox = document.createElement('div');
-    prevBox.className = 'msg claude';
-    prevBox.innerHTML = `
-      <div class="mass-confirm-box">
-        <strong>${esc(parsed.description)}</strong>
-        <div class="mass-leads-preview">${validEmails.map(e => `• ${esc(e)}`).join('<br>')}</div>
-        <div style="font-size:11px;color:var(--mut)">${validEmails.length} lead(s) serão afetados</div>
-        <div class="mass-actions">
-          <button class="mass-btn-confirm" id="${confirmId}-confirm">✓ Confirmar (${validEmails.length})</button>
-          <button class="mass-btn-cancel" id="${confirmId}-cancel">Cancelar</button>
-        </div>
-        <div class="mass-exec-prog" id="${confirmId}-prog" style="display:none">
-          <div class="mass-exec-bar" id="${confirmId}-bar"></div>
-        </div>
-      </div>`;
-    document.getElementById('msgs').appendChild(prevBox);
-    scrollMsgs();
-
-    document.getElementById(`${confirmId}-cancel`).onclick = () => {
-      prevBox.innerHTML = '<em style="color:var(--mut);font-size:12px">Edição em massa cancelada.</em>';
-    };
-    document.getElementById(`${confirmId}-confirm`).onclick = () =>
-      _executeMassEdit(validEmails, parsed.updates, confirmId, prevBox);
+    await _processarPlanoMassa(plano);
 
   } catch(e) {
     loadEl.remove();
-    addMsg('⚠ Erro na análise: ' + e.message, 'claude');
+    addMsg('⚠ Erro: ' + e.message, 'claude');
   }
 }
 
-async function _executeMassEdit(emails, updates, confirmId, prevBox) {
-  document.getElementById(`${confirmId}-confirm`).disabled = true;
-  document.getElementById(`${confirmId}-cancel`).disabled = true;
-  const prog = document.getElementById(`${confirmId}-prog`);
-  const bar  = document.getElementById(`${confirmId}-bar`);
-  prog.style.display = 'block';
-
-  let done = 0;
-  const errors = [];
-  for (const email of emails) {
-    try {
-      const r = await fetch(`${BACKEND_URL}/sheets/update-row`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, updates }),
-      });
-      if (!r.ok) {
-        const d = await r.json();
-        errors.push(email + ': ' + (d.error || r.status));
-      } else {
-        // Salvar no estado local para o editor refletir imediatamente
-        const i = CONTACTS.findIndex(c => (c.email||'').toLowerCase() === email.toLowerCase());
-        if (i >= 0) {
-          if (updates.cadenciaStatus  !== undefined) CONTACTS[i].cadenciaStatus  = updates.cadenciaStatus;
-          if (updates.cadenciaEtapa   !== undefined) CONTACTS[i].cadenciaEtapa   = updates.cadenciaEtapa;
-          if (updates.emailRespondido !== undefined) CONTACTS[i].emailRespondido = updates.emailRespondido;
-          if (updates.dataResposta    !== undefined) CONTACTS[i].dataResposta    = updates.dataResposta;
-          // Atualizar editor se este lead está selecionado
-          if (S.sel === i) {
-            const subj = S.subjects[i] || document.getElementById('ed-subj').value;
-            selectContact(i);
-            document.getElementById('ed-subj').value = subj;
-          }
-        }
-      }
-    } catch(e) { errors.push(email + ': ' + e.message); }
-    done++;
-    bar.style.width = Math.round(done / emails.length * 100) + '%';
-    await new Promise(res => setTimeout(res, 200));
+async function _processarPlanoMassa(plano) {
+  // Identificar leads alvo
+  let leadsAlvo = [];
+  if (plano.filtro === 'todos')            leadsAlvo = CONTACTS.map((_,i)=>i).filter(i=>!S.skipped.has(i));
+  else if (plano.filtro === 'qualificados')leadsAlvo = CONTACTS.map((_,i)=>i).filter(i=>CONTACTS[i].q==='sim'&&!S.skipped.has(i));
+  else if (plano.filtro === 'potencial')   leadsAlvo = CONTACTS.map((_,i)=>i).filter(i=>CONTACTS[i].q==='com potencial'&&!S.skipped.has(i));
+  else if (plano.filtro === 'nao_qualificados') leadsAlvo = CONTACTS.map((_,i)=>i).filter(i=>CONTACTS[i].q==='não'&&!S.skipped.has(i));
+  else if (plano.filtro === 'advogados')   leadsAlvo = CONTACTS.map((_,i)=>i).filter(i=>isAdvogado(CONTACTS[i])&&!S.skipped.has(i));
+  else if (plano.filtro === 'especificos' && plano.nomesEspecificos?.length) {
+    leadsAlvo = CONTACTS.map((_,i)=>i).filter(i => {
+      const nome = (CONTACTS[i].name||'').toLowerCase();
+      const emp  = (CONTACTS[i].emp||'').toLowerCase();
+      return plano.nomesEspecificos.some(n=>nome.includes(n.toLowerCase())||emp.includes(n.toLowerCase()));
+    });
   }
 
-  const msg = errors.length
-    ? `✓ ${done - errors.length}/${emails.length} atualizados. Erros: ${errors.length}`
-    : `✓ ${done} leads atualizados com sucesso!`;
+  if (leadsAlvo.length === 0) {
+    addMsg('Nenhum lead encontrado com esse filtro.', 'claude');
+    return;
+  }
 
-  prevBox.innerHTML = `<span style="color:var(--acc)">${msg}</span>`;
-  toast(msg);
+  const preview = leadsAlvo.slice(0,5).map(i=>`• ${CONTACTS[i].name} (${CONTACTS[i].emp||'sem empresa'})`).join('\n');
+  const mais = leadsAlvo.length > 5 ? `\n...e mais ${leadsAlvo.length-5} leads.` : '';
+  addMsg(`${plano.confirmacao}\n\n**Leads afetados (${leadsAlvo.length} total):**\n${preview}${mais}\n\nConfirma?`, 'claude');
+
+  const confirmDiv = document.createElement('div');
+  confirmDiv.style.cssText = 'display:flex;gap:8px;padding:4px 0';
+  confirmDiv.innerHTML = `
+    <button class="btn btn-p btn-sm" id="mass-ok-btn">⚡ Aplicar para ${leadsAlvo.length} leads</button>
+    <button class="btn btn-d btn-sm" onclick="this.parentElement.remove();addMsg('Cancelado.','claude')">✕ Cancelar</button>`;
+  document.getElementById('msgs').appendChild(confirmDiv);
+  scrollMsgs();
+
+  document.getElementById('mass-ok-btn').onclick = () => {
+    confirmDiv.remove();
+    _executeMassEdit(leadsAlvo, plano);
+  };
+}
+
+async function _executeMassEdit(leadsAlvo, plano) {
+  const total = leadsAlvo.length;
+  addMsg(`⚙ Editando ${total} e-mails...`, 'claude');
+
+  const progDiv = document.createElement('div');
+  progDiv.className = 'msg claude';
+  progDiv.innerHTML = `
+    <div style="font-size:12px;color:var(--mut);margin-bottom:6px" id="mass-prog-txt">Processando 0/${total}...</div>
+    <div style="background:var(--sur2);border-radius:4px;height:6px;overflow:hidden">
+      <div id="mass-prog-bar" style="height:100%;background:var(--acc);width:0%;transition:width .3s"></div>
+    </div>`;
+  document.getElementById('msgs').appendChild(progDiv);
+  scrollMsgs();
+
+  let ok = 0, erros = 0;
+
+  for (let idx = 0; idx < leadsAlvo.length; idx++) {
+    const i = leadsAlvo[idx];
+    const c = CONTACTS[i];
+
+    const pct = Math.round(((idx+1)/total)*100);
+    const pt  = document.getElementById('mass-prog-txt');
+    const pb  = document.getElementById('mass-prog-bar');
+    if (pt) pt.textContent = `Processando ${idx+1}/${total}: ${c.name}...`;
+    if (pb) pb.style.width = pct + '%';
+
+    try {
+      const emailAtual = S.emails[i] || '';
+      const p = `Você escreve e-mails no estilo e voz de Pedro Aranha.
+
+${PEDRO_PROFILE}
+
+LEAD:
+- Nome: ${c.name}
+- Empresa: ${c.emp||'não informado'}
+- Faturamento: ${c.fat||'não informado'}
+- Qualificação: ${c.q}
+- Especialidade: ${c.medium||'não informado'}
+
+${emailAtual ? `E-MAIL ATUAL:\n${emailAtual}\n\nALTERAÇÃO: ${plano.instrucao}` : `INSTRUÇÃO: ${plano.instrucao}`}
+
+ESTRUTURA OBRIGATÓRIA:
+- Sempre iniciar com: "${PEDRO_EMAIL_INTRO}"
+- Corpo personalizado no estilo Pedro (direto, provocativo, frases curtas)
+- Sempre terminar com: "${PEDRO_EMAIL_CLOSING}"
+
+Escreva APENAS o corpo do e-mail.`;
+
+      const novoEmail = await callClaude([{ role:'user', content: p }], '', 600);
+
+      // CRÍTICO: salvar localmente ANTES de qualquer outra operação
+      S.emails[i] = novoEmail;
+
+      // Atualizar editor se este lead está selecionado
+      if (S.sel === i) {
+        document.getElementById('ed-body').value = novoEmail;
+        document.getElementById('gmail-btn').classList.add('visible');
+      }
+
+      ok++;
+    } catch(e) {
+      erros++;
+      console.error(`Erro lead ${c.name}:`, e.message);
+    }
+
+    if (idx < leadsAlvo.length - 1) await new Promise(r => setTimeout(r, 350));
+  }
+
+  const pt2 = document.getElementById('mass-prog-txt');
+  const pb2 = document.getElementById('mass-prog-bar');
+  if (pt2) pt2.textContent = '✓ Concluído!';
+  if (pb2) pb2.style.cssText = 'height:100%;background:#4ade80;width:100%';
+
   renderList();
-  await syncNow();
+  addMsg(`✅ Edição em massa concluída!\n✓ ${ok} e-mails editados${erros > 0 ? `\n⚠ ${erros} com erro` : ''}\n\nSelecione qualquer lead para revisar antes de enviar.`, 'claude');
+  toast(`✓ ${ok}/${total} e-mails editados!`);
 }
 </script>
 </body>
