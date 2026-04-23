@@ -118,6 +118,15 @@ textarea.cta:focus{border-color:var(--acc)}
 .capt-spinner.on{display:flex}
 .capt-spinner .dots span{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--acc);margin:0 2px;animation:blink 1.2s infinite}
 .capt-spinner .dots span:nth-child(2){animation-delay:.2s}.capt-spinner .dots span:nth-child(3){animation-delay:.4s}
+.tag-field{display:flex;flex-wrap:wrap;gap:5px;padding:7px 10px;background:var(--sur2);border:1px solid var(--bor);border-radius:8px;margin-bottom:14px;min-height:38px;cursor:text;align-items:center}
+.tag-field:focus-within{border-color:var(--acc)}
+.tag-field input{border:none;outline:none;background:transparent;color:var(--txt);font-family:'Sora',sans-serif;font-size:13px;min-width:120px;flex:1;padding:2px 0}
+.tag-field input::placeholder{color:var(--mut)}
+.capt-tag{display:inline-flex;align-items:center;gap:4px;background:var(--sur);border:1px solid var(--acc);border-radius:5px;padding:2px 7px;font-size:11px;color:var(--acc);font-family:'DM Mono',monospace;white-space:nowrap}
+.capt-tag button{background:none;border:none;color:var(--mut);cursor:pointer;font-size:12px;line-height:1;padding:0 1px}
+.capt-tag button:hover{color:var(--dan)}
+.capt-counter{font-size:11px;color:var(--mut);font-family:'DM Mono',monospace;margin-bottom:4px;min-height:16px}
+.capt-credit{font-size:10px;color:var(--mut);opacity:.6;margin-bottom:14px}
 
 /* TOAST */
 .toast{position:fixed;bottom:20px;right:20px;background:var(--acc);color:#0d0f0e;padding:10px 18px;border-radius:8px;font-weight:500;font-size:13px;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;z-index:9998}
@@ -391,19 +400,26 @@ textarea.cta:focus{border-color:var(--acc)}
     <div class="modal-logo">Captação de Clientes</div>
     <div class="modal-sub">Configure a busca no Google Maps via Apify.</div>
 
-    <div class="modal-label">Termo de busca</div>
-    <input class="modal-inp" id="capt-termo" type="text" value="advogado" placeholder="ex: advogado trabalhista, escritório de advocacia">
+    <div class="modal-label">Termos de busca <span style="color:var(--mut);font-weight:400">(Enter ou vírgula para adicionar)</span></div>
+    <div class="tag-field" id="capt-terms-field" onclick="document.getElementById('capt-terms-inp').focus()">
+      <input id="capt-terms-inp" type="text" placeholder="Digite e pressione Enter" maxlength="60">
+    </div>
 
-    <div class="modal-label">Cidade</div>
-    <input class="modal-inp" id="capt-cidade" type="text" value="Guarujá" placeholder="ex: Guarujá, Santos, São Paulo">
+    <div class="modal-label">Cidades <span style="color:var(--mut);font-weight:400">(Enter ou vírgula para adicionar)</span></div>
+    <div class="tag-field" id="capt-cities-field" onclick="document.getElementById('capt-cities-inp').focus()">
+      <input id="capt-cities-inp" type="text" placeholder="Digite e pressione Enter" maxlength="60">
+    </div>
 
-    <div class="modal-label">Limite de resultados</div>
-    <select class="modal-select" id="capt-limite">
+    <div class="modal-label">Limite por combinação</div>
+    <select class="modal-select" id="capt-limite" onchange="updateCaptCounter()">
       <option value="5">5 resultados</option>
       <option value="10" selected>10 resultados</option>
       <option value="25">25 resultados</option>
       <option value="50">50 resultados</option>
     </select>
+
+    <div class="capt-counter" id="capt-counter">—</div>
+    <div class="capt-credit">Cada combinação usa ~$0,004 × limite de créditos do Apify</div>
 
     <div class="capt-spinner" id="capt-spinner">
       <div class="dots"><span></span><span></span><span></span></div>
@@ -1573,15 +1589,96 @@ function _finalizarBulk(btnEl, cancelBtn) {
 }
 
 // ── CAPTAÇÃO DE CLIENTES ───────────────────────────────────────────
+const CAPT_DEFAULT_TERMS  = ['advogado', 'escritório de advocacia', 'advogado trabalhista'];
+const CAPT_DEFAULT_CITIES = ['Guarujá', 'Santos', 'São Vicente'];
+const CAPT_MAX_TERMS  = 8;
+const CAPT_MAX_CITIES = 10;
+let _captTerms  = [];
+let _captCities = [];
+
+function _renderTags(arr, fieldId, onRemove) {
+  const field = document.getElementById(fieldId);
+  const inp   = field.querySelector('input');
+  field.querySelectorAll('.capt-tag').forEach(t => t.remove());
+  arr.forEach((val, i) => {
+    const tag = document.createElement('span');
+    tag.className = 'capt-tag';
+    tag.innerHTML = `${esc(val)}<button type="button" onclick="${onRemove}(${i})" title="Remover">×</button>`;
+    field.insertBefore(tag, inp);
+  });
+  updateCaptCounter();
+}
+
+function _addTag(arr, maxLen, val, fieldId, onRemove) {
+  val = val.trim();
+  if (!val || arr.length >= maxLen || arr.includes(val)) return;
+  arr.push(val);
+  _renderTags(arr, fieldId, onRemove);
+}
+
+function removeCaptTerm(i)  { _captTerms.splice(i, 1);  _renderTags(_captTerms,  'capt-terms-field',  'removeCaptTerm');  }
+function removeCaptCity(i)  { _captCities.splice(i, 1); _renderTags(_captCities, 'capt-cities-field', 'removeCaptCity'); }
+
+function _bindTagInput(inpId, arr, maxLen, fieldId, onRemoveFn) {
+  const inp = document.getElementById(inpId);
+  inp.addEventListener('keydown', e => {
+    if (e.key === 'Enter' || e.key === ',') {
+      e.preventDefault();
+      _addTag(arr, maxLen, inp.value.replace(/,/g, ''), fieldId, onRemoveFn);
+      inp.value = '';
+    } else if (e.key === 'Backspace' && !inp.value && arr.length) {
+      arr.pop();
+      _renderTags(arr, fieldId, onRemoveFn);
+    }
+  });
+  inp.addEventListener('blur', () => {
+    if (inp.value.trim()) {
+      _addTag(arr, maxLen, inp.value.replace(/,/g, ''), fieldId, onRemoveFn);
+      inp.value = '';
+    }
+  });
+}
+
+function updateCaptCounter() {
+  const limite = parseInt(document.getElementById('capt-limite')?.value) || 10;
+  const combos = _captTerms.length * _captCities.length;
+  const total  = combos * limite;
+  const el = document.getElementById('capt-counter');
+  if (!el) return;
+  if (!combos) { el.textContent = '—'; return; }
+  el.textContent = `${combos} combinação${combos !== 1 ? 'ões' : ''} de busca · até ${total} resultados`;
+}
+
 function openCaptureModal() {
-  const modal = document.getElementById('capture-modal');
-  // Reset do estado do modal
+  // Inicializa arrays com defaults
+  _captTerms  = [...CAPT_DEFAULT_TERMS];
+  _captCities = [...CAPT_DEFAULT_CITIES];
+
+  // Renderiza tags
+  _renderTags(_captTerms,  'capt-terms-field',  'removeCaptTerm');
+  _renderTags(_captCities, 'capt-cities-field', 'removeCaptCity');
+
+  // Limpa inputs de digitação
+  document.getElementById('capt-terms-inp').value  = '';
+  document.getElementById('capt-cities-inp').value = '';
+
+  // Reseta estado
   document.getElementById('capt-spinner').classList.remove('on');
   document.getElementById('capt-err').style.display = 'none';
   document.getElementById('capt-err').textContent = '';
   document.getElementById('capt-btn-iniciar').disabled = false;
   document.getElementById('capt-btn-cancelar').disabled = false;
-  modal.classList.add('open');
+
+  // Bind dos inputs de tag (evita duplicar listeners)
+  const ti = document.getElementById('capt-terms-inp');
+  const ci = document.getElementById('capt-cities-inp');
+  ti.replaceWith(ti.cloneNode(true));
+  ci.replaceWith(ci.cloneNode(true));
+  _bindTagInput('capt-terms-inp',  _captTerms,  CAPT_MAX_TERMS,  'capt-terms-field',  'removeCaptTerm');
+  _bindTagInput('capt-cities-inp', _captCities, CAPT_MAX_CITIES, 'capt-cities-field', 'removeCaptCity');
+
+  updateCaptCounter();
+  document.getElementById('capture-modal').classList.add('open');
 }
 
 function closeCaptureModal() {
@@ -1589,29 +1686,21 @@ function closeCaptureModal() {
 }
 
 async function submitCapture() {
-  const termoRaw  = (document.getElementById('capt-termo').value || '').trim();
-  const cidadeRaw = (document.getElementById('capt-cidade').value || '').trim();
-  const limite    = parseInt(document.getElementById('capt-limite').value) || 10;
-  const errEl     = document.getElementById('capt-err');
+  // Força flush de qualquer texto ainda no input
+  ['capt-terms-inp','capt-cities-inp'].forEach(id => {
+    const el = document.getElementById(id);
+    if (el && el.value.trim()) el.dispatchEvent(new Event('blur'));
+  });
 
-  // Validação
-  if (!termoRaw) {
-    errEl.textContent = 'Informe ao menos um termo de busca.';
-    errEl.style.display = 'block';
-    return;
-  }
-  if (!cidadeRaw) {
-    errEl.textContent = 'Informe ao menos uma cidade.';
-    errEl.style.display = 'block';
-    return;
-  }
+  const terms  = [..._captTerms];
+  const cities = [..._captCities];
+  const limite = parseInt(document.getElementById('capt-limite').value) || 10;
+  const errEl  = document.getElementById('capt-err');
+
+  if (!terms.length)  { errEl.textContent = 'Adicione ao menos um termo de busca.';  errEl.style.display = 'block'; return; }
+  if (!cities.length) { errEl.textContent = 'Adicione ao menos uma cidade.';          errEl.style.display = 'block'; return; }
   errEl.style.display = 'none';
 
-  // Suporta múltiplos valores separados por vírgula
-  const terms  = termoRaw.split(',').map(s => s.trim()).filter(Boolean);
-  const cities = cidadeRaw.split(',').map(s => s.trim()).filter(Boolean);
-
-  // Estado do modal: mostrar spinner, desabilitar botões
   document.getElementById('capt-spinner').classList.add('on');
   document.getElementById('capt-btn-iniciar').disabled = true;
   document.getElementById('capt-btn-cancelar').disabled = true;
@@ -1636,10 +1725,10 @@ async function submitCapture() {
       throw new Error(d.error || `Servidor retornou ${r.status}`);
     }
 
-    // Sucesso: fechar modal e ativar indicador no header
     closeCaptureModal();
     startCaptureHeader();
-    toast(`🔍 Captação iniciada — ${terms.join(', ')} em ${cities.join(', ')}`);
+    const combos = terms.length * cities.length;
+    toast(`🔍 Captação iniciada — ${combos} combinação${combos !== 1 ? 'ões' : ''} · limite ${limite} cada`);
     checkCaptureStatus();
 
   } catch(e) {
