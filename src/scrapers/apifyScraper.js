@@ -46,7 +46,7 @@ async function runPlacesActor(query, limit) {
     {
       searchStringsArray: [query],
       maxCrawledPlacesPerSearch: limit,
-      language: 'pt',
+      language: 'pt-BR',
       countryCode: 'br',
       scrapeContacts: true,
     },
