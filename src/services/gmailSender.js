@@ -156,7 +156,7 @@ async function sendBulkEmails(emails) {
   };
 
   const DELAY_MS = 2000;
-  const backendUrl = process.env.BACKEND_PUBLIC_URL || 'https://matte-ia-production.up.railway.app';
+  const backendUrl = process.env.BACKEND_PUBLIC_URL || 'https://matte-ia.onrender.com';
 
   logger.info(`[GMAIL] Iniciando envio em massa — job ${jobId} — ${batch.length} e-mails`);
 

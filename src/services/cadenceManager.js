@@ -98,7 +98,7 @@ async function checkAndSendCadence() {
   }
 
   const now = new Date();
-  const backendUrl = process.env.BACKEND_PUBLIC_URL || 'https://matte-ia-production.up.railway.app';
+  const backendUrl = process.env.BACKEND_PUBLIC_URL || 'https://matte-ia.onrender.com';
 
   let sent = 0, errors = 0;
 

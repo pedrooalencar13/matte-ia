@@ -33,7 +33,7 @@ const ALLOWED_ORIGINS = [
 
 app.use(cors({
   origin: (origin, cb) => {
-    // Permite requests sem origin (ex: curl, Railway health checks)
+    // Permite requests sem origin (ex: curl, Render health checks, cron-job.org)
     if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
     cb(new Error(`CORS: origin não permitida — ${origin}`));
   },
@@ -49,6 +49,11 @@ app.use(express.json({ limit: '10mb' }));
 
 // ── HEALTH ──────────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
+  res.json({ status: 'ok', timestamp: new Date().toISOString() });
+});
+
+// ── PING (keep-alive para cron-job.org no Render gratuito) ──────────────────
+app.get('/ping', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });
 });
 
@@ -95,7 +100,7 @@ app.listen(PORT, () => {
       console.log(`  ✓ ${label}`);
     } else {
       console.warn(`  ✗ FALTANDO: ${label} (${key})`);
-      console.warn(`    → Configure ${key} no Railway Environment Variables`);
+      console.warn(`    → Configure ${key} no Render Environment Variables`);
     }
   });
   console.log('═════════════════════════════════════════\n');

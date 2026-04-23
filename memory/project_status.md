@@ -1,6 +1,6 @@
 # Status do Projeto MATTE
 
-## Última atualização: 23/04/2026
+## Última atualização: 23/04/2026 (migração Railway → Render)
 
 ## Implementado
 
@@ -34,6 +34,7 @@
 - Sistema de memória persistente (/memory)
 - CLAUDE.md com instruções de sessão
 - GET /email/test para diagnóstico Gmail OAuth2
+- GET /ping para keep-alive via cron-job.org (Render plano gratuito)
 - POST /cadence/activate-all
 - GET /sheets/pull com meta-dados estruturados
 - Verificação de credenciais no startup do servidor
@@ -71,31 +72,36 @@
 
 ## Pendente
 
-- Gmail OAuth2: configurar refresh token no Railway (manual pelo Pedro)
+- Gmail OAuth2: configurar refresh token no Render (manual pelo Pedro)
 - Publicar app OAuth no Google Cloud (sair do modo teste para tokens permanentes)
 - Documentação completa em /docs
 - Alertas WhatsApp quando lead responde
-- Configurar APIFY_TOKEN no Railway (manual pelo Pedro)
+- Configurar todas as variáveis de ambiente no Render (manual pelo Pedro)
+- Configurar cron-job.org: GET https://matte-ia.onrender.com/ping a cada 10 minutos
 
-## Variáveis de ambiente obrigatórias no Railway
+## Variáveis de ambiente obrigatórias no Render
 
-| Variável                    | Descrição                              |
-|-----------------------------|----------------------------------------|
+| Variável                    | Descrição                                           |
+|-----------------------------|-----------------------------------------------------|
 | APIFY_TOKEN                 | Token do Apify (apify.com → Settings → Integrations) |
-| GOOGLE_SERVICE_ACCOUNT_EMAIL| Service Account do Google Sheets       |
-| GOOGLE_PRIVATE_KEY          | Chave privada do Google Sheets         |
-| SHEET_ID                    | ID da planilha Google Sheets           |
-| SHEET_TAB                   | Aba da planilha (Página1)              |
-| PORT                        | Porta do servidor                      |
-| ALLOWED_ORIGIN              | Origin permitida (GitHub Pages)        |
-| GMAIL_CLIENT_ID             | OAuth2 ClientID Gmail                  |
-| GMAIL_CLIENT_SECRET         | OAuth2 Secret Gmail                    |
-| GMAIL_REFRESH_TOKEN         | Refresh Token Gmail                    |
-| GMAIL_USER                  | E-mail do remetente                    |
-| CLAUDE_API_KEY              | API Key da Anthropic (Claude)          |
-| BACKEND_PUBLIC_URL          | URL pública do Railway                 |
+| GOOGLE_SERVICE_ACCOUNT_EMAIL| Service Account do Google Sheets                    |
+| GOOGLE_PRIVATE_KEY          | Chave privada do Google Sheets                      |
+| SHEET_ID                    | ID da planilha Google Sheets                        |
+| SHEET_TAB                   | Aba da planilha (Página1)                           |
+| ALLOWED_ORIGIN              | https://pedrooalencar13.github.io                   |
+| GMAIL_CLIENT_ID             | OAuth2 ClientID Gmail                               |
+| GMAIL_CLIENT_SECRET         | OAuth2 Secret Gmail                                 |
+| GMAIL_REFRESH_TOKEN         | Refresh Token Gmail                                 |
+| GMAIL_USER                  | pedrooalencar13@gmail.com                           |
+| CLAUDE_API_KEY              | API Key da Anthropic (Claude)                       |
+| BACKEND_PUBLIC_URL          | https://matte-ia.onrender.com                       |
+| SCRAPER_MAX_PER_RUN         | 50 (opcional)                                       |
+| SCRAPER_CRON                | 0 */6 * * * (opcional)                              |
+
+Nota: PORT não precisa ser configurada — o Render injeta automaticamente.
 
 ## Infraestrutura
-- Railway: matte-ia-production.up.railway.app (24/7, deploy automático via git push)
+- Render: matte-ia.onrender.com (migrado do Railway em 23/04/2026)
 - GitHub Pages: pedrooalencar13.github.io/matte-ia (deploy automático via git push)
 - Google Cloud: projeto gestor-trafego-490719
+- Keep-alive: cron-job.org → GET https://matte-ia.onrender.com/ping a cada 10 min
