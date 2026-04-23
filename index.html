@@ -109,6 +109,15 @@ textarea.cta:focus{border-color:var(--acc)}
 .modal-hint a{color:var(--inf);text-decoration:none;font-family:'DM Mono',monospace}
 .modal-btn{width:100%;background:var(--acc);color:#0d0f0e;border:none;border-radius:8px;padding:12px;font-family:'Sora',sans-serif;font-size:14px;font-weight:600;cursor:pointer}
 .modal-btn:hover{background:#b8e060}
+.modal-btn:disabled{opacity:.5;cursor:not-allowed}
+.modal-btn-g{width:100%;background:transparent;color:var(--mut);border:1px solid var(--bor);border-radius:8px;padding:10px;font-family:'Sora',sans-serif;font-size:13px;cursor:pointer;margin-top:8px}
+.modal-btn-g:hover{border-color:var(--acc);color:var(--acc)}
+.modal-select{width:100%;background:var(--sur2);border:1px solid var(--bor);border-radius:8px;padding:10px 12px;color:var(--txt);font-family:'DM Mono',monospace;font-size:13px;outline:none;margin-bottom:6px;appearance:none}
+.modal-select:focus{border-color:var(--acc)}
+.capt-spinner{display:none;align-items:center;gap:8px;color:var(--mut);font-size:12px;font-family:'DM Mono',monospace;margin-bottom:14px}
+.capt-spinner.on{display:flex}
+.capt-spinner .dots span{display:inline-block;width:5px;height:5px;border-radius:50%;background:var(--acc);margin:0 2px;animation:blink 1.2s infinite}
+.capt-spinner .dots span:nth-child(2){animation-delay:.2s}.capt-spinner .dots span:nth-child(3){animation-delay:.4s}
 
 /* TOAST */
 .toast{position:fixed;bottom:20px;right:20px;background:var(--acc);color:#0d0f0e;padding:10px 18px;border-radius:8px;font-weight:500;font-size:13px;opacity:0;transform:translateY(8px);transition:all .25s;pointer-events:none;z-index:9998}
@@ -257,7 +266,7 @@ textarea.cta:focus{border-color:var(--acc)}
     <div class="dot"></div>
     <span id="hdr-count">carregando...</span>
     <button class="btn btn-sync btn-sm" id="sync-btn" onclick="syncNow()">↻ Sync</button>
-    <button class="btn btn-g btn-sm" id="btn-captar" onclick="startCapture()">🔍 Captar</button>
+    <button class="btn btn-g btn-sm" id="btn-captar" onclick="openCaptureModal()">🔍 Captar</button>
     <button class="btn btn-sm" id="btn-parar" onclick="stopCapture()" style="display:none;background:#f5734a;color:#fff;border:1px solid #c0452a;font-weight:600">⏹ Parar captação</button>
     <span id="capture-indicator" style="display:none;color:#f5c842;font-size:11px;font-family:'DM Mono',monospace" class="dot-anim">● captando</span>
     <div class="hdr-btn-wrap">
@@ -373,6 +382,37 @@ textarea.cta:focus{border-color:var(--acc)}
       Sua chave fica salva no navegador. Não precisa reinserir.
     </div>
     <button class="modal-btn" onclick="saveKey()">Salvar e entrar →</button>
+  </div>
+</div>
+
+<!-- CAPTURE MODAL -->
+<div class="modal" id="capture-modal">
+  <div class="modal-box">
+    <div class="modal-logo">Captação de Clientes</div>
+    <div class="modal-sub">Configure a busca no Google Maps via Apify.</div>
+
+    <div class="modal-label">Termo de busca</div>
+    <input class="modal-inp" id="capt-termo" type="text" value="advogado" placeholder="ex: advogado trabalhista, escritório de advocacia">
+
+    <div class="modal-label">Cidade</div>
+    <input class="modal-inp" id="capt-cidade" type="text" value="Guarujá" placeholder="ex: Guarujá, Santos, São Paulo">
+
+    <div class="modal-label">Limite de resultados</div>
+    <select class="modal-select" id="capt-limite">
+      <option value="5">5 resultados</option>
+      <option value="10" selected>10 resultados</option>
+      <option value="25">25 resultados</option>
+      <option value="50">50 resultados</option>
+    </select>
+
+    <div class="capt-spinner" id="capt-spinner">
+      <div class="dots"><span></span><span></span><span></span></div>
+      Captando clientes via Apify...
+    </div>
+    <div class="modal-err" id="capt-err"></div>
+
+    <button class="modal-btn" id="capt-btn-iniciar" onclick="submitCapture()">🔍 Iniciar captação</button>
+    <button class="modal-btn-g" id="capt-btn-cancelar" onclick="closeCaptureModal()">Cancelar</button>
   </div>
 </div>
 
@@ -1532,37 +1572,95 @@ function _finalizarBulk(btnEl, cancelBtn) {
   if (cancelBtn) { cancelBtn.style.display = 'none'; cancelBtn.disabled = false; cancelBtn.textContent = '⏹ Cancelar disparo'; }
 }
 
-// ── CAPTAÇÃO DE LEADS ──────────────────────────────────────────────
-async function startCapture() {
-  // Feedback otimista: mostrar botão Parar ANTES da chamada ao backend
-  document.getElementById('btn-captar').style.display = 'none';
-  document.getElementById('btn-parar').style.display = 'inline-flex';
-  document.getElementById('capture-indicator').style.display = 'inline';
+// ── CAPTAÇÃO DE CLIENTES ───────────────────────────────────────────
+function openCaptureModal() {
+  const modal = document.getElementById('capture-modal');
+  // Reset do estado do modal
+  document.getElementById('capt-spinner').classList.remove('on');
+  document.getElementById('capt-err').style.display = 'none';
+  document.getElementById('capt-err').textContent = '';
+  document.getElementById('capt-btn-iniciar').disabled = false;
+  document.getElementById('capt-btn-cancelar').disabled = false;
+  modal.classList.add('open');
+}
+
+function closeCaptureModal() {
+  document.getElementById('capture-modal').classList.remove('open');
+}
+
+async function submitCapture() {
+  const termoRaw  = (document.getElementById('capt-termo').value || '').trim();
+  const cidadeRaw = (document.getElementById('capt-cidade').value || '').trim();
+  const limite    = parseInt(document.getElementById('capt-limite').value) || 10;
+  const errEl     = document.getElementById('capt-err');
+
+  // Validação
+  if (!termoRaw) {
+    errEl.textContent = 'Informe ao menos um termo de busca.';
+    errEl.style.display = 'block';
+    return;
+  }
+  if (!cidadeRaw) {
+    errEl.textContent = 'Informe ao menos uma cidade.';
+    errEl.style.display = 'block';
+    return;
+  }
+  errEl.style.display = 'none';
+
+  // Suporta múltiplos valores separados por vírgula
+  const terms  = termoRaw.split(',').map(s => s.trim()).filter(Boolean);
+  const cities = cidadeRaw.split(',').map(s => s.trim()).filter(Boolean);
+
+  // Estado do modal: mostrar spinner, desabilitar botões
+  document.getElementById('capt-spinner').classList.add('on');
+  document.getElementById('capt-btn-iniciar').disabled = true;
+  document.getElementById('capt-btn-cancelar').disabled = true;
 
   try {
     const r = await fetch(`${BACKEND_URL}/scraper/start`, {
       method: 'POST',
-      headers: { 'Content-Type': 'application/json' }
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ terms, cities, limit: limite }),
     });
+
     if (r.status === 409) {
-      toast('Captação já está rodando!');
-      checkCaptureStatus();
+      document.getElementById('capt-spinner').classList.remove('on');
+      document.getElementById('capt-btn-iniciar').disabled = false;
+      document.getElementById('capt-btn-cancelar').disabled = false;
+      errEl.textContent = 'Já existe uma captação rodando. Aguarde ou pare a atual.';
+      errEl.style.display = 'block';
       return;
     }
     if (!r.ok) {
       const d = await r.json().catch(() => ({}));
       throw new Error(d.error || `Servidor retornou ${r.status}`);
     }
-    toast('🔍 Captação iniciada! Novos leads em ~2 min.');
+
+    // Sucesso: fechar modal e ativar indicador no header
+    closeCaptureModal();
+    startCaptureHeader();
+    toast(`🔍 Captação iniciada — ${terms.join(', ')} em ${cities.join(', ')}`);
     checkCaptureStatus();
+
   } catch(e) {
-    toast('⚠ Erro ao iniciar captação: ' + e.message);
-    console.error('Erro startCapture:', e);
-    // Rollback do estado dos botões
-    document.getElementById('btn-captar').style.display = 'inline-flex';
-    document.getElementById('btn-parar').style.display = 'none';
-    document.getElementById('capture-indicator').style.display = 'none';
+    document.getElementById('capt-spinner').classList.remove('on');
+    document.getElementById('capt-btn-iniciar').disabled = false;
+    document.getElementById('capt-btn-cancelar').disabled = false;
+    errEl.textContent = '⚠ Erro: ' + e.message;
+    errEl.style.display = 'block';
+    console.error('Erro submitCapture:', e);
   }
+}
+
+function startCaptureHeader() {
+  document.getElementById('btn-captar').style.display = 'none';
+  document.getElementById('btn-parar').style.display = 'inline-flex';
+  document.getElementById('capture-indicator').style.display = 'inline';
+}
+
+// Mantida para compatibilidade com qualquer chamada interna existente
+async function startCapture() {
+  openCaptureModal();
 }
 
 async function stopCapture() {
