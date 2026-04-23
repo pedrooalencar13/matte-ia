@@ -81,7 +81,7 @@ app.listen(PORT, () => {
   // ── Verificação de credenciais na inicialização ──────────────────
   console.log('\n═══ VERIFICAÇÃO DE CREDENCIAIS MATTE ═══');
   const creds = [
-    ['SERP_API_KEY',               'SerpAPI'],
+    ['APIFY_TOKEN',                'Apify (scraping)'],
     ['GOOGLE_SERVICE_ACCOUNT_EMAIL','Google Sheets'],
     ['GOOGLE_PRIVATE_KEY',         'Google Sheets Key'],
     ['GMAIL_CLIENT_ID',            'Gmail OAuth ClientID'],

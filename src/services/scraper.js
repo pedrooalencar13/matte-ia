@@ -1,6 +1,6 @@
-const axios = require('axios');
 const { v4: uuidv4 } = require('uuid');
-const { extractEmail } = require('./emailExtractor');
+const { scrapePlaces } = require('../scrapers/apifyScraper');
+const { scoreLeads } = require('../utils/scorer');
 const { isDuplicate } = require('./deduplicator');
 const { isValidEmail } = require('../utils/validator');
 const { getExistingEmails } = require('./sheetsClient');
@@ -24,12 +24,6 @@ const DEFAULT_CITIES = [
   'Fortaleza', 'Recife', 'Campinas', 'Goiania',
 ];
 
-const USER_AGENTS = [
-  'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/119.0.0.0 Safari/537.36',
-  'Mozilla/5.0 (X11; Linux x86_64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/118.0.0.0 Safari/537.36',
-];
-
 // Estado global do job atual
 let jobStatus = {
   running: false,
@@ -46,50 +40,19 @@ function getStatus() {
   return { ...jobStatus };
 }
 
-function randomAgent() {
-  return USER_AGENTS[Math.floor(Math.random() * USER_AGENTS.length)];
-}
-
-// Delay variável para anti-bloqueio
-function delay(ms) {
-  return new Promise(r => setTimeout(r, ms + Math.random() * 1000));
-}
-
-/**
- * Busca resultados do Google Maps via SerpAPI.
- */
-async function searchSerpApi(query) {
-  const apiKey = process.env.SERP_API_KEY;
-  if (!apiKey) throw new Error('SERP_API_KEY não configurada');
-
-  const res = await axios.get('https://serpapi.com/search', {
-    params: {
-      engine: 'google_maps',
-      q: query,
-      api_key: apiKey,
-      hl: 'pt',
-      gl: 'br',
-    },
-    timeout: 15000,
-    headers: { 'User-Agent': randomAgent() },
-  });
-
-  return res.data.local_results || [];
-}
-
 /**
  * Extrai especialidade do termo de busca.
  */
 function getEspecialidade(term) {
   const map = {
-    trabalhista: 'trabalhista',
+    trabalhista:  'trabalhista',
     previdenciario: 'previdenciário',
-    empresarial: 'empresarial',
-    criminal: 'criminal',
-    familia: 'família',
-    tributario: 'tributário',
-    imobiliario: 'imobiliário',
-    advocacia: 'geral',
+    empresarial:  'empresarial',
+    criminal:     'criminal',
+    familia:      'família',
+    tributario:   'tributário',
+    imobiliario:  'imobiliário',
+    advocacia:    'geral',
   };
   for (const [key, val] of Object.entries(map)) {
     if (term.includes(key)) return val;
@@ -98,7 +61,7 @@ function getEspecialidade(term) {
 }
 
 /**
- * Executa uma rodada completa de scraping.
+ * Executa uma rodada completa de scraping via Apify.
  * @param {object} options - terms, cities, limit
  */
 async function runScraper(options = {}) {
@@ -107,11 +70,10 @@ async function runScraper(options = {}) {
     return [];
   }
 
-  const terms = options.terms || DEFAULT_SEARCH_TERMS;
-  const cities = options.cities || DEFAULT_CITIES;
-  const maxPerRun = options.limit || parseInt(process.env.SCRAPER_MAX_PER_RUN) || 50;
-  const delayMs = parseInt(process.env.SCRAPER_DELAY_MS) || 2500;
-  const jobId = uuidv4().substring(0, 8);
+  const terms      = options.terms  || DEFAULT_SEARCH_TERMS;
+  const cities     = options.cities || DEFAULT_CITIES;
+  const maxPerRun  = options.limit  || parseInt(process.env.SCRAPER_MAX_PER_RUN) || 50;
+  const jobId      = uuidv4().substring(0, 8);
 
   // Reset status
   jobStatus = {
@@ -125,9 +87,9 @@ async function runScraper(options = {}) {
     jobId,
   };
 
-  const newLeads = [];
+  const newLeads       = [];
   const visitedDomains = new Set();
-  const combinations = [];
+  const combinations   = [];
 
   for (const term of terms) {
     for (const city of cities) {
@@ -135,7 +97,7 @@ async function runScraper(options = {}) {
     }
   }
 
-  logger.info(`[SCRAPER] Job ${jobId} — ${combinations.length} combinações de busca`);
+  logger.info(`[SCRAPER] Job ${jobId} — ${combinations.length} combinações de busca (Apify)`);
 
   // Pré-carrega e-mails existentes para deduplicação
   let sheetEmails = [];
@@ -156,88 +118,95 @@ async function runScraper(options = {}) {
     }
 
     const query = `${term} ${city}`;
-    logger.info(`[SCRAPER] Buscando: "${query}"`);
 
     let results = [];
     try {
-      results = await searchSerpApi(query);
+      results = await scrapePlaces(query);
       jobStatus.found += results.length;
     } catch (err) {
-      logger.error(`[SCRAPER] Erro na SerpAPI para "${query}": ${err.message}`);
+      logger.error(`[SCRAPER] Erro no Apify para "${query}": ${err.message}`);
       jobStatus.errors++;
     }
 
-    for (const result of results) {
+    for (const place of results) {
       if (!jobStatus.running) break;
       if (jobStatus.valid >= maxPerRun) break;
 
-      const site = result.website;
-      if (!site) continue;
+      const email   = (place.email || '').toLowerCase().trim();
+      const website = place.website || '';
 
-      // Anti-bloqueio: não bater no mesmo domínio duas vezes
-      let domain;
-      try {
-        domain = new URL(site).hostname;
-      } catch {
+      if (!email || !isValidEmail(email)) continue;
+
+      // Anti-bloqueio: não duplicar domínio
+      if (website) {
+        let domain;
+        try { domain = new URL(website).hostname; } catch { domain = website; }
+        if (visitedDomains.has(domain)) continue;
+        visitedDomains.add(domain);
+      }
+
+      if (isDuplicate(email, [...localLeads, ...newLeads], sheetEmails)) {
+        jobStatus.duplicates++;
+        logger.warn(`[SCRAPER] Duplicado: ${email}`);
         continue;
       }
-      if (visitedDomains.has(domain)) continue;
-      visitedDomains.add(domain);
 
-      await delay(delayMs);
+      const lead = {
+        id:          uuidv4(),
+        nome:        place.name   || '',
+        name:        place.name   || '',
+        email,
+        especialidade: getEspecialidade(term),
+        category:    place.category  || '',
+        cidade:      city,
+        city:        place.city  || city,
+        site:        website,
+        website,
+        telefone:    place.phone || '',
+        phone:       place.phone || '',
+        endereco:    place.address || '',
+        address:     place.address || '',
+        instagram:   place.instagram || '',
+        rating:      place.rating      || 0,
+        reviewCount: place.reviewCount || 0,
+        fonte:       'Google Maps (Apify)',
+        status:      'novo',
+        capturedAt:  new Date().toISOString(),
+      };
 
-      try {
-        const email = await extractEmail(site);
-
-        if (!email || !isValidEmail(email)) continue;
-
-        if (isDuplicate(email, [...localLeads, ...newLeads], sheetEmails)) {
-          jobStatus.duplicates++;
-          logger.warn(`[SCRAPER] Duplicado: ${email}`);
-          continue;
-        }
-
-        const lead = {
-          id: uuidv4(),
-          nome: result.title || '',
-          email,
-          especialidade: getEspecialidade(term),
-          cidade: city,
-          site,
-          telefone: result.phone || '',
-          endereco: result.address || '',
-          fonte: 'Google Maps',
-          status: 'novo',
-          capturedAt: new Date().toISOString(),
-        };
-
-        newLeads.push(lead);
-        jobStatus.valid++;
-        jobStatus.lastLog = `✓ ${lead.nome} — ${email}`;
-        logger.success(`[SCRAPER] ✓ ${lead.nome} — ${email}`);
-      } catch (err) {
-        jobStatus.errors++;
-        logger.warn(`[SCRAPER] Erro ao processar ${site}: ${err.message}`);
-      }
+      newLeads.push(lead);
+      jobStatus.valid++;
+      jobStatus.lastLog = `✓ ${lead.nome} — ${email}`;
+      logger.success(`[SCRAPER] ✓ ${lead.nome} — ${email}`);
     }
 
     processed++;
     jobStatus.progress = Math.round((processed / combinations.length) * 100);
   }
 
-  // Persiste leads novos no cache local
+  // Pontua leads com Claude AI
+  let leadsParaSalvar = newLeads;
   if (newLeads.length > 0) {
-    const allLeads = [...localLeads, ...newLeads];
+    jobStatus.lastLog = 'Pontuando leads com IA...';
+    try {
+      leadsParaSalvar = await scoreLeads(newLeads);
+      logger.info(`[SCRAPER] Scoring concluído para ${leadsParaSalvar.length} leads`);
+    } catch (err) {
+      logger.warn('[SCRAPER] Erro no scoring de leads:', err.message);
+    }
+
+    // Persiste leads novos no cache local
+    const allLeads = [...localLeads, ...leadsParaSalvar];
     writeLeads(allLeads);
-    logger.success(`[SCRAPER] ${newLeads.length} novos leads salvos no cache local`);
+    logger.success(`[SCRAPER] ${leadsParaSalvar.length} novos leads salvos no cache local`);
   }
 
-  jobStatus.running = false;
+  jobStatus.running  = false;
   jobStatus.progress = 100;
-  jobStatus.lastLog = `Concluído — ${jobStatus.valid} leads válidos encontrados`;
+  jobStatus.lastLog  = `Concluído — ${jobStatus.valid} leads válidos encontrados`;
   logger.info(`[SCRAPER] Job ${jobId} finalizado`);
 
-  return newLeads;
+  return leadsParaSalvar;
 }
 
 function stopScraper() {

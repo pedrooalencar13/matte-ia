@@ -23,6 +23,9 @@ const { logger } = require('../utils/logger');
 // S=18 email_aberto       ← 'sim' | ''
 // T=19 email_respondido   ← 'sim' | ''
 // U=20 data_resposta      ← ISO date
+// V=21 instagram          ← URL do perfil ou vazio
+// W=22 score_ia           ← número 0-10
+// X=23 motivo_score       ← texto curto
 
 const COL = {
   NOME:       0,
@@ -47,9 +50,13 @@ const COL = {
   ABERTO:     18,
   RESPONDIDO: 19,
   DT_RESPOSTA:20,
+  // Enriquecimento Apify + IA
+  INSTAGRAM:  21,
+  SCORE_IA:   22,
+  MOTIVO_SCORE:23,
 };
 
-const SHEET_RANGE_READ  = 'A1:U'; // inclui linha de cabeçalho (sheetRows[0] = header)
+const SHEET_RANGE_READ  = 'A1:X'; // inclui linha de cabeçalho (sheetRows[0] = header)
 const SHEET_RANGE_WRITE = 'A1';
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -88,26 +95,29 @@ async function pullFromSheets() {
 
   const contacts = dataRows.map((row, i) => ({
     rowIndex:         i + 2, // linha real na planilha (começa em 2 pois linha 1 é header)
-    nome:             row[COL.NOME]        || '',
-    sobrenome:        row[COL.SOBRENOME]   || '',
-    telefone:         row[COL.TELEFONE]    || '',
-    email:            row[COL.EMAIL]       || '',
-    empresa:          row[COL.EMPRESA]     || '',
-    cidade:           row[COL.ACTIVITY]    || '',
-    tags:             row[COL.TAGS]        || '',
-    source:           row[COL.SOURCE]      || '',
-    medium:           row[COL.MEDIUM]      || '',   // especialidade
-    campaign:         row[COL.CAMPAIGN]    || '',
-    site:             row[COL.CONTENT]     || '',
-    faturamento:      row[COL.FAT]         || '',
-    urgencia:         row[COL.URG]         || '',
-    qualificacao:     row[COL.QUALIF]      || '',
-    cadenciaStatus:   row[COL.CAD_STATUS]  || '',
-    cadenciaEtapa:    row[COL.CAD_ETAPA]   || '0',
-    cadenciaProximo:  row[COL.CAD_PROXIMO] || '',
-    emailAberto:      row[COL.ABERTO]      || '',
-    emailRespondido:  row[COL.RESPONDIDO]  || '',
-    dataResposta:     row[COL.DT_RESPOSTA] || '',
+    nome:             row[COL.NOME]         || '',
+    sobrenome:        row[COL.SOBRENOME]    || '',
+    telefone:         row[COL.TELEFONE]     || '',
+    email:            row[COL.EMAIL]        || '',
+    empresa:          row[COL.EMPRESA]      || '',
+    cidade:           row[COL.ACTIVITY]     || '',
+    tags:             row[COL.TAGS]         || '',
+    source:           row[COL.SOURCE]       || '',
+    medium:           row[COL.MEDIUM]       || '',   // especialidade
+    campaign:         row[COL.CAMPAIGN]     || '',
+    site:             row[COL.CONTENT]      || '',
+    faturamento:      row[COL.FAT]          || '',
+    urgencia:         row[COL.URG]          || '',
+    qualificacao:     row[COL.QUALIF]       || '',
+    cadenciaStatus:   row[COL.CAD_STATUS]   || '',
+    cadenciaEtapa:    row[COL.CAD_ETAPA]    || '0',
+    cadenciaProximo:  row[COL.CAD_PROXIMO]  || '',
+    emailAberto:      row[COL.ABERTO]       || '',
+    emailRespondido:  row[COL.RESPONDIDO]   || '',
+    dataResposta:     row[COL.DT_RESPOSTA]  || '',
+    instagram:        row[COL.INSTAGRAM]    || '',
+    scoreIa:          row[COL.SCORE_IA]     || '',
+    motivoScore:      row[COL.MOTIVO_SCORE] || '',
   })).filter(c => c.email && c.email.includes('@'));
 
   logger.info(`[SHEETS] ${contacts.length} contatos lidos`);
@@ -124,34 +134,38 @@ async function pushToSheets(leads) {
   const skipped = leads.length - valid.length;
 
   const rows = valid.map(lead => {
-    const row = new Array(21).fill('');
+    const row = new Array(24).fill('');
 
-    const partes       = (lead.nome || '').trim().split(/\s+/);
-    const primeiroNome = partes[0] || lead.nome || '';
+    const partes       = (lead.nome || lead.name || '').trim().split(/\s+/);
+    const primeiroNome = partes[0] || lead.nome || lead.name || '';
     const resto        = partes.slice(1).join(' ');
 
-    row[COL.NOME]       = primeiroNome;
-    row[COL.SOBRENOME]  = resto;
-    row[COL.TELEFONE]   = formatPhone(lead.telefone || '');
-    row[COL.EMAIL]      = (lead.email || '').toLowerCase().trim();
-    row[COL.EMPRESA]    = lead.nome || '';
-    row[COL.CREATED]    = '';
-    row[COL.ACTIVITY]   = lead.cidade || '';
-    row[COL.TAGS]       = 'captado-auto';
-    row[COL.SOURCE]     = 'google-maps';
-    row[COL.MEDIUM]     = lead.especialidade || '';
-    row[COL.CAMPAIGN]   = 'advogados';
-    row[COL.CONTENT]    = lead.site || '';
-    row[COL.FAT]        = 'não informado';
-    row[COL.URG]        = '';
-    row[COL.QUALIF]     = 'com potencial';
+    row[COL.NOME]        = primeiroNome;
+    row[COL.SOBRENOME]   = resto;
+    row[COL.TELEFONE]    = formatPhone(lead.telefone || lead.phone || '');
+    row[COL.EMAIL]       = (lead.email || '').toLowerCase().trim();
+    row[COL.EMPRESA]     = lead.nome || lead.name || '';
+    row[COL.CREATED]     = '';
+    row[COL.ACTIVITY]    = lead.cidade || lead.city || '';
+    row[COL.TAGS]        = 'captado-auto';
+    row[COL.SOURCE]      = 'google-maps';
+    row[COL.MEDIUM]      = lead.especialidade || lead.category || '';
+    row[COL.CAMPAIGN]    = 'advogados';
+    row[COL.CONTENT]     = lead.site || lead.website || '';
+    row[COL.FAT]         = 'não informado';
+    row[COL.URG]         = '';
+    row[COL.QUALIF]      = 'com potencial';
     // Inicia cadência automaticamente
-    row[COL.CAD_STATUS] = 'ativa';
-    row[COL.CAD_ETAPA]  = '0';
-    row[COL.CAD_PROXIMO]= new Date().toISOString(); // envia primeiro e-mail imediatamente
-    row[COL.ABERTO]     = '';
-    row[COL.RESPONDIDO] = '';
-    row[COL.DT_RESPOSTA]= '';
+    row[COL.CAD_STATUS]  = 'ativa';
+    row[COL.CAD_ETAPA]   = '0';
+    row[COL.CAD_PROXIMO] = new Date().toISOString(); // envia primeiro e-mail imediatamente
+    row[COL.ABERTO]      = '';
+    row[COL.RESPONDIDO]  = '';
+    row[COL.DT_RESPOSTA] = '';
+    // Enriquecimento Apify + IA
+    row[COL.INSTAGRAM]   = lead.instagram || '';
+    row[COL.SCORE_IA]    = lead.aiScore !== undefined ? String(lead.aiScore) : '';
+    row[COL.MOTIVO_SCORE]= lead.aiScoreReason || '';
 
     return row;
   });
