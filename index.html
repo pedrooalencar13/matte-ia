@@ -330,7 +330,7 @@ textarea.cta:focus{border-color:var(--acc)}
 .score-none{background:#1a1a1a;color:#555;border:1px solid #333}
 .ig-link{color:#378ADD;text-decoration:none;font-size:12px}
 .tooltip-wrap{position:relative;display:inline-block}
-.tooltip-box{display:none;position:fixed;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:10px 14px;font-size:12px;color:#ccc;line-height:1.6;max-width:340px;z-index:9999;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,0.5);white-space:normal}
+.tooltip-box{display:none;position:fixed;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:10px 14px;font-size:12px;color:#ccc;line-height:1.6;max-width:380px;max-height:200px;overflow-y:auto;z-index:9999;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,0.5);white-space:normal;word-wrap:break-word;word-break:normal}
 .tooltip-wrap:hover .tooltip-box{display:block}
 .ig-link:hover{text-decoration:underline}
 .btn-email{padding:4px 10px;background:transparent;border:1px solid #2a2a2a;border-radius:6px;color:#888;font-size:12px;cursor:pointer}
@@ -3478,6 +3478,16 @@ function sortClientsArr() {
   });
 }
 
+function formatCaptDate(val) {
+  if (!val) return '—';
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) return val;
+  try {
+    const d = new Date(val);
+    if (isNaN(d.getTime())) return '—';
+    return d.toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric'});
+  } catch(e) { return '—'; }
+}
+
 function renderClients() {
   const tbody = document.getElementById('clients-tbody');
   if (!tbody) return;
@@ -3491,9 +3501,7 @@ function renderClients() {
   tbody.innerHTML = page.map(c => {
     const scoreClass = c.score >= 7 ? 'score-high' : c.score >= 5 ? 'score-mid' : c.score > 0 ? 'score-low' : 'score-none';
     const scoreLabel = c.score > 0 ? c.score : '—';
-    const captDate   = c.created
-      ? new Date(c.created).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric'})
-      : '—';
+    const captDate   = formatCaptDate(c.created);
     const fullName   = (c.name + ' ' + c.lastName).trim();
     const siteLink   = c.site
       ? '<a href="' + c.site + '" target="_blank" class="ig-link">↗ Site</a>'
@@ -3715,9 +3723,7 @@ async function loadSectionDashboard() {
       const scoreClass = c.score >= 7 ? 'score-high' : c.score >= 5 ? 'score-mid' : c.score > 0 ? 'score-low' : 'score-none';
       const scoreLabel = c.score > 0 ? c.score : '—';
       const fullName   = (c.name + ' ' + c.lastName).trim() || '—';
-      const captDate   = c.created
-        ? new Date(c.created).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric'})
-        : '—';
+      const captDate   = formatCaptDate(c.created);
       return '<tr>' +
         '<td>' + fullName + '</td>' +
         '<td style="color:#888">' + (c.email  || '—') + '</td>' +
