@@ -265,9 +265,44 @@ textarea.cta:focus{border-color:var(--acc)}
 .mass-btn-cancel{padding:6px 14px;border-radius:6px;background:var(--sur);border:1px solid var(--bor);color:var(--mut);cursor:pointer;font-family:'Sora',sans-serif;font-size:12px}
 .mass-exec-prog{height:4px;background:var(--sur2);border-radius:2px;overflow:hidden;margin-top:8px}
 .mass-exec-bar{height:100%;background:var(--acc);transition:width .3s;width:0}
+
+/* ── REDESIGN: APP SHELL ─────────────────────────────────────────── */
+#app{display:flex;width:100%;height:100vh;overflow:hidden}
+#sidebar{width:220px;min-width:220px;background:#1a1a1a;border-right:1px solid #2a2a2a;display:flex;flex-direction:column;padding:20px 0;flex-shrink:0}
+.sidebar-logo{font-size:20px;font-weight:700;color:#00c853;padding:0 20px 20px;border-bottom:1px solid #2a2a2a;margin-bottom:12px;letter-spacing:2px}
+.nav-item{display:block;width:100%;text-align:left;padding:10px 20px;background:transparent;border:none;color:#888;cursor:pointer;font-size:14px;border-left:2px solid transparent;transition:all .15s;font-family:'Sora',sans-serif}
+.nav-item:hover{background:#242424;color:#fff}
+.nav-item.active{background:#242424;color:#00c853;border-left-color:#00c853}
+.sidebar-status{margin-top:auto;padding:16px 20px;border-top:1px solid #2a2a2a;font-size:12px;color:#888;line-height:1.9}
+#content{flex:1;display:flex;flex-direction:column;overflow:hidden}
+.section{display:none;flex:1;overflow:hidden}
+.section.active{display:flex;flex-direction:column;flex:1;overflow:hidden}
+/* seções futuras (dashboard/captacao/clientes) serão bloco com scroll */
+#section-dashboard.active,#section-captacao.active,#section-clientes.active{display:block;overflow-y:auto;padding:28px}
 </style>
 </head>
 <body>
+
+<div id="app">
+
+<!-- SIDEBAR -->
+<nav id="sidebar">
+  <div class="sidebar-logo">MATTE</div>
+  <div class="sidebar-nav">
+    <button class="nav-item" onclick="showSection('dashboard')">📊 Dashboard</button>
+    <button class="nav-item" onclick="showSection('captacao')">🎯 Captação</button>
+    <button class="nav-item" onclick="showSection('clientes')">👥 Clientes</button>
+    <button class="nav-item active" onclick="showSection('disparos')">📨 Disparos</button>
+  </div>
+  <div id="system-status" class="sidebar-status"></div>
+</nav>
+
+<!-- CONTEÚDO -->
+<main id="content">
+  <section id="section-dashboard" class="section"></section>
+  <section id="section-captacao" class="section"></section>
+  <section id="section-clientes" class="section"></section>
+  <section id="section-disparos" class="section active">
 
 <header>
   <div class="logo">Pedro Aranha Gestão de Tráfego <span>/ painel de disparos</span></div>
@@ -541,6 +576,10 @@ textarea.cta:focus{border-color:var(--acc)}
     </div>
   </div>
 </div>
+
+  </section><!-- /section-disparos -->
+</main><!-- /content -->
+</div><!-- /app -->
 
 <div class="toast" id="toast"></div>
 
@@ -2824,6 +2863,38 @@ Escreva APENAS o corpo central (2 a 3 parágrafos).
   addMsg(`✅ Edição em massa concluída!\n✓ ${ok} e-mails editados${erros > 0 ? `\n⚠ ${erros} com erro` : ''}\n\nSelecione qualquer lead para revisar antes de enviar.`, 'claude');
   toast(`✓ ${ok}/${total} e-mails editados!`);
 }
+
+// ── NAVEGAÇÃO POR SEÇÕES ───────────────────────────────────────────
+function showSection(name) {
+  document.querySelectorAll('.section').forEach(s => s.classList.remove('active'));
+  document.querySelectorAll('.nav-item').forEach(b => b.classList.remove('active'));
+  document.getElementById('section-' + name).classList.add('active');
+  const btn = document.querySelector(`.nav-item[onclick="showSection('${name}')"]`);
+  if (btn) btn.classList.add('active');
+}
+
+// ── STATUS DO SISTEMA (SIDEBAR) ────────────────────────────────────
+function _dot(ok) {
+  return `<span style="display:inline-block;width:7px;height:7px;border-radius:50%;background:${ok?'#00c853':'#ff4444'};margin-right:6px;vertical-align:middle"></span>`;
+}
+async function updateSystemStatus() {
+  try {
+    const [ping, email] = await Promise.all([
+      fetch(BACKEND_URL + '/ping', {signal: AbortSignal.timeout(4000)}).then(r => r.json()).catch(() => null),
+      fetch(BACKEND_URL + '/email/test', {signal: AbortSignal.timeout(4000)}).then(r => r.json()).catch(() => null),
+    ]);
+    const backendOk = ping?.status === 'ok';
+    const gmailOk   = email?.gmail_configured === true && email?.token_valid === true;
+    const el = document.getElementById('system-status');
+    if (el) el.innerHTML =
+      '<div style="margin-bottom:6px;font-size:10px;text-transform:uppercase;letter-spacing:.08em;color:#555">Sistema</div>' +
+      _dot(backendOk) + 'Backend<br>' +
+      _dot(gmailOk)   + 'Gmail<br>' +
+      _dot(true)       + 'Sheets';
+  } catch(e) {}
+}
+updateSystemStatus();
+setInterval(updateSystemStatus, 30000);
 </script>
 </body>
 </html>
