@@ -493,6 +493,10 @@ textarea.cta:focus{border-color:var(--acc)}
         <div class="capt-counter-il" id="capt-counter-inline">0 combinações</div>
         <div class="capt-error-il" id="capt-error-inline"></div>
         <button class="btn-capt-submit" id="capt-submit-inline" onclick="submitCaptureInline()">🔍 Iniciar captação</button>
+        <button id="capt-stop-btn" onclick="stopCaptureInline()"
+          style="display:none;margin-top:8px;width:100%;padding:10px;background:transparent;border:1px solid #ff4444;border-radius:8px;color:#ff4444;font-size:14px;cursor:pointer;font-family:'Sora',sans-serif;font-weight:600">
+          ✕ Parar captação
+        </button>
       </div>
 
       <!-- Progresso -->
@@ -3253,6 +3257,9 @@ async function submitCaptureInline() {
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ terms: _ilTerms, cities: _ilCities, limit }),
     });
+    const stopBtn = document.getElementById('capt-stop-btn');
+    if (stopBtn) stopBtn.style.display = 'block';
+    btn.style.display = 'none';
     _startInlinePolling();
   } catch(err) {
     errEl.textContent = 'Erro ao iniciar: ' + err.message;
@@ -3270,25 +3277,28 @@ function _startInlinePolling() {
 async function _pollCaptureStatus() {
   try {
     const data   = await fetch(BACKEND_URL + '/scraper/status').then(r => r.json());
-    const barEl  = document.getElementById('capt-progress-bar');
-    const logEl  = document.getElementById('capt-status-log');
-    const btn    = document.getElementById('capt-submit-inline');
-    const resEl  = document.getElementById('capt-result-summary');
-    const banner = document.getElementById('capt-banner');
-    const actRow = document.getElementById('capt-action-row');
+    const barEl   = document.getElementById('capt-progress-bar');
+    const logEl   = document.getElementById('capt-status-log');
+    const btn     = document.getElementById('capt-submit-inline');
+    const stopBtn = document.getElementById('capt-stop-btn');
+    const resEl   = document.getElementById('capt-result-summary');
+    const banner  = document.getElementById('capt-banner');
+    const actRow  = document.getElementById('capt-action-row');
 
     if (data.running) {
       const pct = data.progress || 0;
-      if (barEl)  barEl.style.width  = pct + '%';
+      if (barEl)    barEl.style.width  = pct + '%';
       if (logEl && data.lastLog) logEl.textContent = data.lastLog;
-      if (btn)    { btn.disabled = true; btn.textContent = '⏳ Captando… ' + pct + '%'; }
-      if (banner) banner.style.display = 'none';
-      if (actRow) actRow.style.display = 'none';
+      if (btn)      { btn.disabled = true; btn.style.display = 'none'; }
+      if (stopBtn)  stopBtn.style.display = 'block';
+      if (banner)   banner.style.display = 'none';
+      if (actRow)   actRow.style.display = 'none';
     } else {
       if (_ilPollingTimer) { clearInterval(_ilPollingTimer); _ilPollingTimer = null; }
-      if (barEl)  barEl.style.width  = data.lastLog ? '100%' : '0%';
+      if (barEl)    barEl.style.width  = data.lastLog ? '100%' : '0%';
       if (logEl && data.lastLog) logEl.textContent = data.lastLog;
-      if (btn)    { btn.disabled = false; btn.textContent = '🔍 Iniciar captação'; }
+      if (stopBtn)  stopBtn.style.display = 'none';
+      if (btn)      { btn.disabled = false; btn.style.display = 'block'; btn.textContent = '🔍 Iniciar captação'; }
 
       if (data.valid !== undefined) {
         if (resEl) {
@@ -3627,6 +3637,24 @@ async function updateSidebarBadges() {
   } catch(e) { /* silencioso */ }
 }
 updateSidebarBadges();
+
+// ── PARAR CAPTAÇÃO ────────────────────────────────────────────────────
+async function stopCaptureInline() {
+  try {
+    await fetch(BACKEND_URL + '/scraper/stop', { method: 'POST' });
+    const stopBtn = document.getElementById('capt-stop-btn');
+    const btn     = document.getElementById('capt-submit-inline');
+    const logEl   = document.getElementById('capt-status-log');
+    const barEl   = document.getElementById('capt-progress-bar');
+    if (stopBtn) stopBtn.style.display = 'none';
+    if (btn)     { btn.disabled = false; btn.style.display = 'block'; btn.textContent = '🔍 Iniciar captação'; }
+    if (logEl)   logEl.textContent = 'Captação interrompida manualmente.';
+    if (barEl)   barEl.style.width = '0%';
+    if (_ilPollingTimer) { clearInterval(_ilPollingTimer); _ilPollingTimer = null; }
+  } catch(e) {
+    console.error('Erro ao parar captação:', e);
+  }
+}
 </script>
 </body>
 </html>
