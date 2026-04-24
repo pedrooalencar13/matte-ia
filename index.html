@@ -442,7 +442,7 @@ textarea.cta:focus{border-color:var(--acc)}
             <th>Email</th>
             <th>Cidade</th>
             <th>Score</th>
-            <th>Captado em</th>
+            <th>Status</th>
           </tr>
         </thead>
         <tbody id="dash-recent-tbody"></tbody>
@@ -3277,18 +3277,18 @@ async function loadClients() {
     const res = await fetch(BACKEND_URL + '/sheets/pull');
     const data = await res.json();
     _allClients = (data.contacts || data || []).map(c => ({
-      name:        c['First Name']    || c.nome        || c.name        || '',
-      lastName:    c['Last Name']     || c.sobrenome   || '',
-      email:       c['Email']         || c.email       || '',
-      phone:       c['Phone']         || c.telefone    || c.phone       || '',
-      city:        c['Last Activity'] || c.cidade      || c.city        || '',
-      score:       parseFloat(c['Score IA'] || c.scoreIa || c.aiScore  || 0) || 0,
-      scoreReason: c['Motivo Score']  || c.motivoScore || c.aiScoreReason || '',
-      status:      c['QUALIFICADO?']  || c.qualificacao|| c.status      || '',
-      instagram:   c['Instagram']     || c.instagram        || '',
-      cadence:     c['cadencia_status']|| c.cadenciaStatus  || '',
-      emailsSent:  parseInt(c.cadenciaEtapa || c['cadencia_etapa'] || '0') || 0,
-      replied:     (c.emailRespondido || c['email_respondido'] || '') === 'sim',
+      name:        (c.nome        || '').trim(),
+      lastName:    (c.sobrenome   || '').trim(),
+      email:        c.email       || '',
+      phone:        c.telefone    || '',
+      city:         c.cidade      || '',
+      score:        parseFloat(c.scoreIa || 0) || 0,
+      scoreReason:  c.motivoScore || '',
+      status:       c.qualificacao|| '',
+      instagram:    c.instagram   || '',
+      cadence:      c.cadenciaStatus || '',
+      emailsSent:   parseInt(c.cadenciaEtapa || '0') || 0,
+      replied:      c.emailRespondido === 'sim',
     }));
     filterClients();
   } catch(e) {
@@ -3410,21 +3410,22 @@ async function loadSectionDashboard() {
     const res  = await fetch(BACKEND_URL + '/sheets/pull');
     const data = await res.json();
     const list = (data.contacts || data || []).map(c => ({
-      name:       (c.nome      || c.name      || '').trim(),
+      name:       (c.nome      || '').trim(),
       lastName:   (c.sobrenome || '').trim(),
       email:       c.email     || '',
-      city:        c.cidade    || c.city      || '',
-      score:       parseFloat(c.scoreIa || c.aiScore || 0) || 0,
+      city:        c.cidade    || '',
+      score:       parseFloat(c.scoreIa || 0) || 0,
+      status:      c.qualificacao || '',
       instagram:   c.instagram || '',
-      created:     c.created   || '',
-      emailsSent:  parseInt(c.cadenciaEtapa  || '0') || 0,
-      replied:    (c.emailRespondido || '') === 'sim',
+      emailsSent:  parseInt(c.cadenciaEtapa || '0') || 0,
+      cadStatus:   c.cadenciaStatus || '',
+      replied:     c.emailRespondido === 'sim',
     }));
 
     const total   = list.length;
     const high    = list.filter(c => c.score >= 7).length;
     const qualif  = list.filter(c => c.score >= 5).length;
-    const sent    = list.filter(c => c.emailsSent > 0).length;
+    const sent    = list.filter(c => c.emailsSent > 0 || c.cadStatus === 'ativa').length;
     const replied = list.filter(c => c.replied).length;
     const ig      = list.filter(c => c.instagram).length;
 
@@ -3482,10 +3483,8 @@ async function loadSectionDashboard() {
         : '<div style="color:#888;font-size:13px;padding:8px 0">Nenhum dado disponível</div>';
     }
 
-    // Últimos 10 captados
-    const recent = [...list].sort((a, b) => {
-      return (b.created ? new Date(b.created) : 0) - (a.created ? new Date(a.created) : 0);
-    }).slice(0, 10);
+    // Últimos 10 (ordem de inserção na planilha — inverso do array)
+    const recent = [...list].slice(-10).reverse();
 
     if (!tbody) return;
     if (!recent.length) {
@@ -3496,13 +3495,12 @@ async function loadSectionDashboard() {
       const scoreClass = c.score >= 7 ? 'score-high' : c.score >= 5 ? 'score-mid' : c.score > 0 ? 'score-low' : 'score-none';
       const scoreLabel = c.score > 0 ? c.score : '—';
       const fullName   = (c.name + ' ' + c.lastName).trim() || '—';
-      const dateStr    = c.created ? new Date(c.created).toLocaleDateString('pt-BR') : '—';
       return '<tr>' +
         '<td>' + fullName + '</td>' +
-        '<td style="color:#888">' + (c.email || '—') + '</td>' +
-        '<td style="color:#888">' + (c.city  || '—') + '</td>' +
+        '<td style="color:#888">' + (c.email  || '—') + '</td>' +
+        '<td style="color:#888">' + (c.city   || '—') + '</td>' +
         '<td><span class="score-badge ' + scoreClass + '">' + scoreLabel + '</span></td>' +
-        '<td style="color:#888;font-size:12px">' + dateStr + '</td>' +
+        '<td style="color:#888;font-size:12px">' + (c.status || '—') + '</td>' +
         '</tr>';
     }).join('');
   } catch(e) {
