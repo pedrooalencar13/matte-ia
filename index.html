@@ -337,11 +337,19 @@ textarea.cta:focus{border-color:var(--acc)}
 .page-btn.active{border-color:#00c853;color:#00c853}
 .page-btn:hover{color:#fff}
 /* ── SEÇÃO DASHBOARD ────────────────────────────────────────────────*/
-.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
-.kpi-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:20px}
+.kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
+.kpi-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:20px;cursor:pointer;transition:border-color .15s}
+.kpi-card:hover{border-color:#00c853}
 .kpi-label{font-size:12px;color:#888;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px}
 .kpi-value{font-size:32px;font-weight:700;color:#fff}
+@media(max-width:1024px){.kpi-grid{grid-template-columns:repeat(3,1fr)}}
 @media(max-width:768px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
+.metrics-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px;margin-top:14px}
+@media(max-width:900px){.metrics-grid{grid-template-columns:1fr}}
+.metric-bar-wrap{margin:8px 0}
+.metric-bar-label{display:flex;justify-content:space-between;font-size:12px;color:#888;margin-bottom:4px}
+.metric-bar{height:6px;background:#2a2a2a;border-radius:3px;overflow:hidden}
+.metric-bar-fill{height:100%;background:#00c853;border-radius:3px;transition:width .5s}
 </style>
 </head>
 <body>
@@ -369,28 +377,63 @@ textarea.cta:focus{border-color:var(--acc)}
     </div>
 
     <div class="kpi-grid" id="kpi-grid">
-      <div class="kpi-card">
+      <div class="kpi-card" onclick="applyDashboardFilter('all')">
         <div class="kpi-label">Total de clientes</div>
         <div class="kpi-value" id="kpi-total">—</div>
       </div>
-      <div class="kpi-card">
+      <div class="kpi-card" onclick="applyDashboardFilter('high')">
         <div class="kpi-label">Score alto (≥7)</div>
         <div class="kpi-value" id="kpi-high">—</div>
       </div>
-      <div class="kpi-card">
+      <div class="kpi-card" onclick="applyDashboardFilter('sent')">
         <div class="kpi-label">Emails enviados</div>
         <div class="kpi-value" id="kpi-sent">—</div>
       </div>
-      <div class="kpi-card">
+      <div class="kpi-card" onclick="applyDashboardFilter('instagram')">
         <div class="kpi-label">Com Instagram</div>
         <div class="kpi-value" id="kpi-ig">—</div>
       </div>
+      <div class="kpi-card" onclick="applyDashboardFilter('replied')">
+        <div class="kpi-label">Emails respondidos</div>
+        <div class="kpi-value" id="kpi-replied">—</div>
+      </div>
     </div>
 
-    <div class="card" style="margin-top:20px;">
+    <!-- MÉTRICAS AVANÇADAS -->
+    <div class="metrics-grid">
+      <div class="card">
+        <div class="card-title">Funil de conversão</div>
+        <div class="metric-bar-wrap">
+          <div class="metric-bar-label"><span>Captados</span><span id="fn-total">—</span></div>
+          <div class="metric-bar"><div class="metric-bar-fill" style="width:100%"></div></div>
+        </div>
+        <div class="metric-bar-wrap">
+          <div class="metric-bar-label"><span>Qualificados (score ≥5)</span><span id="fn-qualif">—</span></div>
+          <div class="metric-bar"><div class="metric-bar-fill" id="fn-bar-qualif" style="width:0%"></div></div>
+        </div>
+        <div class="metric-bar-wrap">
+          <div class="metric-bar-label"><span>Contatados</span><span id="fn-sent">—</span></div>
+          <div class="metric-bar"><div class="metric-bar-fill" id="fn-bar-sent" style="width:0%"></div></div>
+        </div>
+        <div class="metric-bar-wrap">
+          <div class="metric-bar-label"><span>Responderam</span><span id="fn-replied">—</span></div>
+          <div class="metric-bar"><div class="metric-bar-fill" id="fn-bar-replied" style="width:0%"></div></div>
+        </div>
+      </div>
+      <div class="card">
+        <div class="card-title">Distribuição de scores</div>
+        <div id="dash-scores"></div>
+      </div>
+      <div class="card">
+        <div class="card-title">Top cidades</div>
+        <div id="dash-cities"></div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:14px;">
       <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
         <div class="card-title" style="margin:0;">Últimos clientes captados</div>
-        <button class="btn-refresh" onclick="loadDashboard()">↻ Atualizar</button>
+        <button class="btn-refresh" onclick="loadSectionDashboard()">↻ Atualizar</button>
       </div>
       <table class="clients-table">
         <thead>
@@ -3060,7 +3103,7 @@ function showSection(name) {
   if (btn) btn.classList.add('active');
   if (name === 'captacao') initCaptacaoSection();
   if (name === 'clientes') loadClients();
-  if (name === 'dashboard') loadDashboard();
+  if (name === 'dashboard') loadSectionDashboard();
 }
 
 // ── STATUS DO SISTEMA (SIDEBAR) ────────────────────────────────────
@@ -3242,8 +3285,10 @@ async function loadClients() {
       score:       parseFloat(c['Score IA'] || c.scoreIa || c.aiScore  || 0) || 0,
       scoreReason: c['Motivo Score']  || c.motivoScore || c.aiScoreReason || '',
       status:      c['QUALIFICADO?']  || c.qualificacao|| c.status      || '',
-      instagram:   c['Instagram']     || c.instagram   || '',
-      cadence:     c['cadencia_status']|| c.cadenciaStatus || '',
+      instagram:   c['Instagram']     || c.instagram        || '',
+      cadence:     c['cadencia_status']|| c.cadenciaStatus  || '',
+      emailsSent:  parseInt(c.cadenciaEtapa || c['cadencia_etapa'] || '0') || 0,
+      replied:     (c.emailRespondido || c['email_respondido'] || '') === 'sim',
     }));
     filterClients();
   } catch(e) {
@@ -3268,9 +3313,12 @@ function filterClients() {
       c.city.toLowerCase().includes(q);
     const matchScore =
       _scoreFilter === 'all' ||
-      (_scoreFilter === 'high' && c.score >= 7) ||
-      (_scoreFilter === 'mid'  && c.score >= 5 && c.score < 7) ||
-      (_scoreFilter === 'low'  && c.score > 0  && c.score < 5);
+      (_scoreFilter === 'high'      && c.score >= 7) ||
+      (_scoreFilter === 'mid'       && c.score >= 5 && c.score < 7) ||
+      (_scoreFilter === 'low'       && c.score > 0  && c.score < 5) ||
+      (_scoreFilter === 'instagram' && !!c.instagram) ||
+      (_scoreFilter === 'sent'      && c.emailsSent > 0) ||
+      (_scoreFilter === 'replied'   && c.replied === true);
     return matchSearch && matchScore;
   });
   sortClientsArr();
@@ -3340,38 +3388,103 @@ function _goPage(p) {
 }
 
 // ── SEÇÃO DASHBOARD ───────────────────────────────────────────────────
-async function loadDashboard() {
-  const setKpi = (id, val) => {
-    const el = document.getElementById(id);
-    if (el) el.textContent = val;
-  };
-  const tbody = document.getElementById('dash-recent-tbody');
+function applyDashboardFilter(type) {
+  _scoreFilter = type;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  const btnMap = { all: 0, high: 1, mid: 2, low: 3 };
+  if (btnMap[type] !== undefined) {
+    const btns = document.querySelectorAll('.filter-btn');
+    if (btns[btnMap[type]]) btns[btnMap[type]].classList.add('active');
+  }
+  const searchEl = document.getElementById('clients-search');
+  if (searchEl) searchEl.value = '';
+  showSection('clientes');
+}
+
+async function loadSectionDashboard() {
+  const setKpi = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
+  const tbody  = document.getElementById('dash-recent-tbody');
   if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#888;padding:20px;">Carregando...</td></tr>';
 
   try {
     const res  = await fetch(BACKEND_URL + '/sheets/pull');
     const data = await res.json();
     const list = (data.contacts || data || []).map(c => ({
-      name:      (c['First Name'] || c.nome      || c.name      || '').trim(),
-      lastName:  (c['Last Name']  || c.sobrenome || '').trim(),
-      email:     c['Email']       || c.email     || '',
-      city:      c['Last Activity']|| c.cidade   || c.city      || '',
-      score:     parseFloat(c['Score IA'] || c.scoreIa || c.aiScore || 0) || 0,
-      instagram: c['Instagram']   || c.instagram || '',
-      created:   c['Created']     || c.created   || '',
-      sent:      (c['cadencia_etapa'] || c.cadenciaEtapa || '0') !== '0',
+      name:       (c.nome      || c.name      || '').trim(),
+      lastName:   (c.sobrenome || '').trim(),
+      email:       c.email     || '',
+      city:        c.cidade    || c.city      || '',
+      score:       parseFloat(c.scoreIa || c.aiScore || 0) || 0,
+      instagram:   c.instagram || '',
+      created:     c.created   || '',
+      emailsSent:  parseInt(c.cadenciaEtapa  || '0') || 0,
+      replied:    (c.emailRespondido || '') === 'sim',
     }));
 
-    setKpi('kpi-total', list.length);
-    setKpi('kpi-high',  list.filter(c => c.score >= 7).length);
-    setKpi('kpi-sent',  list.filter(c => c.sent).length);
-    setKpi('kpi-ig',    list.filter(c => c.instagram).length);
+    const total   = list.length;
+    const high    = list.filter(c => c.score >= 7).length;
+    const qualif  = list.filter(c => c.score >= 5).length;
+    const sent    = list.filter(c => c.emailsSent > 0).length;
+    const replied = list.filter(c => c.replied).length;
+    const ig      = list.filter(c => c.instagram).length;
 
-    // últimos 10 por ordem de captura (inversa — mais recente primeiro)
+    setKpi('kpi-total',   total);
+    setKpi('kpi-high',    high);
+    setKpi('kpi-sent',    sent);
+    setKpi('kpi-ig',      ig);
+    setKpi('kpi-replied', replied);
+
+    // Funil
+    const setBar = (idVal, idBar, n) => {
+      const el  = document.getElementById(idVal);
+      const bar = document.getElementById(idBar);
+      const pct = total > 0 ? Math.round((n / total) * 100) : 0;
+      if (el)  el.textContent    = n + ' (' + pct + '%)';
+      if (bar) bar.style.width   = pct + '%';
+    };
+    setKpi('fn-total', total);
+    setBar('fn-qualif',  'fn-bar-qualif',  qualif);
+    setBar('fn-sent',    'fn-bar-sent',    sent);
+    setBar('fn-replied', 'fn-bar-replied', replied);
+
+    // Distribuição de scores
+    const scoreEl = document.getElementById('dash-scores');
+    if (scoreEl) {
+      const ranges = [
+        { label: '🟢 Alto (8-10)',   fn: c => c.score >= 8 },
+        { label: '🟢 Bom (7-7.9)',   fn: c => c.score >= 7 && c.score < 8 },
+        { label: '🟡 Médio (5-6.9)', fn: c => c.score >= 5 && c.score < 7 },
+        { label: '🔴 Baixo (1-4.9)', fn: c => c.score >= 1 && c.score < 5 },
+        { label: '⚪ Sem score',      fn: c => c.score <= 0 },
+      ];
+      scoreEl.innerHTML = ranges.map(r => {
+        const count = list.filter(r.fn).length;
+        return '<div style="display:flex;justify-content:space-between;padding:6px 0;border-bottom:1px solid #1e1e1e;font-size:13px">' +
+          '<span style="color:#888">' + r.label + '</span>' +
+          '<span style="color:#e8ede9;font-weight:600">' + count + '</span></div>';
+      }).join('');
+    }
+
+    // Top cidades
+    const citiesEl = document.getElementById('dash-cities');
+    if (citiesEl) {
+      const counts = {};
+      list.forEach(c => { if (c.city) counts[c.city] = (counts[c.city] || 0) + 1; });
+      const top5 = Object.entries(counts).sort((a, b) => b[1] - a[1]).slice(0, 5);
+      const maxC = top5[0]?.[1] || 1;
+      citiesEl.innerHTML = top5.length
+        ? top5.map(([city, n]) =>
+            '<div class="metric-bar-wrap">' +
+              '<div class="metric-bar-label"><span style="color:#ccc">' + city + '</span><span style="color:#e8ede9">' + n + '</span></div>' +
+              '<div class="metric-bar"><div class="metric-bar-fill" style="width:' + Math.round((n / maxC) * 100) + '%"></div></div>' +
+            '</div>'
+          ).join('')
+        : '<div style="color:#888;font-size:13px;padding:8px 0">Nenhum dado disponível</div>';
+    }
+
+    // Últimos 10 captados
     const recent = [...list].sort((a, b) => {
-      const da = a.created ? new Date(a.created) : new Date(0);
-      const db = b.created ? new Date(b.created) : new Date(0);
-      return db - da;
+      return (b.created ? new Date(b.created) : 0) - (a.created ? new Date(a.created) : 0);
     }).slice(0, 10);
 
     if (!tbody) return;

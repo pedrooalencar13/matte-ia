@@ -100,6 +100,7 @@ async function pullFromSheets() {
     telefone:         row[COL.TELEFONE]     || '',
     email:            row[COL.EMAIL]        || '',
     empresa:          row[COL.EMPRESA]      || '',
+    created:          row[COL.CREATED]      || '',
     cidade:           row[COL.ACTIVITY]     || '',
     tags:             row[COL.TAGS]         || '',
     source:           row[COL.SOURCE]       || '',
