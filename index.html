@@ -456,6 +456,7 @@ textarea.cta:focus{border-color:var(--acc)}
             <th>Cidade</th>
             <th>Score</th>
             <th>Status</th>
+            <th>Captado em</th>
           </tr>
         </thead>
         <tbody id="dash-recent-tbody"></tbody>
@@ -544,7 +545,7 @@ textarea.cta:focus{border-color:var(--acc)}
             <th>Cidade</th>
             <th onclick="sortClients('score')">Score ↕</th>
             <th>Status</th>
-            <th>Instagram</th>
+            <th>Captado em</th>
             <th>Ação</th>
           </tr>
         </thead>
@@ -3219,30 +3220,42 @@ function _bindIlInput(inputId, arr, fieldId, removeFn) {
 }
 
 function initCaptacaoSection() {
-  const inp = document.getElementById('capt-term-input');
-  if (!inp) return;
-  // Bind event listeners uma única vez
-  if (!inp._ilBound) {
-    inp._ilBound = true;
-    _bindIlInput('capt-term-input', _ilTerms, 'capt-terms-field-inline', 'removeCaptTermInline');
-    _bindIlInput('capt-city-input', _ilCities, 'capt-cities-field-inline', 'removeCaptCityInline');
-    // Pré-popular defaults se ainda vazio
-    if (_ilTerms.length === 0) {
-      ['advogado', 'escritório de advocacia', 'advogado trabalhista'].forEach(t => {
-        if (!_ilTerms.includes(t)) _ilTerms.push(t);
-      });
+  setTimeout(() => {
+    const termsField = document.getElementById('capt-terms-field-inline');
+    const citiesField = document.getElementById('capt-cities-field-inline');
+    if (!termsField || !citiesField) return;
+
+    _ilTerms  = ['advogado', 'escritório de advocacia', 'advogado trabalhista'];
+    _ilCities = ['Guarujá', 'Santos', 'São Vicente'];
+
+    const termInput = document.getElementById('capt-term-input');
+    const cityInput = document.getElementById('capt-city-input');
+
+    [...termsField.querySelectorAll('.tag-chip')].forEach(t => t.remove());
+    [...citiesField.querySelectorAll('.tag-chip')].forEach(t => t.remove());
+
+    _ilTerms.forEach((term, i) => {
+      const chip = document.createElement('span');
+      chip.className = 'tag-chip';
+      chip.innerHTML = term + ' <button onclick="removeCaptTermInline(' + i + ')" title="Remover">×</button>';
+      termsField.insertBefore(chip, termInput);
+    });
+
+    _ilCities.forEach((city, i) => {
+      const chip = document.createElement('span');
+      chip.className = 'tag-chip';
+      chip.innerHTML = city + ' <button onclick="removeCaptCityInline(' + i + ')" title="Remover">×</button>';
+      citiesField.insertBefore(chip, cityInput);
+    });
+
+    if (!window._captInputsBound) {
+      _bindIlInput('capt-term-input',  _ilTerms,  'capt-terms-field-inline',  'removeCaptTermInline');
+      _bindIlInput('capt-city-input',  _ilCities, 'capt-cities-field-inline', 'removeCaptCityInline');
+      window._captInputsBound = true;
     }
-    if (_ilCities.length === 0) {
-      ['Guarujá', 'Santos', 'São Vicente'].forEach(c => {
-        if (!_ilCities.includes(c)) _ilCities.push(c);
-      });
-    }
-  }
-  // Sempre re-renderizar chips ao entrar na seção
-  _renderIlTags('capt-terms-field-inline', _ilTerms, 'removeCaptTermInline');
-  _renderIlTags('capt-cities-field-inline', _ilCities, 'removeCaptCityInline');
-  updateCaptCounterInline();
-  _pollCaptureStatus();
+    updateCaptCounterInline();
+    _pollCaptureStatus();
+  }, 150);
 }
 
 async function submitCaptureInline() {
@@ -3380,6 +3393,7 @@ async function loadClients() {
       scoreReason:  c.motivoScore || '',
       status:       c.qualificacao|| '',
       instagram:    c.instagram   || '',
+      created:      c.created     || '',
       cadence:      c.cadenciaStatus || '',
       emailsSent:   parseInt(c.cadenciaEtapa || '0') || 0,
       replied:      c.emailRespondido === 'sim',
@@ -3447,9 +3461,9 @@ function renderClients() {
   tbody.innerHTML = page.map(c => {
     const scoreClass = c.score >= 7 ? 'score-high' : c.score >= 5 ? 'score-mid' : c.score > 0 ? 'score-low' : 'score-none';
     const scoreLabel = c.score > 0 ? c.score : '—';
-    const igLink     = c.instagram
-      ? '<a href="' + c.instagram + '" target="_blank" class="ig-link">↗ IG</a>'
-      : '<span style="color:#444">—</span>';
+    const captDate   = c.created
+      ? new Date(c.created).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric'})
+      : '—';
     const tooltip    = c.scoreReason ? 'title="' + c.scoreReason.replace(/"/g, "'") + '"' : '';
     const fullName   = (c.name + ' ' + c.lastName).trim();
     return '<tr>' +
@@ -3458,7 +3472,7 @@ function renderClients() {
       '<td style="color:#888">' + (c.city  || '—') + '</td>' +
       '<td><span class="score-badge ' + scoreClass + '" ' + tooltip + '>' + scoreLabel + '</span></td>' +
       '<td style="color:#888;font-size:12px">' + (c.status || '—') + '</td>' +
-      '<td>' + igLink + '</td>' +
+      '<td style="color:#888;font-size:12px">' + captDate + '</td>' +
       '<td><button class="btn-email" onclick="selectClientForEmail(\'' + (c.email||'').replace(/'/g,"\\'") + '\',\'' + (c.name||'').replace(/'/g,"\\'") + '\')">✉ Email</button></td>' +
       '</tr>';
   }).join('');
@@ -3499,7 +3513,7 @@ function applyDashboardFilter(type) {
 async function loadSectionDashboard() {
   const setKpi = (id, val) => { const el = document.getElementById(id); if (el) el.textContent = val; };
   const tbody  = document.getElementById('dash-recent-tbody');
-  if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#888;padding:20px;">Carregando...</td></tr>';
+  if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#888;padding:20px;">Carregando...</td></tr>';
 
   try {
     const res  = await apiFetch('/sheets/pull');
@@ -3512,6 +3526,7 @@ async function loadSectionDashboard() {
       score:       parseFloat(c.scoreIa || 0) || 0,
       status:      c.qualificacao || '',
       instagram:   c.instagram || '',
+      created:     c.created  || '',
       emailsSent:  parseInt(c.cadenciaEtapa || '0') || 0,
       cadStatus:   c.cadenciaStatus || '',
       replied:     c.emailRespondido === 'sim',
@@ -3584,24 +3599,28 @@ async function loadSectionDashboard() {
 
     if (!tbody) return;
     if (!recent.length) {
-      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#888;padding:20px;">Nenhum cliente encontrado</td></tr>';
+      tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#888;padding:20px;">Nenhum cliente encontrado</td></tr>';
       return;
     }
     tbody.innerHTML = recent.map(c => {
       const scoreClass = c.score >= 7 ? 'score-high' : c.score >= 5 ? 'score-mid' : c.score > 0 ? 'score-low' : 'score-none';
       const scoreLabel = c.score > 0 ? c.score : '—';
       const fullName   = (c.name + ' ' + c.lastName).trim() || '—';
+      const captDate   = c.created
+        ? new Date(c.created).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric'})
+        : '—';
       return '<tr>' +
         '<td>' + fullName + '</td>' +
         '<td style="color:#888">' + (c.email  || '—') + '</td>' +
         '<td style="color:#888">' + (c.city   || '—') + '</td>' +
         '<td><span class="score-badge ' + scoreClass + '">' + scoreLabel + '</span></td>' +
         '<td style="color:#888;font-size:12px">' + (c.status || '—') + '</td>' +
+        '<td style="color:#888;font-size:12px">' + captDate + '</td>' +
         '</tr>';
     }).join('');
   } catch(e) {
     setKpi('kpi-total', 'Erro');
-    if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#ff4444;padding:20px;">Erro ao carregar dados</td></tr>';
+    if (tbody) tbody.innerHTML = '<tr><td colspan="6" style="text-align:center;color:#ff4444;padding:20px;">Erro ao carregar dados</td></tr>';
   }
 }
 
