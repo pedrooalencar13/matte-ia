@@ -339,6 +339,21 @@ textarea.cta:focus{border-color:var(--acc)}
 .page-btn{padding:6px 12px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;color:#888;font-size:13px;cursor:pointer}
 .page-btn.active{border-color:#00c853;color:#00c853}
 .page-btn:hover{color:#fff}
+/* ── SEÇÃO DISPAROS ─────────────────────────────────────────────────*/
+#section-disparos.active{padding:28px;gap:14px}
+#section-disparos .layout{gap:14px}
+#section-disparos .sidebar{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;border-right:none}
+#section-disparos .editor{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px}
+#section-disparos .chat{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;border-left:none}
+#section-disparos .sb-head h2{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#888}
+#section-disparos .sb-list{scrollbar-width:thin;scrollbar-color:#2a2a2a transparent}
+#section-disparos .ci:hover{background:#242424}
+#section-disparos textarea.eta{background:#242424;border-color:#2a2a2a;font-size:13px;line-height:1.6;color:#fff}
+#section-disparos .qb{background:#242424;border-color:#2a2a2a;border-radius:4px}
+#section-disparos .qb:hover{border-color:#00c853;color:#e8ede9}
+#section-disparos .chat-head{font-size:14px;font-weight:500}
+#section-disparos .msg.claude{background:#1e1e1e}
+#section-disparos .msg.user{background:#242424}
 /* ── SEÇÃO DASHBOARD ────────────────────────────────────────────────*/
 .kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
 .kpi-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:20px;cursor:pointer;transition:border-color .15s}
@@ -585,26 +600,47 @@ textarea.cta:focus{border-color:var(--acc)}
   </section>
   <section id="section-disparos" class="section active">
 
-<header>
-  <div class="logo">Pedro Aranha Gestão de Tráfego <span>/ painel de disparos</span></div>
-  <div class="hm">
-    <div class="dot"></div>
-    <span id="hdr-count">carregando...</span>
-    <button class="btn btn-sync btn-sm" id="sync-btn" onclick="syncNow()">↻ Sync</button>
-    <button class="btn btn-g btn-sm" id="btn-captar" onclick="openCaptureModal()">🔍 Captar</button>
-    <button class="btn btn-sm" id="btn-parar" onclick="stopCapture()" style="display:none;background:#f5734a;color:#fff;border:1px solid #c0452a;font-weight:600">⏹ Parar captação</button>
-    <span id="capture-indicator" style="display:none;color:#f5c842;font-size:11px;font-family:'DM Mono',monospace" class="dot-anim">● captando</span>
-    <div class="hdr-btn-wrap">
-      <button class="btn btn-g btn-sm" onclick="openInbox()">📬 Respostas</button>
-      <span class="hdr-notif" id="hdr-notif">0</span>
+  <!-- Header antigo mantido oculto para preservar IDs usados pelo JS -->
+  <header style="display:none">
+    <div class="logo">Pedro Aranha Gestão de Tráfego <span>/ painel de disparos</span></div>
+    <div class="hm">
+      <div class="dot"></div>
+      <span id="hdr-count">carregando...</span>
+      <button class="btn btn-sync btn-sm" id="sync-btn" onclick="syncNow()">↻ Sync</button>
+      <button class="btn btn-g btn-sm" id="btn-captar" onclick="openCaptureModal()">🔍 Captar</button>
+      <button class="btn btn-sm" id="btn-parar" onclick="stopCapture()" style="display:none;background:#f5734a;color:#fff;border:1px solid #c0452a;font-weight:600">⏹ Parar captação</button>
+      <span id="capture-indicator" style="display:none;color:#f5c842;font-size:11px;font-family:'DM Mono',monospace" class="dot-anim">● captando</span>
+      <div class="hdr-btn-wrap">
+        <button class="btn btn-g btn-sm" onclick="openInbox()">📬 Respostas</button>
+        <span class="hdr-notif" id="hdr-notif">0</span>
+      </div>
+      <button class="btn btn-sync btn-sm" onclick="pushLeadsToSheet()">⬆ Sync leads</button>
+      <button class="btn btn-bulk btn-sm" onclick="openBulk()">⚡ Disparo em massa</button>
+      <button class="btn btn-g btn-sm" onclick="openDashboard()">📊 Dashboard</button>
+      <button class="btn btn-g btn-sm" onclick="openTasks()">📋 Tarefas</button>
+      <button class="btn btn-g btn-sm" onclick="openModal()">⚙ API Key</button>
     </div>
-    <button class="btn btn-sync btn-sm" onclick="pushLeadsToSheet()">⬆ Sync leads</button>
-    <button class="btn btn-bulk btn-sm" onclick="openBulk()">⚡ Disparo em massa</button>
-    <button class="btn btn-g btn-sm" onclick="openDashboard()">📊 Dashboard</button>
-    <button class="btn btn-g btn-sm" onclick="openTasks()">📋 Tarefas</button>
-    <button class="btn btn-g btn-sm" onclick="openModal()">⚙ API Key</button>
+  </header>
+
+  <!-- Novo header padrão -->
+  <div class="page-header" style="margin-bottom:0;flex-shrink:0;">
+    <div style="display:flex;justify-content:space-between;align-items:center;">
+      <div>
+        <h1 class="page-title">Disparos</h1>
+        <p class="page-sub">Geração e envio de emails para clientes qualificados</p>
+      </div>
+      <div style="display:flex;gap:10px;align-items:center;">
+        <div id="disp-status-dot" style="width:8px;height:8px;border-radius:50%;background:#888;display:inline-block;"></div>
+        <span id="disp-status-text" style="font-size:13px;color:#888;">—</span>
+        <button onclick="openInbox()" class="btn-refresh" style="position:relative;">
+          📬 Respostas
+          <span id="hdr-notif-new" style="display:none;position:absolute;top:-4px;right:-4px;background:#f5734a;color:#fff;font-size:9px;font-weight:700;border-radius:20px;padding:1px 5px">0</span>
+        </button>
+        <button onclick="syncNow()" class="btn-refresh">↻ Sync</button>
+        <button onclick="openBulk()" style="padding:7px 14px;background:#00c853;border:none;border-radius:6px;color:#000;font-size:13px;font-weight:600;cursor:pointer;">⚡ Disparo em massa</button>
+      </div>
+    </div>
   </div>
-</header>
 
 <div class="layout">
 
@@ -3167,6 +3203,22 @@ function showSection(name) {
   if (name === 'captacao') initCaptacaoSection();
   if (name === 'clientes') loadClients();
   if (name === 'dashboard') loadSectionDashboard();
+  if (name === 'disparos') { if (!CONTACTS.length) syncNow(); updateDisparosStatus(); }
+}
+
+async function updateDisparosStatus() {
+  const dot  = document.getElementById('disp-status-dot');
+  const text = document.getElementById('disp-status-text');
+  try {
+    let contacts = window._allClients && window._allClients.length
+      ? window._allClients
+      : await apiFetch('/sheets/pull').then(r => r.json()).then(d => d.contacts || d || []);
+    const ativas = contacts.filter(c => (c.cadenciaStatus || c.cadence) === 'ativa').length;
+    if (dot)  dot.style.background = ativas > 0 ? '#00c853' : '#888';
+    if (text) text.textContent     = ativas > 0 ? `${ativas} em cadência ativa` : 'Nenhuma cadência ativa';
+  } catch {
+    if (text) text.textContent = '—';
+  }
 }
 
 // ── STATUS DO SISTEMA (SIDEBAR) ────────────────────────────────────
