@@ -412,6 +412,24 @@ textarea.cta:focus{border-color:var(--acc)}
       </div>
     </div>
 
+    <!-- ANÁLISE PROFUNDA -->
+    <div class="card" style="margin-top:14px;margin-bottom:0;">
+      <div style="display:flex;justify-content:space-between;align-items:center;">
+        <div>
+          <div class="card-title" style="margin:0;">Análise profunda de leads</div>
+          <div style="font-size:13px;color:#888;margin-top:4px;">Valida email, OAB e site — gera score completo para leads sem análise</div>
+        </div>
+        <div style="display:flex;gap:10px;align-items:center;">
+          <select id="enrich-limit" style="padding:8px 12px;background:#242424;border:1px solid #2a2a2a;border-radius:8px;color:#fff;font-size:13px;">
+            <option value="20">20 leads</option>
+            <option value="50">50 leads</option>
+          </select>
+          <button onclick="startEnrichment()" id="enrich-btn" style="padding:8px 16px;background:#378ADD;border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer;">⚡ Iniciar análise</button>
+        </div>
+      </div>
+      <div id="enrich-status" style="display:none;margin-top:12px;font-size:13px;color:#888;"></div>
+    </div>
+
     <!-- MÉTRICAS AVANÇADAS -->
     <div class="metrics-grid">
       <div class="card">
@@ -542,6 +560,9 @@ textarea.cta:focus{border-color:var(--acc)}
           <tr>
             <th onclick="sortClients('name')">Nome ↕</th>
             <th>Email</th>
+            <th>Celular</th>
+            <th>Fixo</th>
+            <th>Site</th>
             <th>Cidade</th>
             <th onclick="sortClients('score')">Score ↕</th>
             <th>Status</th>
@@ -3379,7 +3400,7 @@ let _sortDir = -1;
 async function loadClients() {
   const tbody = document.getElementById('clients-tbody');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#888;padding:24px;">Carregando...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#888;padding:24px;">Carregando...</td></tr>';
   try {
     const res = await apiFetch('/sheets/pull');
     const data = await res.json();
@@ -3392,16 +3413,19 @@ async function loadClients() {
       score:        parseFloat(c.scoreIa || 0) || 0,
       scoreReason:  c.motivoScore || '',
       status:       c.qualificacao|| '',
-      instagram:    c.instagram   || '',
-      created:      c.created     || '',
-      cadence:      c.cadenciaStatus || '',
+      instagram:      c.instagram       || '',
+      created:        c.created         || '',
+      telefoneFixo:   c.telefoneFixo    || '',
+      telefoneCelular:c.telefoneCelular || '',
+      site:           c.site            || c.website || '',
+      cadence:        c.cadenciaStatus  || '',
       emailsSent:   parseInt(c.cadenciaEtapa || '0') || 0,
       replied:      c.emailRespondido === 'sim',
     }));
     filterClients();
     updateSidebarBadges();
   } catch(e) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#ff4444;padding:24px;">Erro ao carregar clientes</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#ff4444;padding:24px;">Erro ao carregar clientes</td></tr>';
   }
 }
 
@@ -3454,7 +3478,7 @@ function renderClients() {
   const start = (_clientsPage - 1) * _clientsPerPage;
   const page  = _filteredClients.slice(start, start + _clientsPerPage);
   if (!page.length) {
-    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#888;padding:24px;">Nenhum cliente encontrado</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#888;padding:24px;">Nenhum cliente encontrado</td></tr>';
     document.getElementById('clients-pagination').innerHTML = '';
     return;
   }
@@ -3466,9 +3490,15 @@ function renderClients() {
       : '—';
     const tooltip    = c.scoreReason ? 'title="' + c.scoreReason.replace(/"/g, "'") + '"' : '';
     const fullName   = (c.name + ' ' + c.lastName).trim();
+    const siteLink   = c.site
+      ? '<a href="' + c.site + '" target="_blank" class="ig-link">↗ Site</a>'
+      : '<span style="color:#444">—</span>';
     return '<tr>' +
       '<td>' + (fullName || '—') + '</td>' +
       '<td style="color:#888">' + (c.email || '—') + '</td>' +
+      '<td style="color:#888;font-size:12px">' + (c.telefoneCelular || '—') + '</td>' +
+      '<td style="color:#888;font-size:12px">' + (c.telefoneFixo    || '—') + '</td>' +
+      '<td>' + siteLink + '</td>' +
       '<td style="color:#888">' + (c.city  || '—') + '</td>' +
       '<td><span class="score-badge ' + scoreClass + '" ' + tooltip + '>' + scoreLabel + '</span></td>' +
       '<td style="color:#888;font-size:12px">' + (c.status || '—') + '</td>' +
@@ -3508,6 +3538,41 @@ function applyDashboardFilter(type) {
   const searchEl = document.getElementById('clients-search');
   if (searchEl) searchEl.value = '';
   showSection('clientes');
+}
+
+async function startEnrichment() {
+  const limit  = parseInt(document.getElementById('enrich-limit').value) || 20;
+  const btn    = document.getElementById('enrich-btn');
+  const status = document.getElementById('enrich-status');
+  btn.disabled    = true;
+  btn.textContent = 'Analisando...';
+  status.style.display = 'block';
+  status.textContent   = 'Iniciando análise em background...';
+  try {
+    await apiFetch('/enrichment/start', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ limit }),
+    });
+    const poll = setInterval(async () => {
+      try {
+        const r = await apiFetch('/enrichment/status').then(x => x.json());
+        if (r.running) {
+          status.textContent = 'Processando ' + r.processed + '/' + r.total + (r.current ? ': ' + r.current : '');
+        } else {
+          clearInterval(poll);
+          status.textContent  = '✓ Análise concluída — ' + r.processed + ' leads atualizados';
+          btn.disabled        = false;
+          btn.textContent     = '⚡ Iniciar análise';
+          loadSectionDashboard();
+        }
+      } catch {}
+    }, 3000);
+  } catch(e) {
+    status.textContent  = 'Erro: ' + e.message;
+    btn.disabled        = false;
+    btn.textContent     = '⚡ Iniciar análise';
+  }
 }
 
 async function loadSectionDashboard() {

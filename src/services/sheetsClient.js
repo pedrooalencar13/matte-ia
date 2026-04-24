@@ -51,12 +51,17 @@ const COL = {
   RESPONDIDO: 19,
   DT_RESPOSTA:20,
   // Enriquecimento Apify + IA
-  INSTAGRAM:  21,
-  SCORE_IA:   22,
-  MOTIVO_SCORE:23,
+  INSTAGRAM:    21,
+  SCORE_IA:     22,
+  MOTIVO_SCORE: 23,
+  // Novas colunas
+  TELEFONE_FIXO: 24,
+  TELEFONE_CEL:  25,
+  SITE:          26,
+  EMAIL_VALIDO:  27,
 };
 
-const SHEET_RANGE_READ  = 'A1:X'; // inclui linha de cabeçalho (sheetRows[0] = header)
+const SHEET_RANGE_READ  = 'A1:AB'; // inclui linha de cabeçalho (sheetRows[0] = header)
 const SHEET_RANGE_WRITE = 'A1';
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -116,26 +121,57 @@ async function pullFromSheets() {
     emailAberto:      row[COL.ABERTO]       || '',
     emailRespondido:  row[COL.RESPONDIDO]   || '',
     dataResposta:     row[COL.DT_RESPOSTA]  || '',
-    instagram:        row[COL.INSTAGRAM]    || '',
-    scoreIa:          row[COL.SCORE_IA]     || '',
-    motivoScore:      row[COL.MOTIVO_SCORE] || '',
+    instagram:        row[COL.INSTAGRAM]     || '',
+    scoreIa:          row[COL.SCORE_IA]      || '',
+    motivoScore:      row[COL.MOTIVO_SCORE]  || '',
+    telefoneFixo:     row[COL.TELEFONE_FIXO] || '',
+    telefoneCelular:  row[COL.TELEFONE_CEL]  || '',
+    site:             row[COL.SITE]          || row[COL.CONTENT] || '',
+    emailValido:      row[COL.EMAIL_VALIDO]  || '',
   })).filter(c => c.email && c.email.includes('@'));
 
   logger.info(`[SHEETS] ${contacts.length} contatos lidos`);
   return contacts;
 }
 
-// ── Verifica/insere cabeçalhos das colunas V-X na primeira execução ───────────
+// Converte índice 0-based para letra de coluna (A=0, Z=25, AA=26, AB=27...)
+function indexToCol(idx) {
+  let col = '';
+  let n   = idx + 1;
+  while (n > 0) {
+    const rem = (n - 1) % 26;
+    col = String.fromCharCode(65 + rem) + col;
+    n   = Math.floor((n - 1) / 26);
+  }
+  return col;
+}
+
+// Separa telefone em fixo ou celular (heurística brasileira)
+function splitPhone(raw) {
+  if (!raw) return { fixo: '', celular: '' };
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 0) return { fixo: '', celular: '' };
+  const local      = digits.length >= 10 ? digits.slice(-9) : digits.slice(-8);
+  const isCelular  = local.length === 9 && local[0] === '9';
+  if (isCelular) return { fixo: '', celular: raw.trim() };
+  return { fixo: raw.trim(), celular: '' };
+}
+
+// ── Verifica/insere cabeçalhos das colunas V-AB na primeira execução ──────────
 async function ensureHeaders(sheets, sheetId) {
   const EXPECTED = {
-    [COL.INSTAGRAM]:   'Instagram',
-    [COL.SCORE_IA]:    'Score IA',
-    [COL.MOTIVO_SCORE]:'Motivo Score',
+    [COL.INSTAGRAM]:    'Instagram',
+    [COL.SCORE_IA]:     'Score IA',
+    [COL.MOTIVO_SCORE]: 'Motivo Score',
+    [COL.TELEFONE_FIXO]:'Telefone Fixo',
+    [COL.TELEFONE_CEL]: 'Telefone Celular',
+    [COL.SITE]:         'Site',
+    [COL.EMAIL_VALIDO]: 'Email Valido',
   };
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: `${tab()}!A1:X1`,
+    range: `${tab()}!A1:AB1`,
   });
 
   const header = (res.data.values || [[]])[0] || [];
@@ -144,8 +180,7 @@ async function ensureHeaders(sheets, sheetId) {
   for (const [colIdx, label] of Object.entries(EXPECTED)) {
     const idx = parseInt(colIdx);
     if ((header[idx] || '').trim() !== label) {
-      const colLetter = String.fromCharCode(65 + idx);
-      updates.push({ range: `${tab()}!${colLetter}1`, values: [[label]] });
+      updates.push({ range: `${tab()}!${indexToCol(idx)}1`, values: [[label]] });
     }
   }
 
@@ -174,7 +209,7 @@ async function pushToSheets(leads) {
   await ensureHeaders(sheets, sheetId);
 
   const rows = valid.map(lead => {
-    const row      = new Array(24).fill('');
+    const row      = new Array(28).fill('');
     const nomeCompleto = (lead.nome || lead.name || '').trim();
 
     row[COL.NOME]        = nomeCompleto;                                  // A — nome completo
@@ -198,9 +233,14 @@ async function pushToSheets(leads) {
     row[COL.ABERTO]      = '';
     row[COL.RESPONDIDO]  = '';
     row[COL.DT_RESPOSTA] = '';
-    row[COL.INSTAGRAM]   = lead.instagram || '';
-    row[COL.SCORE_IA]    = lead.aiScore !== undefined ? String(lead.aiScore) : '';
-    row[COL.MOTIVO_SCORE]= lead.aiScoreReason || '';
+    row[COL.INSTAGRAM]    = lead.instagram || '';
+    row[COL.SCORE_IA]     = lead.aiScore !== undefined ? String(lead.aiScore) : '';
+    row[COL.MOTIVO_SCORE] = lead.aiScoreReason || '';
+    const phones          = splitPhone(lead.telefone || lead.phone || '');
+    row[COL.TELEFONE_FIXO]= phones.fixo;
+    row[COL.TELEFONE_CEL] = phones.celular;
+    row[COL.SITE]         = lead.website || lead.site || '';
+    row[COL.EMAIL_VALIDO] = '';
 
     return row;
   });
@@ -323,9 +363,7 @@ async function readAll() {
 async function updateCell(rowNum, colIndex, value) {
   const sheets  = await getSheetsClient();
   const sheetId = process.env.SHEET_ID;
-  // Converte índice de coluna 0-based para letra (A=0, B=1, ...)
-  const colLetter = String.fromCharCode(65 + colIndex);
-  const range = `${tab()}!${colLetter}${rowNum}`;
+  const range   = `${tab()}!${indexToCol(colIndex)}${rowNum}`;
   await sheets.spreadsheets.values.update({
     spreadsheetId: sheetId,
     range,

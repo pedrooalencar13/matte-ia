@@ -10,7 +10,8 @@ const cadenceRouter = require('./src/routes/cadence');
 const trackRouter   = require('./src/routes/track');
 const inboxRouter   = require('./src/routes/inbox');
 const tasksRouter   = require('./src/routes/tasks');
-const repliesRouter = require('./src/routes/replies');
+const repliesRouter     = require('./src/routes/replies');
+const enrichmentRouter  = require('./src/routes/enrichment');
 
 // Cron jobs em background
 require('./src/jobs/scraperJob');
@@ -75,7 +76,8 @@ app.use('/cadence', cadenceRouter);
 app.use('/track',   trackRouter);
 app.use('/inbox',   inboxRouter);
 app.use('/tasks',   tasksRouter);
-app.use('/replies', repliesRouter);
+app.use('/replies',     repliesRouter);
+app.use('/enrichment',  enrichmentRouter);
 
 // ── 404 ─────────────────────────────────────────────────────────────────────
 app.use((req, res) => {

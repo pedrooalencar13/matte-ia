@@ -2,7 +2,7 @@ const axios = require('axios');
 const { logger } = require('./logger');
 
 const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
-const MAX_TOKENS = 800;
+const MAX_TOKENS = 1000;
 
 /**
  * Analisa um lead e retorna score 0-10 + motivo via Claude AI.
@@ -45,7 +45,8 @@ Critérios de pontuação:
 - Ausência total de redes sociais: -1 ponto (oportunidade de melhoria)
 - Cidade grande (SP, RJ, BH, Curitiba, Porto Alegre): +1 ponto
 
-O motivo deve ser específico, mencionar dados reais do escritório e explicar por que é ou não uma boa oportunidade para gestão de tráfego.`;
+O motivo deve ser específico, mencionar dados reais do escritório e explicar por que é ou não uma boa oportunidade para gestão de tráfego.
+O campo motivo deve ter exatamente 3 frases completas, sem cortar no meio de uma palavra ou frase.`;
 
   try {
     const res = await axios.post(
@@ -72,7 +73,7 @@ O motivo deve ser específico, mencionar dados reais do escritório e explicar p
     const parsed = JSON.parse(match[0]);
 
     const score  = Math.min(10, Math.max(0, Number(parsed.score) || 0));
-    const motivo = String(parsed.motivo || '').slice(0, 400);
+    const motivo = String(parsed.motivo || '');
     return { aiScore: score, aiScoreReason: motivo };
   } catch (err) {
     logger.warn(`[SCORER] Erro ao pontuar lead "${nome}": ${err.message}`);
