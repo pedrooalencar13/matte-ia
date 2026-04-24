@@ -336,6 +336,12 @@ textarea.cta:focus{border-color:var(--acc)}
 .page-btn{padding:6px 12px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;color:#888;font-size:13px;cursor:pointer}
 .page-btn.active{border-color:#00c853;color:#00c853}
 .page-btn:hover{color:#fff}
+/* ── SEÇÃO DASHBOARD ────────────────────────────────────────────────*/
+.kpi-grid{display:grid;grid-template-columns:repeat(4,1fr);gap:14px}
+.kpi-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:20px}
+.kpi-label{font-size:12px;color:#888;text-transform:uppercase;letter-spacing:.04em;margin-bottom:10px}
+.kpi-value{font-size:32px;font-weight:700;color:#fff}
+@media(max-width:768px){.kpi-grid{grid-template-columns:repeat(2,1fr)}}
 </style>
 </head>
 <body>
@@ -356,7 +362,50 @@ textarea.cta:focus{border-color:var(--acc)}
 
 <!-- CONTEÚDO -->
 <main id="content">
-  <section id="section-dashboard" class="section"></section>
+  <section id="section-dashboard" class="section">
+    <div class="page-header">
+      <h1 class="page-title">Dashboard</h1>
+      <p class="page-sub">Visão geral do sistema</p>
+    </div>
+
+    <div class="kpi-grid" id="kpi-grid">
+      <div class="kpi-card">
+        <div class="kpi-label">Total de clientes</div>
+        <div class="kpi-value" id="kpi-total">—</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Score alto (≥7)</div>
+        <div class="kpi-value" id="kpi-high">—</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Emails enviados</div>
+        <div class="kpi-value" id="kpi-sent">—</div>
+      </div>
+      <div class="kpi-card">
+        <div class="kpi-label">Com Instagram</div>
+        <div class="kpi-value" id="kpi-ig">—</div>
+      </div>
+    </div>
+
+    <div class="card" style="margin-top:20px;">
+      <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:16px;">
+        <div class="card-title" style="margin:0;">Últimos clientes captados</div>
+        <button class="btn-refresh" onclick="loadDashboard()">↻ Atualizar</button>
+      </div>
+      <table class="clients-table">
+        <thead>
+          <tr>
+            <th>Nome</th>
+            <th>Email</th>
+            <th>Cidade</th>
+            <th>Score</th>
+            <th>Captado em</th>
+          </tr>
+        </thead>
+        <tbody id="dash-recent-tbody"></tbody>
+      </table>
+    </div>
+  </section>
   <section id="section-captacao" class="section">
     <div class="page-header">
       <div class="page-title">🎯 Captação de Leads</div>
@@ -3011,6 +3060,7 @@ function showSection(name) {
   if (btn) btn.classList.add('active');
   if (name === 'captacao') initCaptacaoSection();
   if (name === 'clientes') loadClients();
+  if (name === 'dashboard') loadDashboard();
 }
 
 // ── STATUS DO SISTEMA (SIDEBAR) ────────────────────────────────────
@@ -3287,6 +3337,65 @@ function _goPage(p) {
   _clientsPage = p;
   renderClients();
   document.getElementById('section-clientes').scrollTop = 0;
+}
+
+// ── SEÇÃO DASHBOARD ───────────────────────────────────────────────────
+async function loadDashboard() {
+  const setKpi = (id, val) => {
+    const el = document.getElementById(id);
+    if (el) el.textContent = val;
+  };
+  const tbody = document.getElementById('dash-recent-tbody');
+  if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#888;padding:20px;">Carregando...</td></tr>';
+
+  try {
+    const res  = await fetch(BACKEND_URL + '/sheets/pull');
+    const data = await res.json();
+    const list = (data.contacts || data || []).map(c => ({
+      name:      (c['First Name'] || c.nome      || c.name      || '').trim(),
+      lastName:  (c['Last Name']  || c.sobrenome || '').trim(),
+      email:     c['Email']       || c.email     || '',
+      city:      c['Last Activity']|| c.cidade   || c.city      || '',
+      score:     parseFloat(c['Score IA'] || c.scoreIa || c.aiScore || 0) || 0,
+      instagram: c['Instagram']   || c.instagram || '',
+      created:   c['Created']     || c.created   || '',
+      sent:      (c['cadencia_etapa'] || c.cadenciaEtapa || '0') !== '0',
+    }));
+
+    setKpi('kpi-total', list.length);
+    setKpi('kpi-high',  list.filter(c => c.score >= 7).length);
+    setKpi('kpi-sent',  list.filter(c => c.sent).length);
+    setKpi('kpi-ig',    list.filter(c => c.instagram).length);
+
+    // últimos 10 por ordem de captura (inversa — mais recente primeiro)
+    const recent = [...list].sort((a, b) => {
+      const da = a.created ? new Date(a.created) : new Date(0);
+      const db = b.created ? new Date(b.created) : new Date(0);
+      return db - da;
+    }).slice(0, 10);
+
+    if (!tbody) return;
+    if (!recent.length) {
+      tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#888;padding:20px;">Nenhum cliente encontrado</td></tr>';
+      return;
+    }
+    tbody.innerHTML = recent.map(c => {
+      const scoreClass = c.score >= 7 ? 'score-high' : c.score >= 5 ? 'score-mid' : c.score > 0 ? 'score-low' : 'score-none';
+      const scoreLabel = c.score > 0 ? c.score : '—';
+      const fullName   = (c.name + ' ' + c.lastName).trim() || '—';
+      const dateStr    = c.created ? new Date(c.created).toLocaleDateString('pt-BR') : '—';
+      return '<tr>' +
+        '<td>' + fullName + '</td>' +
+        '<td style="color:#888">' + (c.email || '—') + '</td>' +
+        '<td style="color:#888">' + (c.city  || '—') + '</td>' +
+        '<td><span class="score-badge ' + scoreClass + '">' + scoreLabel + '</span></td>' +
+        '<td style="color:#888;font-size:12px">' + dateStr + '</td>' +
+        '</tr>';
+    }).join('');
+  } catch(e) {
+    setKpi('kpi-total', 'Erro');
+    if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#ff4444;padding:20px;">Erro ao carregar dados</td></tr>';
+  }
 }
 </script>
 </body>
