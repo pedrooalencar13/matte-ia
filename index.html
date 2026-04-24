@@ -565,15 +565,15 @@ textarea.cta:focus{border-color:var(--acc)}
       <table class="clients-table">
         <thead>
           <tr>
-            <th onclick="sortClients('name')">Nome ↕</th>
-            <th>Email</th>
-            <th>Celular</th>
-            <th>Fixo</th>
-            <th>Site</th>
-            <th>Cidade</th>
-            <th onclick="sortClients('score')">Score ↕</th>
-            <th>Status</th>
-            <th>Captado em</th>
+            <th onclick="sortClients('name')"    style="cursor:pointer">Nome ↕</th>
+            <th onclick="sortClients('email')"   style="cursor:pointer">Email ↕</th>
+            <th onclick="sortClients('celular')" style="cursor:pointer">Celular ↕</th>
+            <th onclick="sortClients('fixo')"    style="cursor:pointer">Fixo ↕</th>
+            <th onclick="sortClients('site')"    style="cursor:pointer">Site ↕</th>
+            <th onclick="sortClients('city')"    style="cursor:pointer">Cidade ↕</th>
+            <th onclick="sortClients('score')"   style="cursor:pointer">Score ↕</th>
+            <th onclick="sortClients('status')"  style="cursor:pointer">Status ↕</th>
+            <th onclick="sortClients('created')" style="cursor:pointer">Captado em ↕</th>
             <th>Ação</th>
           </tr>
         </thead>
@@ -3404,6 +3404,16 @@ let _scoreFilter = 'all';
 let _sortField = 'score';
 let _sortDir = -1;
 
+function splitPhoneClient(raw) {
+  if (!raw) return { fixo: '', celular: '' };
+  const digits = raw.replace(/\D/g, '');
+  if (digits.length === 0) return { fixo: '', celular: '' };
+  const local     = digits.length >= 10 ? digits.slice(-9) : digits.slice(-8);
+  const isCelular = local.length === 9 && local[0] === '9';
+  if (isCelular) return { fixo: '', celular: raw.trim() };
+  return { fixo: raw.trim(), celular: '' };
+}
+
 async function loadClients() {
   const tbody = document.getElementById('clients-tbody');
   if (!tbody) return;
@@ -3411,24 +3421,30 @@ async function loadClients() {
   try {
     const res = await apiFetch('/sheets/pull');
     const data = await res.json();
-    _allClients = (data.contacts || data || []).map(c => ({
-      name:        (c.nome        || '').trim(),
-      lastName:    (c.sobrenome   || '').trim(),
-      email:        c.email       || '',
-      phone:        c.telefone    || '',
-      city:         c.cidade      || '',
-      score:        parseFloat(c.scoreIa || 0) || 0,
-      scoreReason:  c.motivoScore || '',
-      status:       c.qualificacao|| '',
-      instagram:      c.instagram       || '',
-      created:        c.created         || '',
-      telefoneFixo:   c.telefoneFixo    || '',
-      telefoneCelular:c.telefoneCelular || '',
-      site:           c.site            || c.website || '',
-      cadence:        c.cadenciaStatus  || '',
-      emailsSent:   parseInt(c.cadenciaEtapa || '0') || 0,
-      replied:      c.emailRespondido === 'sim',
-    }));
+    _allClients = (data.contacts || data || []).map(c => {
+      const rawPhone = c.telefone || '';
+      const phones   = splitPhoneClient(rawPhone);
+      const fixo     = c.telefoneFixo    || phones.fixo    || '';
+      const celular  = c.telefoneCelular || phones.celular || (phones.fixo ? '' : rawPhone) || '';
+      return {
+        name:           (c.nome        || '').trim(),
+        lastName:       (c.sobrenome   || '').trim(),
+        email:           c.email       || '',
+        phone:           rawPhone,
+        city:            c.cidade      || '',
+        score:           parseFloat(c.scoreIa || 0) || 0,
+        scoreReason:     c.motivoScore || '',
+        status:          c.qualificacao|| '',
+        instagram:       c.instagram   || '',
+        created:         c.created     || '',
+        telefoneFixo:    fixo,
+        telefoneCelular: celular,
+        site:            c.site        || c.website || '',
+        cadence:         c.cadenciaStatus  || '',
+        emailsSent:      parseInt(c.cadenciaEtapa || '0') || 0,
+        replied:         c.emailRespondido === 'sim',
+      };
+    });
     filterClients();
     updateSidebarBadges();
   } catch(e) {
@@ -3472,10 +3488,43 @@ function sortClients(field) {
   renderClients();
 }
 
+function _parseCaptDate(val) {
+  if (!val) return 0;
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) {
+    const [d, m, y] = val.split('/');
+    return new Date(+y, m - 1, +d).getTime();
+  }
+  return new Date(val).getTime() || 0;
+}
+
 function sortClientsArr() {
   _filteredClients.sort((a, b) => {
-    if (_sortField === 'score') return (b.score - a.score) * (_sortDir === -1 ? 1 : -1);
-    return a.name.localeCompare(b.name) * _sortDir;
+    const dir = _sortDir; // -1 = desc, 1 = asc
+    switch (_sortField) {
+      case 'score':
+        return (b.score - a.score) * (dir === -1 ? 1 : -1);
+      case 'created':
+        return (_parseCaptDate(b.created) - _parseCaptDate(a.created)) * (dir === -1 ? 1 : -1);
+      case 'celular': {
+        const ha = a.telefoneCelular ? 1 : 0, hb = b.telefoneCelular ? 1 : 0;
+        if (ha !== hb) return (hb - ha) * (dir === -1 ? 1 : -1);
+        return a.telefoneCelular.localeCompare(b.telefoneCelular) * dir;
+      }
+      case 'fixo': {
+        const ha = a.telefoneFixo ? 1 : 0, hb = b.telefoneFixo ? 1 : 0;
+        if (ha !== hb) return (hb - ha) * (dir === -1 ? 1 : -1);
+        return a.telefoneFixo.localeCompare(b.telefoneFixo) * dir;
+      }
+      case 'site': {
+        const ha = a.site ? 1 : 0, hb = b.site ? 1 : 0;
+        if (ha !== hb) return (hb - ha) * (dir === -1 ? 1 : -1);
+        return a.site.localeCompare(b.site) * dir;
+      }
+      case 'email':  return a.email.localeCompare(b.email)   * dir;
+      case 'city':   return a.city.localeCompare(b.city)     * dir;
+      case 'status': return a.status.localeCompare(b.status) * dir;
+      default:       return a.name.localeCompare(b.name)     * dir;
+    }
   });
 }
 
