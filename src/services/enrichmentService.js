@@ -243,7 +243,7 @@ async function runRescore(limit = 50) {
     const all   = await pullFromSheets();
     // Processa leads QUE JÁ TÊM score (diferente do runEnrichmentBatch)
     const batch = all.filter(c => c.scoreIa && Number(c.scoreIa) > 0)
-                     .slice(0, Math.min(limit, 100));
+                     .slice(0, limit);
     _state.total = batch.length;
     logger.info(`[ENRICH] Rescore: ${batch.length} leads com score existente para reanalisar`);
 

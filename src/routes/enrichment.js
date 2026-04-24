@@ -12,7 +12,7 @@ router.post('/start', (req, res) => {
 });
 
 router.post('/rescore', (req, res) => {
-  const limit = Math.min(parseInt(req.body?.limit || 50), 100);
+  const limit = parseInt(req.body?.limit) || 999999;
   runRescore(limit).catch(err =>
     logger.error('[ENRICH] Erro no rescore:', err.message)
   );

@@ -330,7 +330,7 @@ textarea.cta:focus{border-color:var(--acc)}
 .score-none{background:#1a1a1a;color:#555;border:1px solid #333}
 .ig-link{color:#378ADD;text-decoration:none;font-size:12px}
 .tooltip-wrap{position:relative;display:inline-block}
-.tooltip-box{display:none;position:fixed;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:10px 14px;font-size:12px;color:#ccc;line-height:1.6;max-width:380px;max-height:200px;overflow-y:auto;z-index:9999;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,0.5);white-space:normal;word-wrap:break-word;word-break:normal}
+.tooltip-box{display:none;position:fixed;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:14px 18px;font-size:13px;color:#ccc;line-height:1.7;max-width:480px;max-height:300px;overflow-y:auto;z-index:9999;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,0.5);white-space:normal;word-wrap:break-word;word-break:normal}
 .tooltip-wrap:hover .tooltip-box{display:block}
 .ig-link:hover{text-decoration:underline}
 .btn-email{padding:4px 10px;background:transparent;border:1px solid #2a2a2a;border-radius:6px;color:#888;font-size:12px;cursor:pointer}
@@ -428,6 +428,7 @@ textarea.cta:focus{border-color:var(--acc)}
             <option value="50">50 leads</option>
             <option value="100">100 leads</option>
             <option value="200">200 leads</option>
+            <option value="9999">Todos</option>
           </select>
           <button onclick="startEnrichment()" id="enrich-btn" style="padding:8px 16px;background:#378ADD;border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer;">⚡ Iniciar análise</button>
           <button onclick="startRescore()" id="rescore-btn" style="padding:8px 16px;background:transparent;border:1px solid #378ADD;border-radius:8px;color:#378ADD;font-size:13px;cursor:pointer;">↻ Reanalisar existentes</button>
