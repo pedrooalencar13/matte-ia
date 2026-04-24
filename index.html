@@ -350,6 +350,19 @@ textarea.cta:focus{border-color:var(--acc)}
 .metric-bar-label{display:flex;justify-content:space-between;font-size:12px;color:#888;margin-bottom:4px}
 .metric-bar{height:6px;background:#2a2a2a;border-radius:3px;overflow:hidden}
 .metric-bar-fill{height:100%;background:#00c853;border-radius:3px;transition:width .5s}
+/* ── BADGES SIDEBAR ─────────────────────────────────────────────────*/
+.nav-badge{float:right;background:#2a2a2a;color:#888;font-size:11px;padding:1px 7px;border-radius:10px;min-width:20px;text-align:center;font-family:'DM Mono',monospace}
+.nav-item.active .nav-badge{background:#0d2e1a;color:#00c853}
+/* ── BANNER CAPTAÇÃO ────────────────────────────────────────────────*/
+.capt-banner{border-radius:8px;padding:10px 14px;font-size:13px;font-weight:600;margin-top:12px;display:none}
+.capt-banner.ok{background:#0d2e1a;color:#00c853;border:1px solid #1a4a1a}
+.capt-banner.warn{background:#2e2200;color:#f0a500;border:1px solid #4a3800}
+.capt-action-row{display:none;gap:8px;margin-top:10px}
+.capt-action-row button{flex:1;padding:8px 12px;border-radius:7px;font-size:13px;cursor:pointer;font-weight:600}
+.capt-action-row .btn-ver{background:#00c853;color:#000;border:none}
+.capt-action-row .btn-reset{background:transparent;color:#888;border:1px solid #333}
+.capt-action-row .btn-ver:hover{opacity:.85}
+.capt-action-row .btn-reset:hover{color:#fff;border-color:#666}
 </style>
 </head>
 <body>
@@ -362,8 +375,8 @@ textarea.cta:focus{border-color:var(--acc)}
   <div class="sidebar-nav">
     <button class="nav-item" onclick="showSection('dashboard')">📊 Dashboard</button>
     <button class="nav-item" onclick="showSection('captacao')">🎯 Captação</button>
-    <button class="nav-item" onclick="showSection('clientes')">👥 Clientes</button>
-    <button class="nav-item active" onclick="showSection('disparos')">📨 Disparos</button>
+    <button class="nav-item" onclick="showSection('clientes')">👥 Clientes <span class="nav-badge" id="badge-clientes">—</span></button>
+    <button class="nav-item active" onclick="showSection('disparos')">📨 Disparos <span class="nav-badge" id="badge-disparos">—</span></button>
   </div>
   <div id="system-status" class="sidebar-status"></div>
 </nav>
@@ -491,6 +504,11 @@ textarea.cta:focus{border-color:var(--acc)}
           <div class="capt-result-row"><span>Leads válidos</span><span id="capt-r-valid">—</span></div>
           <div class="capt-result-row"><span>Duplicatas ignoradas</span><span id="capt-r-dup">—</span></div>
           <div class="capt-result-row"><span>Erros</span><span id="capt-r-err">—</span></div>
+        </div>
+        <div class="capt-banner" id="capt-banner"></div>
+        <div class="capt-action-row" id="capt-action-row">
+          <button class="btn-ver" onclick="showSection('clientes')">Ver clientes →</button>
+          <button class="btn-reset" onclick="_resetCaptForm()">Nova captação</button>
         </div>
       </div>
     </div>
@@ -3186,12 +3204,28 @@ function _bindIlInput(inputId, arr, fieldId, removeFn) {
 
 function initCaptacaoSection() {
   const inp = document.getElementById('capt-term-input');
-  if (!inp || inp._ilBound) return;
-  inp._ilBound = true;
-  _bindIlInput('capt-term-input', _ilTerms, 'capt-terms-field-inline', 'removeCaptTermInline');
-  _bindIlInput('capt-city-input', _ilCities, 'capt-cities-field-inline', 'removeCaptCityInline');
+  if (!inp) return;
+  // Bind event listeners uma única vez
+  if (!inp._ilBound) {
+    inp._ilBound = true;
+    _bindIlInput('capt-term-input', _ilTerms, 'capt-terms-field-inline', 'removeCaptTermInline');
+    _bindIlInput('capt-city-input', _ilCities, 'capt-cities-field-inline', 'removeCaptCityInline');
+    // Pré-popular defaults se ainda vazio
+    if (_ilTerms.length === 0) {
+      ['advogado', 'escritório de advocacia', 'advogado trabalhista'].forEach(t => {
+        if (!_ilTerms.includes(t)) _ilTerms.push(t);
+      });
+    }
+    if (_ilCities.length === 0) {
+      ['Guarujá', 'Santos', 'São Vicente'].forEach(c => {
+        if (!_ilCities.includes(c)) _ilCities.push(c);
+      });
+    }
+  }
+  // Sempre re-renderizar chips ao entrar na seção
+  _renderIlTags('capt-terms-field-inline', _ilTerms, 'removeCaptTermInline');
+  _renderIlTags('capt-cities-field-inline', _ilCities, 'removeCaptCityInline');
   updateCaptCounterInline();
-  // retoma polling se scraper já estava rodando
   _pollCaptureStatus();
 }
 
@@ -3235,29 +3269,67 @@ function _startInlinePolling() {
 
 async function _pollCaptureStatus() {
   try {
-    const data = await fetch(BACKEND_URL + '/scraper/status').then(r => r.json());
-    const barEl = document.getElementById('capt-progress-bar');
-    const logEl = document.getElementById('capt-status-log');
-    const btn   = document.getElementById('capt-submit-inline');
-    const resEl = document.getElementById('capt-result-summary');
+    const data   = await fetch(BACKEND_URL + '/scraper/status').then(r => r.json());
+    const barEl  = document.getElementById('capt-progress-bar');
+    const logEl  = document.getElementById('capt-status-log');
+    const btn    = document.getElementById('capt-submit-inline');
+    const resEl  = document.getElementById('capt-result-summary');
+    const banner = document.getElementById('capt-banner');
+    const actRow = document.getElementById('capt-action-row');
+
     if (data.running) {
       const pct = data.progress || 0;
-      if (barEl) barEl.style.width = pct + '%';
+      if (barEl)  barEl.style.width  = pct + '%';
       if (logEl && data.lastLog) logEl.textContent = data.lastLog;
-      if (btn) { btn.disabled = true; btn.textContent = '⏳ Captando… ' + pct + '%'; }
+      if (btn)    { btn.disabled = true; btn.textContent = '⏳ Captando… ' + pct + '%'; }
+      if (banner) banner.style.display = 'none';
+      if (actRow) actRow.style.display = 'none';
     } else {
       if (_ilPollingTimer) { clearInterval(_ilPollingTimer); _ilPollingTimer = null; }
-      if (barEl) barEl.style.width = data.lastLog ? '100%' : '0%';
+      if (barEl)  barEl.style.width  = data.lastLog ? '100%' : '0%';
       if (logEl && data.lastLog) logEl.textContent = data.lastLog;
-      if (btn) { btn.disabled = false; btn.textContent = '🔍 Iniciar captação'; }
-      if (resEl && data.valid !== undefined) {
-        document.getElementById('capt-r-valid').textContent = data.valid      ?? '—';
-        document.getElementById('capt-r-dup').textContent   = data.duplicates ?? '—';
-        document.getElementById('capt-r-err').textContent   = data.errors     ?? '—';
-        resEl.style.display = 'block';
+      if (btn)    { btn.disabled = false; btn.textContent = '🔍 Iniciar captação'; }
+
+      if (data.valid !== undefined) {
+        if (resEl) {
+          document.getElementById('capt-r-valid').textContent = data.valid      ?? '—';
+          document.getElementById('capt-r-dup').textContent   = data.duplicates ?? '—';
+          document.getElementById('capt-r-err').textContent   = data.errors     ?? '—';
+          resEl.style.display = 'block';
+        }
+        if (banner) {
+          const dup = data.duplicates || 0;
+          const err = data.errors     || 0;
+          const sub = dup + ' duplicatas ignoradas · ' + err + ' erros';
+          if (data.valid > 0) {
+            banner.className  = 'capt-banner ok';
+            banner.innerHTML  = '✓ ' + data.valid + ' novo' + (data.valid > 1 ? 's' : '') + ' cliente' + (data.valid > 1 ? 's' : '') + ' captado' + (data.valid > 1 ? 's' : '') +
+              '<div style="font-size:11px;font-weight:400;margin-top:3px;color:#7aaa7a">' + sub + '</div>';
+          } else {
+            banner.className  = 'capt-banner warn';
+            banner.innerHTML  = 'Nenhum novo cliente encontrado' +
+              '<div style="font-size:11px;font-weight:400;margin-top:3px;color:#a08060">' + sub + '</div>';
+          }
+          banner.style.display = 'block';
+        }
+        if (actRow) actRow.style.display = 'flex';
+        updateSidebarBadges();
       }
     }
   } catch(e) { /* silencioso */ }
+}
+
+function _resetCaptForm() {
+  const banner = document.getElementById('capt-banner');
+  const actRow = document.getElementById('capt-action-row');
+  const resEl  = document.getElementById('capt-result-summary');
+  const logEl  = document.getElementById('capt-status-log');
+  const barEl  = document.getElementById('capt-progress-bar');
+  if (banner) banner.style.display  = 'none';
+  if (actRow) actRow.style.display  = 'none';
+  if (resEl)  resEl.style.display   = 'none';
+  if (logEl)  logEl.textContent     = 'Aguardando nova busca…';
+  if (barEl)  barEl.style.width     = '0%';
 }
 
 // ── SEÇÃO CLIENTES ────────────────────────────────────────────────────
@@ -3291,6 +3363,7 @@ async function loadClients() {
       replied:      c.emailRespondido === 'sim',
     }));
     filterClients();
+    updateSidebarBadges();
   } catch(e) {
     tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#ff4444;padding:24px;">Erro ao carregar clientes</td></tr>';
   }
@@ -3364,7 +3437,7 @@ function renderClients() {
       '<td><span class="score-badge ' + scoreClass + '" ' + tooltip + '>' + scoreLabel + '</span></td>' +
       '<td style="color:#888;font-size:12px">' + (c.status || '—') + '</td>' +
       '<td>' + igLink + '</td>' +
-      '<td><button class="btn-email" onclick="showSection(\'disparos\')">✉ Email</button></td>' +
+      '<td><button class="btn-email" onclick="selectClientForEmail(\'' + (c.email||'').replace(/'/g,"\\'") + '\',\'' + (c.name||'').replace(/'/g,"\\'") + '\')">✉ Email</button></td>' +
       '</tr>';
   }).join('');
   renderPagination();
@@ -3434,6 +3507,7 @@ async function loadSectionDashboard() {
     setKpi('kpi-sent',    sent);
     setKpi('kpi-ig',      ig);
     setKpi('kpi-replied', replied);
+    updateSidebarBadges();
 
     // Funil
     const setBar = (idVal, idBar, n) => {
@@ -3508,6 +3582,51 @@ async function loadSectionDashboard() {
     if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#ff4444;padding:20px;">Erro ao carregar dados</td></tr>';
   }
 }
+
+// ── SELECIONAR CONTATO PARA EMAIL (seção Clientes → Disparos) ─────────
+function selectClientForEmail(email, name) {
+  showSection('disparos');
+  setTimeout(() => {
+    const idx = CONTACTS.findIndex(c => (c.email || '').toLowerCase() === email.toLowerCase());
+    if (idx >= 0) {
+      selectContact(idx);
+      const list = document.getElementById('contact-list');
+      if (list) {
+        const items = list.querySelectorAll('.ci');
+        let visIdx = 0;
+        for (let i = 0; i < CONTACTS.length; i++) {
+          if (!S.skipped.has(i)) {
+            if (i === idx) { items[visIdx]?.scrollIntoView({ block: 'nearest' }); break; }
+            visIdx++;
+          }
+        }
+      }
+    }
+  }, 320);
+}
+
+// ── BADGES SIDEBAR ────────────────────────────────────────────────────
+async function updateSidebarBadges() {
+  try {
+    let total = 0, ativas = 0;
+    if (_allClients.length > 0) {
+      // reutilizar cache da seção Clientes
+      total  = _allClients.length;
+      ativas = _allClients.filter(c => c.cadence === 'ativa').length;
+    } else {
+      const res  = await fetch(BACKEND_URL + '/sheets/pull');
+      const data = await res.json();
+      const list = data.contacts || data || [];
+      total  = list.length;
+      ativas = list.filter(c => (c.cadenciaStatus || '') === 'ativa').length;
+    }
+    const bc = document.getElementById('badge-clientes');
+    const bd = document.getElementById('badge-disparos');
+    if (bc) bc.textContent = total;
+    if (bd) bd.textContent = ativas;
+  } catch(e) { /* silencioso */ }
+}
+updateSidebarBadges();
 </script>
 </body>
 </html>
