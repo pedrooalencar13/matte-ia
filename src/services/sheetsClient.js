@@ -124,6 +124,43 @@ async function pullFromSheets() {
   return contacts;
 }
 
+// ── Verifica/insere cabeçalhos das colunas V-X na primeira execução ───────────
+async function ensureHeaders(sheets, sheetId) {
+  const EXPECTED = {
+    [COL.INSTAGRAM]:   'Instagram',
+    [COL.SCORE_IA]:    'Score IA',
+    [COL.MOTIVO_SCORE]:'Motivo Score',
+  };
+
+  const res = await sheets.spreadsheets.values.get({
+    spreadsheetId: sheetId,
+    range: `${tab()}!A1:X1`,
+  });
+
+  const header = (res.data.values || [[]])[0] || [];
+  const updates = [];
+
+  for (const [colIdx, label] of Object.entries(EXPECTED)) {
+    const idx = parseInt(colIdx);
+    if ((header[idx] || '').trim() !== label) {
+      const colLetter = String.fromCharCode(65 + idx);
+      updates.push({ range: `${tab()}!${colLetter}1`, values: [[label]] });
+    }
+  }
+
+  if (updates.length === 0) return;
+
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: sheetId,
+    resource: {
+      valueInputOption: 'RAW',
+      data: updates,
+    },
+  });
+
+  logger.info(`[SHEETS] Cabeçalhos inseridos: ${updates.map(u => u.values[0][0]).join(', ')}`);
+}
+
 // ── Escrita (novos leads) ─────────────────────────────────────────────────────
 async function pushToSheets(leads) {
   if (!leads || leads.length === 0) return { pushed: 0, skipped: 0 };
@@ -133,19 +170,18 @@ async function pushToSheets(leads) {
   const valid   = leads.filter(l => l.email && l.email.includes('@'));
   const skipped = leads.length - valid.length;
 
+  await ensureHeaders(sheets, sheetId);
+
   const rows = valid.map(lead => {
-    const row = new Array(24).fill('');
+    const row      = new Array(24).fill('');
+    const nomeCompleto = (lead.nome || lead.name || '').trim();
 
-    const partes       = (lead.nome || lead.name || '').trim().split(/\s+/);
-    const primeiroNome = partes[0] || lead.nome || lead.name || '';
-    const resto        = partes.slice(1).join(' ');
-
-    row[COL.NOME]        = primeiroNome;
-    row[COL.SOBRENOME]   = resto;
+    row[COL.NOME]        = nomeCompleto;                                  // A — nome completo
+    row[COL.SOBRENOME]   = lead.category || lead.especialidade || '';     // B — categoria
     row[COL.TELEFONE]    = formatPhone(lead.telefone || lead.phone || '');
     row[COL.EMAIL]       = (lead.email || '').toLowerCase().trim();
-    row[COL.EMPRESA]     = lead.nome || lead.name || '';
-    row[COL.CREATED]     = '';
+    row[COL.EMPRESA]     = nomeCompleto;                                  // E — mesmo nome completo
+    row[COL.CREATED]     = new Date().toISOString();                      // F — data de captação
     row[COL.ACTIVITY]    = lead.cidade || lead.city || '';
     row[COL.TAGS]        = 'captado-auto';
     row[COL.SOURCE]      = 'google-maps';
@@ -155,14 +191,12 @@ async function pushToSheets(leads) {
     row[COL.FAT]         = 'não informado';
     row[COL.URG]         = '';
     row[COL.QUALIF]      = 'com potencial';
-    // Inicia cadência automaticamente
     row[COL.CAD_STATUS]  = 'ativa';
     row[COL.CAD_ETAPA]   = '0';
-    row[COL.CAD_PROXIMO] = new Date().toISOString(); // envia primeiro e-mail imediatamente
+    row[COL.CAD_PROXIMO] = new Date().toISOString();
     row[COL.ABERTO]      = '';
     row[COL.RESPONDIDO]  = '';
     row[COL.DT_RESPOSTA] = '';
-    // Enriquecimento Apify + IA
     row[COL.INSTAGRAM]   = lead.instagram || '';
     row[COL.SCORE_IA]    = lead.aiScore !== undefined ? String(lead.aiScore) : '';
     row[COL.MOTIVO_SCORE]= lead.aiScoreReason || '';
