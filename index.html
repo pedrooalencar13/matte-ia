@@ -845,14 +845,14 @@ const COL         = { NOME:0, SOBRENOME:1, TELEFONE:2, EMAIL:3, EMPRESA:4, CREAT
                       FAT:12, URG:13, QUALIF:14, CAD_STATUS:15, CAD_ETAPA:16, CAD_PROXIMO:17,
                       ABERTO:18, RESPONDIDO:19, DT_RESPOSTA:20 };
 const BACKEND_URL = 'https://matte-ia.onrender.com';
-const API_KEY = 'd19f0790d4e0959b189ff526938be2f8865a2a56521b2de532d997318cee8cf3';
+const BACKEND_SECRET = 'd19f0790d4e0959b189ff526938be2f8865a2a56521b2de532d997318cee8cf3';
 function apiFetch(path, options = {}) {
   const { headers: optHeaders, ...rest } = options;
   return fetch(BACKEND_URL + path, {
     ...rest,
     headers: {
       'Content-Type': 'application/json',
-      'x-api-key': API_KEY,
+      'x-api-key': BACKEND_SECRET,
       ...(optHeaders || {}),
     },
   });
