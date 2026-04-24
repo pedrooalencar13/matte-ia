@@ -18,14 +18,11 @@ async function scoreLead(lead) {
 
   const temSite      = lead.website    ? 'sim' : 'não';
   const temInstagram = lead.instagram  ? 'sim' : 'não';
-  const temLinkedin  = lead.linkedinUrl? 'sim' : 'não';
   const avaliacao    = lead.rating      ? `${lead.rating}` : 'sem avaliação';
   const reviews      = lead.reviewCount ? `${lead.reviewCount}` : '0';
   const categoria    = lead.category   || lead.especialidade || 'não informada';
   const cidade       = lead.city       || lead.cidade         || 'não informada';
   const nome         = lead.name       || lead.nome           || 'não informado';
-  const siteTitle    = lead.siteTitle  || '';
-  const siteContent  = lead.siteContent ? lead.siteContent.slice(0, 800) : 'não disponível';
 
   const prompt = `Você é um especialista em qualificação de leads para gestão de tráfego pago.
 Analise o escritório de advocacia abaixo e retorne APENAS um JSON válido:
@@ -36,10 +33,8 @@ Dados do escritório:
 - Área de atuação: ${categoria}
 - Avaliação Google: ${avaliacao} estrelas (${reviews} avaliações)
 - Cidade: ${cidade}
-- Tem site: ${temSite}${siteTitle ? ' — ' + siteTitle : ''}
+- Tem site: ${temSite}
 - Tem Instagram: ${temInstagram}
-- Tem LinkedIn: ${temLinkedin}
-- Conteúdo do site: ${siteContent}
 
 Critérios de pontuação:
 - Áreas lucrativas (trabalhista, previdenciário, tributário, cível, família): +2 pontos
@@ -49,7 +44,6 @@ Critérios de pontuação:
 - Tem site próprio profissional: +1 ponto
 - Ausência total de redes sociais: -1 ponto (oportunidade de melhoria)
 - Cidade grande (SP, RJ, BH, Curitiba, Porto Alegre): +1 ponto
-- Site menciona marketing digital ou anúncios: -2 pontos (já tem agência)
 
 O motivo deve ser específico, mencionar dados reais do escritório e explicar por que é ou não uma boa oportunidade para gestão de tráfego.`;
 

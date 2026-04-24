@@ -114,8 +114,7 @@ async function scrapePlaces(query, limit = 10) {
   const rawResults = await runPlacesActor(query, limit);
   logger.info(`[APIFY] ${rawResults.length} lugares encontrados para "${query}"`);
 
-  // Mapeamento básico
-  const leads = rawResults.map(place => ({
+  return rawResults.map(place => ({
     name:        place.title        || '',
     email:       extractEmail(place),
     phone:       place.phone        || '',
@@ -126,27 +125,8 @@ async function scrapePlaces(query, limit = 10) {
     rating:      place.totalScore   || 0,
     reviewCount: place.reviewsCount || 0,
     category:    place.categoryName || '',
-    siteContent: '',
-    siteTitle:   '',
-    linkedinUrl: '',
   }));
-
-  // Enriquecimento paralelo via website-content-crawler
-  const withSite = leads.filter(l => l.website);
-  if (withSite.length > 0) {
-    logger.info(`[APIFY] Enriquecendo ${withSite.length} sites em paralelo…`);
-    const results = await Promise.allSettled(
-      withSite.map(l => enrichWithSite(l.website))
-    );
-    results.forEach((res, i) => {
-      if (res.status === 'fulfilled' && res.value) {
-        Object.assign(withSite[i], res.value);
-      }
-    });
-    logger.info('[APIFY] Enriquecimento de sites concluído');
-  }
-
-  return leads;
+  // enrichWithSite() mantida no arquivo mas desabilitada do fluxo principal (lentidão)
 }
 
 // Extrai e-mail dos dados de contato retornados com scrapeContacts:true
