@@ -1,6 +1,5 @@
 require('dotenv').config();
 const express = require('express');
-const cors = require('cors');
 const { logger } = require('./src/utils/logger');
 
 const leadsRouter   = require('./src/routes/leads');
@@ -23,27 +22,26 @@ const app  = express();
 const PORT = process.env.PORT || 3001;
 
 // ── CORS ────────────────────────────────────────────────────────────────────
-const ALLOWED_ORIGINS = [
-  'https://pedrooalencar13.github.io',
-  'http://localhost:3000',
-  'http://localhost:5500',
-  'http://127.0.0.1:5500',
-  process.env.ALLOWED_ORIGIN,
-].filter(Boolean);
+app.use((req, res, next) => {
+  const origin = req.headers.origin;
+  const ALLOWED_ORIGINS = [
+    'https://pedrooalencar13.github.io',
+    'http://localhost:3000',
+    'http://localhost:5500',
+    'http://127.0.0.1:5500',
+    process.env.ALLOWED_ORIGIN,
+  ].filter(Boolean);
 
-app.use(cors({
-  origin: (origin, cb) => {
-    // Permite requests sem origin (ex: curl, Render health checks, cron-job.org)
-    if (!origin || ALLOWED_ORIGINS.includes(origin)) return cb(null, true);
-    cb(new Error(`CORS: origin não permitida — ${origin}`));
-  },
-  methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
-  allowedHeaders: ['Content-Type', 'Authorization', 'x-api-key'],
-  credentials: true,
-}));
+  if (!origin || ALLOWED_ORIGINS.includes(origin)) {
+    res.header('Access-Control-Allow-Origin', origin || '*');
+  }
+  res.header('Access-Control-Allow-Methods', 'GET, POST, PUT, DELETE, OPTIONS');
+  res.header('Access-Control-Allow-Headers', 'Content-Type, x-api-key, Authorization');
+  res.header('Access-Control-Allow-Credentials', 'true');
 
-// Responde preflight OPTIONS para todas as rotas
-app.options('*', cors());
+  if (req.method === 'OPTIONS') return res.sendStatus(200);
+  next();
+});
 
 app.use(express.json({ limit: '10mb' }));
 
