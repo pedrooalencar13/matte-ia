@@ -279,12 +279,13 @@ async function getExistingEmails() {
 }
 
 // ── Sanitização de cidade (descarta valores que parecem datas do CRM) ─────────
-function sanitizeCity(raw) {
-  if (!raw) return '';
-  // Rejeita ISO dates (2024-01-15), timestamps, e strings curtas só com números
-  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return '';
-  if (/^\d+[\/\-]\d+[\/\-]\d+/.test(raw)) return '';
-  return raw;
+function sanitizeCity(val) {
+  if (!val) return '';
+  if (/\d{4}-\d{2}-\d{2}/.test(val)) return '';
+  if (/\w{3}\s+\d{1,2}\s+\d{4}/.test(val)) return '';
+  if (/^\d{2}\/\d{2}\/\d{4}$/.test(val)) return '';
+  if (/^\w{3}\s+\d{2}\s+\d{4}\s+\d{2}:\d{2}/.test(val)) return '';
+  return val;
 }
 
 // ── Formatação de telefone ────────────────────────────────────────────────────
