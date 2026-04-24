@@ -101,7 +101,7 @@ async function pullFromSheets() {
     email:            row[COL.EMAIL]        || '',
     empresa:          row[COL.EMPRESA]      || '',
     created:          row[COL.CREATED]      || '',
-    cidade:           row[COL.ACTIVITY]     || '',
+    cidade:           sanitizeCity(row[COL.ACTIVITY] || ''),
     tags:             row[COL.TAGS]         || '',
     source:           row[COL.SOURCE]       || '',
     medium:           row[COL.MEDIUM]       || '',   // especialidade
@@ -276,6 +276,15 @@ async function getExistingEmails() {
     logger.warn('[SHEETS] Não foi possível ler e-mails existentes:', err.message);
     return [];
   }
+}
+
+// ── Sanitização de cidade (descarta valores que parecem datas do CRM) ─────────
+function sanitizeCity(raw) {
+  if (!raw) return '';
+  // Rejeita ISO dates (2024-01-15), timestamps, e strings curtas só com números
+  if (/^\d{4}-\d{2}-\d{2}/.test(raw)) return '';
+  if (/^\d+[\/\-]\d+[\/\-]\d+/.test(raw)) return '';
+  return raw;
 }
 
 // ── Formatação de telefone ────────────────────────────────────────────────────

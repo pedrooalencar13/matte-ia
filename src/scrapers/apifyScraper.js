@@ -2,9 +2,11 @@ const axios = require('axios');
 const { logger } = require('../utils/logger');
 
 const APIFY_BASE = 'https://api.apify.com/v2';
-const PLACES_ACTOR = 'compass~crawler-google-places';
-const POLL_INTERVAL_MS = 3000;
-const RUN_TIMEOUT_MS = 300000; // 5 minutos
+const PLACES_ACTOR   = 'compass~crawler-google-places';
+const CRAWLER_ACTOR  = 'apify~website-content-crawler';
+const POLL_INTERVAL_MS   = 3000;
+const RUN_TIMEOUT_MS     = 300000; // 5 minutos
+const CRAWLER_TIMEOUT_MS = 30000;  // 30s por site
 
 function getToken() {
   const token = process.env.APIFY_TOKEN;
@@ -28,6 +30,47 @@ async function waitForRun(runId) {
     }
   }
   throw new Error(`Apify run ${runId} excedeu timeout de ${RUN_TIMEOUT_MS / 1000}s`);
+}
+
+// Enriquece um lead via website-content-crawler — retorna null se falhar/timeout
+async function enrichWithSite(website) {
+  try {
+    const res = await axios.post(
+      `${APIFY_BASE}/acts/${CRAWLER_ACTOR}/runs?token=${getToken()}`,
+      { startUrls: [{ url: website }], maxCrawlPages: 2, maxCrawlDepth: 1 },
+      { timeout: 15000 }
+    );
+    const runId   = res.data.data.id;
+    const deadline = Date.now() + CRAWLER_TIMEOUT_MS;
+
+    while (Date.now() < deadline) {
+      await new Promise(r => setTimeout(r, POLL_INTERVAL_MS));
+      const st = await axios.get(
+        `${APIFY_BASE}/actor-runs/${runId}?token=${getToken()}`,
+        { timeout: 10000 }
+      );
+      const { status, defaultDatasetId } = st.data.data;
+      if (status === 'SUCCEEDED') {
+        const items  = await fetchDatasetItems(defaultDatasetId);
+        const first  = items[0] || {};
+        const text   = (first.text || first.markdown || '').slice(0, 1500);
+        const title  = first.metadata?.title       || '';
+        const desc   = first.metadata?.description || '';
+        // LinkedIn: procura nos links da página
+        const allText = JSON.stringify(items);
+        const liMatch = allText.match(/https?:\/\/(?:www\.)?linkedin\.com\/[^"'\s,>]{5,80}/);
+        return {
+          siteContent: text || desc,
+          siteTitle:   title,
+          linkedinUrl: liMatch ? liMatch[0] : '',
+        };
+      }
+      if (['FAILED', 'ABORTED', 'TIMED-OUT'].includes(status)) return null;
+    }
+    return null;
+  } catch (e) {
+    return null;
+  }
 }
 
 // Busca itens de um dataset do Apify
@@ -71,7 +114,8 @@ async function scrapePlaces(query, limit = 10) {
   const rawResults = await runPlacesActor(query, limit);
   logger.info(`[APIFY] ${rawResults.length} lugares encontrados para "${query}"`);
 
-  return rawResults.map(place => ({
+  // Mapeamento básico
+  const leads = rawResults.map(place => ({
     name:        place.title        || '',
     email:       extractEmail(place),
     phone:       place.phone        || '',
@@ -82,7 +126,27 @@ async function scrapePlaces(query, limit = 10) {
     rating:      place.totalScore   || 0,
     reviewCount: place.reviewsCount || 0,
     category:    place.categoryName || '',
+    siteContent: '',
+    siteTitle:   '',
+    linkedinUrl: '',
   }));
+
+  // Enriquecimento paralelo via website-content-crawler
+  const withSite = leads.filter(l => l.website);
+  if (withSite.length > 0) {
+    logger.info(`[APIFY] Enriquecendo ${withSite.length} sites em paralelo…`);
+    const results = await Promise.allSettled(
+      withSite.map(l => enrichWithSite(l.website))
+    );
+    results.forEach((res, i) => {
+      if (res.status === 'fulfilled' && res.value) {
+        Object.assign(withSite[i], res.value);
+      }
+    });
+    logger.info('[APIFY] Enriquecimento de sites concluído');
+  }
+
+  return leads;
 }
 
 // Extrai e-mail dos dados de contato retornados com scrapeContacts:true

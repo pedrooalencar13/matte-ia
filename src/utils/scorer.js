@@ -2,7 +2,7 @@ const axios = require('axios');
 const { logger } = require('./logger');
 
 const CLAUDE_MODEL = 'claude-haiku-4-5-20251001';
-const MAX_TOKENS = 400;
+const MAX_TOKENS = 800;
 
 /**
  * Analisa um lead e retorna score 0-10 + motivo via Claude AI.
@@ -16,17 +16,42 @@ async function scoreLead(lead) {
     return { aiScore: 0, aiScoreReason: 'API key ausente' };
   }
 
-  const temSite      = lead.website  ? 'sim' : 'não';
-  const temInstagram = lead.instagram ? 'sim' : 'não';
+  const temSite      = lead.website    ? 'sim' : 'não';
+  const temInstagram = lead.instagram  ? 'sim' : 'não';
+  const temLinkedin  = lead.linkedinUrl? 'sim' : 'não';
   const avaliacao    = lead.rating      ? `${lead.rating}` : 'sem avaliação';
   const reviews      = lead.reviewCount ? `${lead.reviewCount}` : '0';
   const categoria    = lead.category   || lead.especialidade || 'não informada';
   const cidade       = lead.city       || lead.cidade         || 'não informada';
   const nome         = lead.name       || lead.nome           || 'não informado';
+  const siteTitle    = lead.siteTitle  || '';
+  const siteContent  = lead.siteContent ? lead.siteContent.slice(0, 800) : 'não disponível';
 
-  const prompt = `Você é um qualificador de leads para gestão de tráfego pago. Analise o escritório de advocacia abaixo e retorne APENAS um JSON: { "score": número de 0 a 10, "motivo": string curta }.
-Dados: Nome: ${nome}, Área: ${categoria}, Avaliação Google: ${avaliacao} (${reviews} avaliações), Tem site: ${temSite}, Tem Instagram: ${temInstagram}, Cidade: ${cidade}.
-Critérios: escritórios com mais avaliações, áreas lucrativas (trabalhista, previdenciário, tributário, cível) e presença digital ativa recebem scores maiores.`;
+  const prompt = `Você é um especialista em qualificação de leads para gestão de tráfego pago.
+Analise o escritório de advocacia abaixo e retorne APENAS um JSON válido:
+{ "score": número de 1 a 10, "motivo": "string detalhada de 2-3 frases" }
+
+Dados do escritório:
+- Nome: ${nome}
+- Área de atuação: ${categoria}
+- Avaliação Google: ${avaliacao} estrelas (${reviews} avaliações)
+- Cidade: ${cidade}
+- Tem site: ${temSite}${siteTitle ? ' — ' + siteTitle : ''}
+- Tem Instagram: ${temInstagram}
+- Tem LinkedIn: ${temLinkedin}
+- Conteúdo do site: ${siteContent}
+
+Critérios de pontuação:
+- Áreas lucrativas (trabalhista, previdenciário, tributário, cível, família): +2 pontos
+- Mais de 50 avaliações Google: +1 ponto
+- Mais de 200 avaliações: +2 pontos
+- Nota Google ≥ 4.5: +1 ponto
+- Tem site próprio profissional: +1 ponto
+- Ausência total de redes sociais: -1 ponto (oportunidade de melhoria)
+- Cidade grande (SP, RJ, BH, Curitiba, Porto Alegre): +1 ponto
+- Site menciona marketing digital ou anúncios: -2 pontos (já tem agência)
+
+O motivo deve ser específico, mencionar dados reais do escritório e explicar por que é ou não uma boa oportunidade para gestão de tráfego.`;
 
   try {
     const res = await axios.post(
@@ -53,7 +78,7 @@ Critérios: escritórios com mais avaliações, áreas lucrativas (trabalhista, 
     const parsed = JSON.parse(match[0]);
 
     const score  = Math.min(10, Math.max(0, Number(parsed.score) || 0));
-    const motivo = String(parsed.motivo || '').slice(0, 120);
+    const motivo = String(parsed.motivo || '').slice(0, 400);
     return { aiScore: score, aiScoreReason: motivo };
   } catch (err) {
     logger.warn(`[SCORER] Erro ao pontuar lead "${nome}": ${err.message}`);
