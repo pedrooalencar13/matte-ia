@@ -47,6 +47,16 @@ app.options('*', cors());
 
 app.use(express.json({ limit: '10mb' }));
 
+// ── AUTH MIDDLEWARE ──────────────────────────────────────────────────────────
+const API_SECRET = process.env.API_SECRET;
+app.use((req, res, next) => {
+  if (req.path === '/ping' || req.path === '/health') return next();
+  if (!API_SECRET) return next();
+  const key = req.headers['x-api-key'];
+  if (key !== API_SECRET) return res.status(401).json({ error: 'Unauthorized' });
+  next();
+});
+
 // ── HEALTH ──────────────────────────────────────────────────────────────────
 app.get('/health', (req, res) => {
   res.json({ status: 'ok', timestamp: new Date().toISOString() });

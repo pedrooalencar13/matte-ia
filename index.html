@@ -1,4 +1,4 @@
-<!DOCTYPE html>
+﻿<!DOCTYPE html>
 <html lang="pt-BR">
 <head>
 <meta charset="UTF-8">
@@ -845,6 +845,18 @@ const COL         = { NOME:0, SOBRENOME:1, TELEFONE:2, EMAIL:3, EMPRESA:4, CREAT
                       FAT:12, URG:13, QUALIF:14, CAD_STATUS:15, CAD_ETAPA:16, CAD_PROXIMO:17,
                       ABERTO:18, RESPONDIDO:19, DT_RESPOSTA:20 };
 const BACKEND_URL = 'https://matte-ia.onrender.com';
+const API_KEY = 'd19f0790d4e0959b189ff526938be2f8865a2a56521b2de532d997318cee8cf3';
+function apiFetch(path, options = {}) {
+  const { headers: optHeaders, ...rest } = options;
+  return fetch(BACKEND_URL + path, {
+    ...rest,
+    headers: {
+      'Content-Type': 'application/json',
+      'x-api-key': API_KEY,
+      ...(optHeaders || {}),
+    },
+  });
+}
 
 // ── PERFIL COMPLETO DE PEDRO ARANHA (alimenta toda a IA do sistema) ──
 const PEDRO_PROFILE = `
@@ -1378,7 +1390,7 @@ async function enviarEmail() {
   btn.textContent = '⏳ Enviando...';
 
   try {
-    const r = await fetch(`${BACKEND_URL}/email/send`, {
+    const r = await apiFetch(`/email/send`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ to: c.email, subject: subj, body, name: c.name, source: 'manual_individual' })
@@ -1415,7 +1427,7 @@ function _marcarEnviado(email, nome, assunto) {
     localStorage.setItem('matte_sent_v2', JSON.stringify(map));
   } catch(e) {}
   // Persiste no backend (melhor esforço)
-  fetch(`${BACKEND_URL}/email/mark-sent`, {
+  apiFetch(`/email/mark-sent`, {
     method: 'POST',
     headers: { 'Content-Type': 'application/json' },
     body: JSON.stringify({ email, nome, assunto, source: 'manual_individual' }),
@@ -1436,7 +1448,7 @@ async function _carregarEnviados() {
   } catch(e) {}
   // Complementa com dados do backend
   try {
-    const r = await fetch(`${BACKEND_URL}/email/sent`);
+    const r = await apiFetch(`/email/sent`);
     if (!r.ok) return;
     const list = await r.json();
     const emailSet = new Set(list.map(e => (e.email || '').toLowerCase().trim()));
@@ -1801,7 +1813,7 @@ async function startBulkSend() {
 
     try {
       bulkController = new AbortController();
-      const r = await fetch(`${BACKEND_URL}/email/bulk`, {
+      const r = await apiFetch(`/email/bulk`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         signal: bulkController.signal,
@@ -1861,7 +1873,7 @@ async function _pollBulkLote(jobId, totalLote) {
     const interval = setInterval(async () => {
       if (++tentativas > 40) { clearInterval(interval); resolve({ sent: 0, failed: totalLote }); return; }
       try {
-        const r = await fetch(`${BACKEND_URL}/email/status?jobId=${jobId}`);
+        const r = await apiFetch(`/email/status?jobId=${jobId}`);
         const d = await r.json();
         document.getElementById('bulk-prog-bar').style.width = Math.min(40 + Math.round(((d.sent||0)/totalLote)*55), 95) + '%';
         document.getElementById('bulk-status').textContent   = `Processando... ${d.sent||0}/${totalLote}`;
@@ -1997,7 +2009,7 @@ async function submitCapture() {
   document.getElementById('capt-btn-cancelar').disabled = true;
 
   try {
-    const r = await fetch(`${BACKEND_URL}/scraper/start`, {
+    const r = await apiFetch(`/scraper/start`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ terms, cities, limit: limite }),
@@ -2049,9 +2061,9 @@ async function stopCapture() {
   btnParar.textContent = '⏳ Parando...';
 
   try {
-    await fetch(`${BACKEND_URL}/scraper/stop`, { method: 'POST' });
+    await apiFetch(`/scraper/stop`, { method: 'POST' });
     toast('⬆ Sincronizando leads com a planilha...');
-    const r = await fetch(`${BACKEND_URL}/sheets/push`, { method: 'POST' });
+    const r = await apiFetch(`/sheets/push`, { method: 'POST' });
     const d = await r.json().catch(() => ({}));
     toast(`✓ Captação parada. ${d.pushed || 0} novos leads enviados à planilha.`);
     await loadSheet(true);
@@ -2069,7 +2081,7 @@ async function stopCapture() {
 
 async function checkCaptureStatus() {
   try {
-    const r = await fetch(`${BACKEND_URL}/scraper/status`);
+    const r = await apiFetch(`/scraper/status`);
     const d = await r.json();
     if (d.running) {
       document.getElementById('hdr-count').textContent =
@@ -2078,7 +2090,7 @@ async function checkCaptureStatus() {
     } else {
       if ((d.valid || 0) > 0) {
         toast(`✓ ${d.valid} leads captados! Sincronizando...`);
-        try { await fetch(`${BACKEND_URL}/sheets/push`, { method: 'POST' }); } catch(e) {}
+        try { await apiFetch(`/sheets/push`, { method: 'POST' }); } catch(e) {}
         await loadSheet(true);
       } else {
         toast('Captação finalizada. Nenhum lead novo encontrado.');
@@ -2097,7 +2109,7 @@ async function checkCaptureStatus() {
 async function pushLeadsToSheet() {
   try {
     toast('⏳ Enviando leads para a planilha...');
-    const r = await fetch(`${BACKEND_URL}/sheets/push`, {method:'POST'});
+    const r = await apiFetch(`/sheets/push`, {method:'POST'});
     const d = await r.json();
     if (d.pushed === 0) { toast('Nenhum lead novo para enviar.'); return; }
     toast(`✓ ${d.pushed} leads enviados para a planilha!`);
@@ -2132,9 +2144,9 @@ async function loadDashboard(showLoading=true) {
   // ── Buscar dados em paralelo ──────────────────────────────────────
   let stats = {}, cadStatus = {}, sheetData = { contacts:[], meta:{} };
   const [statsRes, cadRes, sheetRes] = await Promise.allSettled([
-    fetch(`${BACKEND_URL}/track/stats`).then(r => r.json()),
-    fetch(`${BACKEND_URL}/cadence/status`).then(r => r.json()),
-    fetch(`${BACKEND_URL}/sheets/pull`).then(r => r.json()),
+    apiFetch(`/track/stats`).then(r => r.json()),
+    apiFetch(`/cadence/status`).then(r => r.json()),
+    apiFetch(`/sheets/pull`).then(r => r.json()),
   ]);
   if (statsRes.status === 'fulfilled') stats     = statsRes.value;
   if (cadRes.status  === 'fulfilled') cadStatus  = cadRes.value;
@@ -2371,7 +2383,7 @@ async function loadDashboard(showLoading=true) {
 
 async function _checkDashHealth() {
   try {
-    const r = await fetch(`${BACKEND_URL}/health`,{signal:AbortSignal.timeout(4000)});
+    const r = await apiFetch(`/health`,{signal:AbortSignal.timeout(4000)});
     const ok = r.ok;
     document.getElementById('hd-backend').style.background = ok ? '#4ade80' : '#f5734a';
     document.getElementById('hd-backend').style.animation  = ok ? 'none' : 'pulse 2s infinite';
@@ -2381,7 +2393,7 @@ async function _checkDashHealth() {
     document.getElementById('hd-backend-txt').textContent  = 'Backend offline';
   }
   try {
-    const r = await fetch(`${BACKEND_URL}/email/test`,{signal:AbortSignal.timeout(4000)});
+    const r = await apiFetch(`/email/test`,{signal:AbortSignal.timeout(4000)});
     const d = await r.json();
     const ok = d.gmail_configured && d.token_valid;
     document.getElementById('hd-gmail').style.background = ok ? '#4ade80' : '#f5734a';
@@ -2502,7 +2514,7 @@ function closeTasks() {
 async function loadTasks() {
   const body = document.getElementById('tasks-body');
   try {
-    const r = await fetch(`${BACKEND_URL}/tasks`);
+    const r = await apiFetch(`/tasks`);
     const d = await r.json();
     const tasks = d.tasks || [];
     const pending   = tasks.filter(t=>t.status!=='completed');
@@ -2570,7 +2582,7 @@ async function saveTask() {
   const prio  = parseInt(document.getElementById('task-prio').value);
   if (!title) { toast('Informe o titulo da tarefa'); return; }
   try {
-    await fetch(`${BACKEND_URL}/tasks`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,description:desc,priority:prio})});
+    await apiFetch(`/tasks`,{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify({title,description:desc,priority:prio})});
     toast('Tarefa criada!');
     document.getElementById('task-form').style.display='none';
     document.getElementById('task-title').value='';
@@ -2581,7 +2593,7 @@ async function saveTask() {
 
 async function completeTask(id) {
   try {
-    await fetch(`${BACKEND_URL}/tasks/${id}/complete`,{method:'POST'});
+    await apiFetch(`/tasks/${id}/complete`,{method:'POST'});
     toast('Tarefa concluida!');
     await loadTasks();
   } catch(e) { toast('Erro: '+e.message); }
@@ -2590,7 +2602,7 @@ async function completeTask(id) {
 async function deleteTask(id) {
   if (!confirm('Remover esta tarefa?')) return;
   try {
-    await fetch(`${BACKEND_URL}/tasks/${id}`,{method:'DELETE'});
+    await apiFetch(`/tasks/${id}`,{method:'DELETE'});
     await loadTasks();
   } catch(e) { toast('Erro: '+e.message); }
 }
@@ -2617,7 +2629,7 @@ function closeInbox() {
 
 async function loadInbox(silent) {
   try {
-    const r = await fetch(`${BACKEND_URL}/replies`);
+    const r = await apiFetch(`/replies`);
     if (!r.ok) throw new Error('Backend retornou ' + r.status);
     const d    = await r.json();
     _inboxData = d.replies || [];
@@ -2875,7 +2887,7 @@ function markAnsweredModal() {
 
 async function markRead(id, silent) {
   try {
-    await fetch(`${BACKEND_URL}/replies/${id}/read`, { method: 'POST' });
+    await apiFetch(`/replies/${id}/read`, { method: 'POST' });
     const r = _inboxData.find(x => x.id === id);
     if (r) r.lido = true;
     if (!silent) { renderInbox(); loadInbox(true); }
@@ -2884,7 +2896,7 @@ async function markRead(id, silent) {
 
 async function markAnswered(id) {
   try {
-    await fetch(`${BACKEND_URL}/replies/${id}/answered`, { method: 'POST' });
+    await apiFetch(`/replies/${id}/answered`, { method: 'POST' });
     const r = _inboxData.find(x => x.id === id);
     if (r) { r.respondido = true; r.lido = true; }
     toast('✓ Marcado como respondido');
@@ -2897,7 +2909,7 @@ async function regenerarFollowUp() {
   const btn = document.getElementById('rm-regen');
   if (btn) { btn.disabled = true; btn.textContent = '⟳ Gerando...'; }
   try {
-    const r = await fetch(`${BACKEND_URL}/replies/${_currentReply.id}/regenerate`, { method: 'POST' });
+    const r = await apiFetch(`/replies/${_currentReply.id}/regenerate`, { method: 'POST' });
     const d = await r.json();
     if (d.success) {
       _currentReply.followUpGerado  = true;
@@ -2916,7 +2928,7 @@ async function inboxCheckNow() {
   const btn = document.getElementById('inbox-check-btn');
   if (btn) { btn.disabled = true; btn.textContent = '⟳ Verificando...'; }
   try {
-    const r = await fetch(`${BACKEND_URL}/replies/check`, { method: 'POST' });
+    const r = await apiFetch(`/replies/check`, { method: 'POST' });
     const d = await r.json();
     toast(d.newReplies > 0
       ? `📬 ${d.newReplies} nova(s) resposta(s)!`
@@ -3135,8 +3147,8 @@ function _dot(ok) {
 async function updateSystemStatus() {
   try {
     const [ping, email] = await Promise.all([
-      fetch(BACKEND_URL + '/ping', {signal: AbortSignal.timeout(4000)}).then(r => r.json()).catch(() => null),
-      fetch(BACKEND_URL + '/email/test', {signal: AbortSignal.timeout(4000)}).then(r => r.json()).catch(() => null),
+      apiFetch('/ping', {signal: AbortSignal.timeout(4000)}).then(r => r.json()).catch(() => null),
+      apiFetch('/email/test', {signal: AbortSignal.timeout(4000)}).then(r => r.json()).catch(() => null),
     ]);
     const backendOk = ping?.status === 'ok';
     const gmailOk   = email?.gmail_configured === true && email?.token_valid === true;
@@ -3252,7 +3264,7 @@ async function submitCaptureInline() {
   if (resEl) resEl.style.display = 'none';
 
   try {
-    await fetch(BACKEND_URL + '/scraper/start', {
+    await apiFetch('/scraper/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ terms: _ilTerms, cities: _ilCities, limit }),
@@ -3276,7 +3288,7 @@ function _startInlinePolling() {
 
 async function _pollCaptureStatus() {
   try {
-    const data   = await fetch(BACKEND_URL + '/scraper/status').then(r => r.json());
+    const data   = await apiFetch('/scraper/status').then(r => r.json());
     const barEl   = document.getElementById('capt-progress-bar');
     const logEl   = document.getElementById('capt-status-log');
     const btn     = document.getElementById('capt-submit-inline');
@@ -3356,7 +3368,7 @@ async function loadClients() {
   if (!tbody) return;
   tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#888;padding:24px;">Carregando...</td></tr>';
   try {
-    const res = await fetch(BACKEND_URL + '/sheets/pull');
+    const res = await apiFetch('/sheets/pull');
     const data = await res.json();
     _allClients = (data.contacts || data || []).map(c => ({
       name:        (c.nome        || '').trim(),
@@ -3490,7 +3502,7 @@ async function loadSectionDashboard() {
   if (tbody) tbody.innerHTML = '<tr><td colspan="5" style="text-align:center;color:#888;padding:20px;">Carregando...</td></tr>';
 
   try {
-    const res  = await fetch(BACKEND_URL + '/sheets/pull');
+    const res  = await apiFetch('/sheets/pull');
     const data = await res.json();
     const list = (data.contacts || data || []).map(c => ({
       name:       (c.nome      || '').trim(),
@@ -3624,7 +3636,7 @@ async function updateSidebarBadges() {
       total  = _allClients.length;
       ativas = _allClients.filter(c => c.cadence === 'ativa').length;
     } else {
-      const res  = await fetch(BACKEND_URL + '/sheets/pull');
+      const res  = await apiFetch('/sheets/pull');
       const data = await res.json();
       const list = data.contacts || data || [];
       total  = list.length;
@@ -3641,7 +3653,7 @@ updateSidebarBadges();
 // ── PARAR CAPTAÇÃO ────────────────────────────────────────────────────
 async function stopCaptureInline() {
   try {
-    await fetch(BACKEND_URL + '/scraper/stop', { method: 'POST' });
+    await apiFetch('/scraper/stop', { method: 'POST' });
     const stopBtn = document.getElementById('capt-stop-btn');
     const btn     = document.getElementById('capt-submit-inline');
     const logEl   = document.getElementById('capt-status-log');
