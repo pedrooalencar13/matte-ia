@@ -308,6 +308,34 @@ textarea.cta:focus{border-color:var(--acc)}
 .capt-result-row{display:flex;justify-content:space-between;font-size:12px;color:#7a9a7a;margin-bottom:5px}
 .capt-result-row:last-child{margin-bottom:0}
 .capt-result-row span:last-child{color:#e8ede9;font-weight:600}
+/* ── SEÇÃO CLIENTES ─────────────────────────────────────────────────*/
+.clients-filters{display:flex;gap:10px;align-items:center;margin-bottom:16px;flex-wrap:wrap}
+.clients-search{flex:1;min-width:200px;padding:9px 14px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;color:#fff;font-size:14px;outline:none}
+.clients-search:focus{border-color:#00c853}
+.filter-group{display:flex;gap:6px}
+.filter-btn{padding:7px 12px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;color:#888;font-size:12px;cursor:pointer}
+.filter-btn.active{border-color:#00c853;color:#00c853}
+.btn-refresh{padding:7px 14px;background:transparent;border:1px solid #2a2a2a;border-radius:6px;color:#888;font-size:13px;cursor:pointer}
+.btn-refresh:hover{color:#fff;border-color:#444}
+.table-wrap{overflow-x:auto;border-radius:12px;border:1px solid #2a2a2a}
+.clients-table{width:100%;border-collapse:collapse;font-size:13px}
+.clients-table thead{background:#1a1a1a}
+.clients-table th{padding:12px 14px;text-align:left;color:#888;font-weight:500;font-size:12px;text-transform:uppercase;letter-spacing:.04em;border-bottom:1px solid #2a2a2a;cursor:pointer;white-space:nowrap}
+.clients-table td{padding:11px 14px;border-bottom:1px solid #1e1e1e;color:#ccc;vertical-align:middle}
+.clients-table tr:hover td{background:#1a1a1a}
+.clients-table tr:last-child td{border-bottom:none}
+.score-high{background:#0d2e1a;color:#00c853;border:1px solid #00c853}
+.score-mid{background:#2e2200;color:#f0a500;border:1px solid #f0a500}
+.score-low{background:#2e0d0d;color:#ff4444;border:1px solid #ff4444}
+.score-none{background:#1a1a1a;color:#555;border:1px solid #333}
+.ig-link{color:#378ADD;text-decoration:none;font-size:12px}
+.ig-link:hover{text-decoration:underline}
+.btn-email{padding:4px 10px;background:transparent;border:1px solid #2a2a2a;border-radius:6px;color:#888;font-size:12px;cursor:pointer}
+.btn-email:hover{border-color:#00c853;color:#00c853}
+.pagination{display:flex;gap:6px;margin-top:14px;justify-content:center;flex-wrap:wrap}
+.page-btn{padding:6px 12px;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:6px;color:#888;font-size:13px;cursor:pointer}
+.page-btn.active{border-color:#00c853;color:#00c853}
+.page-btn:hover{color:#fff}
 </style>
 </head>
 <body>
@@ -375,7 +403,43 @@ textarea.cta:focus{border-color:var(--acc)}
       </div>
     </div>
   </section>
-  <section id="section-clientes" class="section"></section>
+  <section id="section-clientes" class="section">
+    <div class="page-header">
+      <h1 class="page-title">Clientes</h1>
+      <p class="page-sub">Todos os clientes captados e qualificados</p>
+    </div>
+
+    <div class="clients-filters">
+      <input id="clients-search" type="text" placeholder="🔍 Buscar por nome, email ou cidade..."
+        class="clients-search" oninput="filterClients()">
+      <div class="filter-group">
+        <button class="filter-btn active" onclick="setScoreFilter('all', this)">Todos</button>
+        <button class="filter-btn" onclick="setScoreFilter('high', this)">🟢 Alto ≥7</button>
+        <button class="filter-btn" onclick="setScoreFilter('mid', this)">🟡 Médio 5-6</button>
+        <button class="filter-btn" onclick="setScoreFilter('low', this)">🔴 Baixo ≤4</button>
+      </div>
+      <button class="btn-refresh" onclick="loadClients()">↻ Atualizar</button>
+    </div>
+
+    <div class="table-wrap">
+      <table class="clients-table">
+        <thead>
+          <tr>
+            <th onclick="sortClients('name')">Nome ↕</th>
+            <th>Email</th>
+            <th>Cidade</th>
+            <th onclick="sortClients('score')">Score ↕</th>
+            <th>Status</th>
+            <th>Instagram</th>
+            <th>Ação</th>
+          </tr>
+        </thead>
+        <tbody id="clients-tbody"></tbody>
+      </table>
+    </div>
+
+    <div class="pagination" id="clients-pagination"></div>
+  </section>
   <section id="section-disparos" class="section active">
 
 <header>
@@ -2946,6 +3010,7 @@ function showSection(name) {
   const btn = document.querySelector(`.nav-item[onclick="showSection('${name}')"]`);
   if (btn) btn.classList.add('active');
   if (name === 'captacao') initCaptacaoSection();
+  if (name === 'clientes') loadClients();
 }
 
 // ── STATUS DO SISTEMA (SIDEBAR) ────────────────────────────────────
@@ -3100,6 +3165,128 @@ async function _pollCaptureStatus() {
       }
     }
   } catch(e) { /* silencioso */ }
+}
+
+// ── SEÇÃO CLIENTES ────────────────────────────────────────────────────
+let _allClients = [];
+let _filteredClients = [];
+let _clientsPage = 1;
+const _clientsPerPage = 50;
+let _scoreFilter = 'all';
+let _sortField = 'score';
+let _sortDir = -1;
+
+async function loadClients() {
+  const tbody = document.getElementById('clients-tbody');
+  if (!tbody) return;
+  tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#888;padding:24px;">Carregando...</td></tr>';
+  try {
+    const res = await fetch(BACKEND_URL + '/sheets/pull');
+    const data = await res.json();
+    _allClients = (data.contacts || data || []).map(c => ({
+      name:        c['First Name']    || c.nome        || c.name        || '',
+      lastName:    c['Last Name']     || c.sobrenome   || '',
+      email:       c['Email']         || c.email       || '',
+      phone:       c['Phone']         || c.telefone    || c.phone       || '',
+      city:        c['Last Activity'] || c.cidade      || c.city        || '',
+      score:       parseFloat(c['Score IA'] || c.scoreIa || c.aiScore  || 0) || 0,
+      scoreReason: c['Motivo Score']  || c.motivoScore || c.aiScoreReason || '',
+      status:      c['QUALIFICADO?']  || c.qualificacao|| c.status      || '',
+      instagram:   c['Instagram']     || c.instagram   || '',
+      cadence:     c['cadencia_status']|| c.cadenciaStatus || '',
+    }));
+    filterClients();
+  } catch(e) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#ff4444;padding:24px;">Erro ao carregar clientes</td></tr>';
+  }
+}
+
+function setScoreFilter(f, btn) {
+  _scoreFilter = f;
+  document.querySelectorAll('.filter-btn').forEach(b => b.classList.remove('active'));
+  btn.classList.add('active');
+  _clientsPage = 1;
+  filterClients();
+}
+
+function filterClients() {
+  const q = (document.getElementById('clients-search')?.value || '').toLowerCase();
+  _filteredClients = _allClients.filter(c => {
+    const matchSearch = !q ||
+      c.name.toLowerCase().includes(q) ||
+      c.email.toLowerCase().includes(q) ||
+      c.city.toLowerCase().includes(q);
+    const matchScore =
+      _scoreFilter === 'all' ||
+      (_scoreFilter === 'high' && c.score >= 7) ||
+      (_scoreFilter === 'mid'  && c.score >= 5 && c.score < 7) ||
+      (_scoreFilter === 'low'  && c.score > 0  && c.score < 5);
+    return matchSearch && matchScore;
+  });
+  sortClientsArr();
+  renderClients();
+}
+
+function sortClients(field) {
+  if (_sortField === field) _sortDir *= -1;
+  else { _sortField = field; _sortDir = -1; }
+  sortClientsArr();
+  renderClients();
+}
+
+function sortClientsArr() {
+  _filteredClients.sort((a, b) => {
+    if (_sortField === 'score') return (b.score - a.score) * (_sortDir === -1 ? 1 : -1);
+    return a.name.localeCompare(b.name) * _sortDir;
+  });
+}
+
+function renderClients() {
+  const tbody = document.getElementById('clients-tbody');
+  if (!tbody) return;
+  const start = (_clientsPage - 1) * _clientsPerPage;
+  const page  = _filteredClients.slice(start, start + _clientsPerPage);
+  if (!page.length) {
+    tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:#888;padding:24px;">Nenhum cliente encontrado</td></tr>';
+    document.getElementById('clients-pagination').innerHTML = '';
+    return;
+  }
+  tbody.innerHTML = page.map(c => {
+    const scoreClass = c.score >= 7 ? 'score-high' : c.score >= 5 ? 'score-mid' : c.score > 0 ? 'score-low' : 'score-none';
+    const scoreLabel = c.score > 0 ? c.score : '—';
+    const igLink     = c.instagram
+      ? '<a href="' + c.instagram + '" target="_blank" class="ig-link">↗ IG</a>'
+      : '<span style="color:#444">—</span>';
+    const tooltip    = c.scoreReason ? 'title="' + c.scoreReason.replace(/"/g, "'") + '"' : '';
+    const fullName   = (c.name + ' ' + c.lastName).trim();
+    return '<tr>' +
+      '<td>' + (fullName || '—') + '</td>' +
+      '<td style="color:#888">' + (c.email || '—') + '</td>' +
+      '<td style="color:#888">' + (c.city  || '—') + '</td>' +
+      '<td><span class="score-badge ' + scoreClass + '" ' + tooltip + '>' + scoreLabel + '</span></td>' +
+      '<td style="color:#888;font-size:12px">' + (c.status || '—') + '</td>' +
+      '<td>' + igLink + '</td>' +
+      '<td><button class="btn-email" onclick="showSection(\'disparos\')">✉ Email</button></td>' +
+      '</tr>';
+  }).join('');
+  renderPagination();
+}
+
+function renderPagination() {
+  const total = Math.ceil(_filteredClients.length / _clientsPerPage);
+  const pag   = document.getElementById('clients-pagination');
+  if (!pag) return;
+  if (total <= 1) { pag.innerHTML = ''; return; }
+  pag.innerHTML = Array.from({length: total}, (_, i) =>
+    '<button class="page-btn ' + (i + 1 === _clientsPage ? 'active' : '') +
+    '" onclick="_goPage(' + (i + 1) + ')">' + (i + 1) + '</button>'
+  ).join('');
+}
+
+function _goPage(p) {
+  _clientsPage = p;
+  renderClients();
+  document.getElementById('section-clientes').scrollTop = 0;
 }
 </script>
 </body>
