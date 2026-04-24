@@ -1,6 +1,7 @@
 const cron = require('node-cron');
 const { runScraper } = require('../services/scraper');
 const { pushToSheets } = require('../services/sheetsClient');
+const { runEnrichmentBatch } = require('../services/enrichmentService');
 const { logger } = require('../utils/logger');
 
 const CRON_SCHEDULE = process.env.SCRAPER_CRON || '0 */6 * * *';
@@ -19,6 +20,8 @@ cron.schedule(cron.validate(CRON_SCHEDULE) ? CRON_SCHEDULE : '0 */6 * * *', asyn
       logger.info(`[CRON] ${newLeads.length} leads novos — enviando para a planilha...`);
       const result = await pushToSheets(newLeads);
       logger.success(`[CRON] ${result.pushed} leads enviados para a planilha`);
+      // Enriquecimento profundo automático 2s após push ao Sheets
+      setTimeout(() => runEnrichmentBatch(result.pushed), 2000);
     } else {
       logger.info('[CRON] Nenhum lead novo nesta rodada');
     }

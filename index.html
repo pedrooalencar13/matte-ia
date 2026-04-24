@@ -329,6 +329,9 @@ textarea.cta:focus{border-color:var(--acc)}
 .score-low{background:#2e0d0d;color:#ff4444;border:1px solid #ff4444}
 .score-none{background:#1a1a1a;color:#555;border:1px solid #333}
 .ig-link{color:#378ADD;text-decoration:none;font-size:12px}
+.tooltip-wrap{position:relative;display:inline-block}
+.tooltip-box{display:none;position:fixed;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:10px 14px;font-size:12px;color:#ccc;line-height:1.6;max-width:340px;z-index:9999;pointer-events:none;box-shadow:0 4px 20px rgba(0,0,0,0.5);white-space:normal}
+.tooltip-wrap:hover .tooltip-box{display:block}
 .ig-link:hover{text-decoration:underline}
 .btn-email{padding:4px 10px;background:transparent;border:1px solid #2a2a2a;border-radius:6px;color:#888;font-size:12px;cursor:pointer}
 .btn-email:hover{border-color:#00c853;color:#00c853}
@@ -423,8 +426,11 @@ textarea.cta:focus{border-color:var(--acc)}
           <select id="enrich-limit" style="padding:8px 12px;background:#242424;border:1px solid #2a2a2a;border-radius:8px;color:#fff;font-size:13px;">
             <option value="20">20 leads</option>
             <option value="50">50 leads</option>
+            <option value="100">100 leads</option>
+            <option value="200">200 leads</option>
           </select>
           <button onclick="startEnrichment()" id="enrich-btn" style="padding:8px 16px;background:#378ADD;border:none;border-radius:8px;color:#fff;font-size:13px;cursor:pointer;">⚡ Iniciar análise</button>
+          <button onclick="startRescore()" id="rescore-btn" style="padding:8px 16px;background:transparent;border:1px solid #378ADD;border-radius:8px;color:#378ADD;font-size:13px;cursor:pointer;">↻ Reanalisar existentes</button>
         </div>
       </div>
       <div id="enrich-status" style="display:none;margin-top:12px;font-size:13px;color:#888;"></div>
@@ -3488,11 +3494,15 @@ function renderClients() {
     const captDate   = c.created
       ? new Date(c.created).toLocaleDateString('pt-BR', {day:'2-digit', month:'2-digit', year:'numeric'})
       : '—';
-    const tooltip    = c.scoreReason ? 'title="' + c.scoreReason.replace(/"/g, "'") + '"' : '';
     const fullName   = (c.name + ' ' + c.lastName).trim();
     const siteLink   = c.site
       ? '<a href="' + c.site + '" target="_blank" class="ig-link">↗ Site</a>'
       : '<span style="color:#444">—</span>';
+    const scoreTip   = c.scoreReason || 'Sem análise';
+    const scoreCell  = '<span class="tooltip-wrap">' +
+      '<span class="score-badge ' + scoreClass + '">' + scoreLabel + '</span>' +
+      '<div class="tooltip-box">' + scoreTip.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>' +
+      '</span>';
     return '<tr>' +
       '<td>' + (fullName || '—') + '</td>' +
       '<td style="color:#888">' + (c.email || '—') + '</td>' +
@@ -3500,7 +3510,7 @@ function renderClients() {
       '<td style="color:#888;font-size:12px">' + (c.telefoneFixo    || '—') + '</td>' +
       '<td>' + siteLink + '</td>' +
       '<td style="color:#888">' + (c.city  || '—') + '</td>' +
-      '<td><span class="score-badge ' + scoreClass + '" ' + tooltip + '>' + scoreLabel + '</span></td>' +
+      '<td>' + scoreCell + '</td>' +
       '<td style="color:#888;font-size:12px">' + (c.status || '—') + '</td>' +
       '<td style="color:#888;font-size:12px">' + captDate + '</td>' +
       '<td><button class="btn-email" onclick="selectClientForEmail(\'' + (c.email||'').replace(/'/g,"\\'") + '\',\'' + (c.name||'').replace(/'/g,"\\'") + '\')">✉ Email</button></td>' +
@@ -3572,6 +3582,40 @@ async function startEnrichment() {
     status.textContent  = 'Erro: ' + e.message;
     btn.disabled        = false;
     btn.textContent     = '⚡ Iniciar análise';
+  }
+}
+
+async function startRescore() {
+  const btn    = document.getElementById('rescore-btn');
+  const status = document.getElementById('enrich-status');
+  btn.disabled    = true;
+  btn.textContent = 'Reanalisant...';
+  status.style.display = 'block';
+  status.textContent   = 'Iniciando reanálise...';
+  try {
+    await apiFetch('/enrichment/rescore', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ limit: 50 }),
+    });
+    const poll = setInterval(async () => {
+      try {
+        const r = await apiFetch('/enrichment/status').then(x => x.json());
+        if (r.running) {
+          status.textContent = 'Reanalisant ' + r.processed + '/' + r.total + (r.current ? ': ' + r.current : '');
+        } else {
+          clearInterval(poll);
+          status.textContent  = '✓ Reanálise concluída — ' + r.processed + ' leads atualizados';
+          btn.disabled        = false;
+          btn.textContent     = '↻ Reanalisar existentes';
+          loadSectionDashboard();
+        }
+      } catch {}
+    }, 3000);
+  } catch(e) {
+    status.textContent  = 'Erro: ' + e.message;
+    btn.disabled        = false;
+    btn.textContent     = '↻ Reanalisar existentes';
   }
 }
 
@@ -3751,6 +3795,13 @@ async function stopCaptureInline() {
     console.error('Erro ao parar captação:', e);
   }
 }
+
+document.addEventListener('mousemove', (e) => {
+  document.querySelectorAll('.tooltip-box').forEach(box => {
+    box.style.left = (e.clientX + 12) + 'px';
+    box.style.top  = (e.clientY + 12) + 'px';
+  });
+});
 </script>
 </body>
 </html>

@@ -6,6 +6,7 @@ const { isValidEmail } = require('../utils/validator');
 const { getExistingEmails } = require('./sheetsClient');
 const { logger } = require('../utils/logger');
 const { readLeads, writeLeads } = require('../routes/leads');
+const { runEnrichmentBatch } = require('./enrichmentService');
 
 const DEFAULT_SEARCH_TERMS = [
   'advogado trabalhista',
@@ -199,6 +200,9 @@ async function runScraper(options = {}) {
     const allLeads = [...localLeads, ...leadsParaSalvar];
     writeLeads(allLeads);
     logger.success(`[SCRAPER] ${leadsParaSalvar.length} novos leads salvos no cache local`);
+
+    // Inicia enriquecimento profundo em background após 2s
+    setTimeout(() => runEnrichmentBatch(leadsParaSalvar.length), 2000);
   }
 
   jobStatus.running  = false;

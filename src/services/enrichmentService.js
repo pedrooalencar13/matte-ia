@@ -231,4 +231,48 @@ async function runEnrichmentBatch(limit = 20) {
   }
 }
 
-module.exports = { runEnrichmentBatch, getEnrichmentStatus };
+async function runRescore(limit = 50) {
+  if (_state.running) {
+    logger.warn('[ENRICH] Batch já em execução — ignorando rescore');
+    return { processed: 0, succeeded: 0, failed: 0 };
+  }
+
+  _state = { running: true, processed: 0, total: 0, current: '' };
+
+  try {
+    const all   = await pullFromSheets();
+    // Processa leads QUE JÁ TÊM score (diferente do runEnrichmentBatch)
+    const batch = all.filter(c => c.scoreIa && Number(c.scoreIa) > 0)
+                     .slice(0, Math.min(limit, 100));
+    _state.total = batch.length;
+    logger.info(`[ENRICH] Rescore: ${batch.length} leads com score existente para reanalisar`);
+
+    let succeeded = 0, failed = 0;
+    const BATCH_SIZE = 5;
+
+    for (let i = 0; i < batch.length; i += BATCH_SIZE) {
+      const chunk   = batch.slice(i, i + BATCH_SIZE);
+      const results = await Promise.allSettled(chunk.map(lead => enrichLead(lead)));
+      results.forEach(r => {
+        _state.processed++;
+        if (r.status === 'fulfilled') succeeded++;
+        else {
+          failed++;
+          logger.warn('[ENRICH] Falha no rescore:', r.reason?.message);
+        }
+      });
+      logger.info(`[ENRICH] Rescore: ${_state.processed}/${_state.total} processados`);
+      if (i + BATCH_SIZE < batch.length) await new Promise(r => setTimeout(r, 2000));
+    }
+
+    return { processed: _state.processed, succeeded, failed };
+  } catch (err) {
+    logger.error('[ENRICH] Erro no rescore:', err.message);
+    return { processed: _state.processed, succeeded: 0, failed: _state.total };
+  } finally {
+    _state.running = false;
+    _state.current = '';
+  }
+}
+
+module.exports = { runEnrichmentBatch, runRescore, getEnrichmentStatus };
