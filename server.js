@@ -22,15 +22,16 @@ const app  = express();
 const PORT = process.env.PORT || 3001;
 
 // ── CORS ────────────────────────────────────────────────────────────────────
+const ALLOWED_ORIGIN = process.env.ALLOWED_ORIGIN || 'https://pedrooalencar13.github.io';
+const ALLOWED_ORIGINS = [
+  ALLOWED_ORIGIN,
+  'http://localhost:3000',
+  'http://localhost:5500',
+  'http://127.0.0.1:5500',
+].filter(Boolean);
+
 app.use((req, res, next) => {
   const origin = req.headers.origin;
-  const ALLOWED_ORIGINS = [
-    'https://pedrooalencar13.github.io',
-    'http://localhost:3000',
-    'http://localhost:5500',
-    'http://127.0.0.1:5500',
-    process.env.ALLOWED_ORIGIN,
-  ].filter(Boolean);
 
   if (!origin || ALLOWED_ORIGINS.includes(origin)) {
     res.header('Access-Control-Allow-Origin', origin || '*');
@@ -89,7 +90,7 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   logger.info(`[SERVER] Matte Backend rodando na porta ${PORT}`);
-  logger.info(`[SERVER] Origins permitidas: ${ALLOWED_ORIGINS.join(', ')}`);
+  logger.info(`[SERVER] Origins permitidas: ${ALLOWED_ORIGINS.join(', ')} + localhost`);
 
   // ── Verificação de credenciais na inicialização ──────────────────
   console.log('\n═══ VERIFICAÇÃO DE CREDENCIAIS MATTE ═══');
