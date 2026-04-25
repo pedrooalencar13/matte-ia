@@ -707,11 +707,10 @@ textarea.cta:focus{border-color:var(--acc)}
       <div class="msg claude">Olá! Selecione um contato e clique em ⚡ para gerar o e-mail automaticamente. Posso ajustar o tom, corrigir erros ou reescrever qualquer parte. 🚀</div>
     </div>
     <div class="chat-qa" id="chat-qa">
-      <div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:1px;width:100%;margin-bottom:2px">Lead atual:</div>
+      <div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:1px;width:100%;margin-bottom:2px">Ações rápidas:</div>
       <button class="qb" onclick="quickAsk('Deixe o e-mail mais direto e no estilo Pedro — sem enrolação')">+ direto</button>
       <button class="qb" onclick="quickAsk('Adicione mais urgência, no estilo provocativo do Pedro')">+ urgência</button>
       <button class="qb" onclick="quickAsk('Deixe o e-mail mais curto — máximo 3 parágrafos')">+ curto</button>
-      <button class="qb" onclick="quickAsk('Revise erros de português mantendo o tom do Pedro')">revisar PT</button>
       <button class="qb" onclick="quickAsk('Reescreva focando em marcar uma reunião ou call')">marcar call</button>
       <div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:1px;width:100%;margin-top:6px;margin-bottom:2px">Em massa:</div>
       <button class="qb" onclick="quickAsk('Adicione a apresentação do Pedro antes do corpo do e-mail de todos os leads')">+ apresentação p/ todos</button>
@@ -1049,6 +1048,39 @@ function isAdvogado(c) {
 // ── STATE ─────────────────────────────────────────────────────────
 let CONTACTS = [];
 const S = { sel:null, approved:new Set(), sent:new Set(), skipped:new Set(), emails:{}, subjects:{}, history:[] };
+
+// ── PREFERÊNCIAS DO ASSISTENTE ─────────────────────────────────────
+function loadAssistantPreferences() {
+  try { return JSON.parse(localStorage.getItem('matte_assistant_prefs') || '[]'); }
+  catch { return []; }
+}
+function saveAssistantPreference(text) {
+  const prefs = loadAssistantPreferences();
+  if (prefs.some(p => p.text === text)) return;
+  prefs.push({ id: Date.now(), text, savedAt: new Date().toISOString() });
+  localStorage.setItem('matte_assistant_prefs', JSON.stringify(prefs.slice(-10)));
+}
+function loadBulkPreferences() {
+  try { return JSON.parse(localStorage.getItem('matte_bulk_prefs') || '[]'); }
+  catch { return []; }
+}
+function saveBulkPreference(instruction) {
+  const prefs = loadBulkPreferences();
+  if (prefs.some(p => p.instruction === instruction)) return;
+  prefs.push({ id: Date.now(), instruction, savedAt: new Date().toISOString() });
+  localStorage.setItem('matte_bulk_prefs', JSON.stringify(prefs.slice(-5)));
+  addMsg(`✓ Preferência salva: "${instruction}"`, 'claude');
+}
+async function applyBulkPrefs(emailText) {
+  const prefs = loadBulkPreferences();
+  if (!prefs.length || !API_KEY) return emailText;
+  const instrucoes = prefs.map((p, i) => `${i + 1}. ${p.instruction}`).join('\n');
+  const prompt = `Aplique as seguintes preferências ao e-mail abaixo e retorne APENAS o e-mail modificado, sem comentários adicionais.\n\nPREFERÊNCIAS:\n${instrucoes}\n\nE-MAIL:\n${emailText}`;
+  try {
+    const result = await callClaude([{ role: 'user', content: prompt }], '', 1200);
+    return _limparPalavrasProibidas(result);
+  } catch { return emailText; }
+}
 let API_KEY = localStorage.getItem('matte_key') || '';
 
 // ── INIT ──────────────────────────────────────────────────────────
@@ -1392,7 +1424,8 @@ Escreva APENAS o corpo central do e-mail (2 a 3 parágrafos curtos).
 
     // Limpar palavras proibidas e montar e-mail completo: apresentação + corpo + encerramento
     const corpoLimpo    = _limparPalavrasProibidas(text);
-    const emailCompleto = `${PEDRO_EMAIL_INTRO}\n\n${corpoLimpo}\n\n${PEDRO_EMAIL_CLOSING}`;
+    const emailBase     = `${PEDRO_EMAIL_INTRO}\n\n${corpoLimpo}\n\n${PEDRO_EMAIL_CLOSING}`;
+    const emailCompleto = await applyBulkPrefs(emailBase);
 
     ta.value          = emailCompleto;
     S.emails[S.sel]   = emailCompleto;
@@ -1535,19 +1568,23 @@ async function sendChat() {
   inp.value = '';
   addMsg(msg, 'user');
 
-  // Detecta comando de edição em massa
-  if (_detectMassCommand(msg)) {
-    await _handleMassEdit(msg);
-    return;
-  }
-
-  const c = S.sel!==null ? CONTACTS[S.sel] : null;
+  const c          = S.sel !== null ? CONTACTS[S.sel] : null;
   const emailAtual = document.getElementById('ed-body').value;
+  const assPrefs   = loadAssistantPreferences();
+  const bulkPrefs  = loadBulkPreferences();
+
+  const prefsBlock = assPrefs.length
+    ? `\nPREFERÊNCIAS SALVAS DO PEDRO (sempre aplicar nos e-mails individuais):\n${assPrefs.map((p,i)=>`${i+1}. ${p.text}`).join('\n')}\n`
+    : '';
+  const bulkBlock = bulkPrefs.length
+    ? `\nPREFERÊNCIAS EM MASSA SALVAS (já aplicadas automaticamente ao gerar):\n${bulkPrefs.map((p,i)=>`${i+1}. ${p.instruction}`).join('\n')}\n`
+    : '';
+
   const sys = c
     ? `Você é o assistente pessoal de Pedro Aranha, estrategista de tráfego pago.
 
 ${PEDRO_PROFILE}
-
+${prefsBlock}${bulkBlock}
 CONTATO SELECIONADO AGORA:
 - Nome: ${c.name}
 - Empresa: ${c.emp || 'não informado'}
@@ -1559,10 +1596,13 @@ CONTATO SELECIONADO AGORA:
 E-MAIL ATUAL NO EDITOR:
 ${emailAtual || '(vazio)'}
 
+TOTAL DE CONTATOS CARREGADOS: ${CONTACTS.length}
+
 SUAS FUNÇÕES:
 1. Ajustar e-mails do contato selecionado quando Pedro pedir
 2. Aplicar mudanças em MASSA quando Pedro mencionar "todos", "em massa", etc.
 3. Responder perguntas sobre estratégia, copy e tráfego no estilo Pedro
+4. Salvar preferências recorrentes quando Pedro disser "sempre", "salvar isso", "lembrar"
 
 PARA ALTERAÇÕES NO E-MAIL INDIVIDUAL:
 Responda com o e-mail COMPLETO reescrito, precedido pela linha exata: ===EMAIL===
@@ -1577,6 +1617,14 @@ Formato JSON:
   "confirmacao": "mensagem explicando o que será feito e para quantos leads"
 }
 
+PARA SALVAR PREFERÊNCIA INDIVIDUAL (estilo, tom, estrutura do e-mail):
+Se Pedro pedir para salvar algo que se aplica aos e-mails individuais, inclua no final da resposta:
+<SAVE_PREF>descrição clara da preferência a salvar</SAVE_PREF>
+
+PARA SALVAR PREFERÊNCIA EM MASSA (aplicada automaticamente em todos os e-mails gerados):
+Se Pedro pedir para sempre aplicar algo automaticamente em todos os e-mails, inclua:
+<SAVE_BULK>instrução clara a ser aplicada sempre</SAVE_BULK>
+
 REGRAS DE ESTILO (sempre aplicar nos e-mails):
 - Tom Pedro: direto, sem enrolação, provocativo, confiante
 - Frases curtas. Ritmo natural.
@@ -1585,36 +1633,60 @@ REGRAS DE ESTILO (sempre aplicar nos e-mails):
 - Nunca tom professoral ou formal demais`
     : `Você é o assistente pessoal de Pedro Aranha, estrategista de tráfego pago.
 ${PEDRO_PROFILE}
+${prefsBlock}${bulkBlock}
+TOTAL DE CONTATOS CARREGADOS: ${CONTACTS.length}
 Responda no estilo Pedro: direto, sem enrolação, com estratégia real.`;
 
   const loadEl = document.createElement('div');
-  loadEl.className = 'msg-loading'; loadEl.textContent = '● ● ●';
+  loadEl.className = 'msg claude';
+  loadEl.innerHTML = '<div class="dots"><span></span><span></span><span></span></div> Pensando...';
   document.getElementById('msgs').appendChild(loadEl);
   scrollMsgs();
 
-  S.history.push({role:'user', content:msg});
+  // Mantém histórico limitado a 20 mensagens para controlar custo
+  if (S.history.length > 18) S.history = S.history.slice(-18);
+  S.history.push({ role: 'user', content: msg });
+
   try {
-    const reply = await callClaude(S.history, sys, 800);
-    S.history.push({role:'assistant', content:reply});
+    const reply = await callClaude(S.history, sys, 900);
+    S.history.push({ role: 'assistant', content: reply });
     loadEl.remove();
-    if (reply.includes('===MASSA===')) {
-      // Passa para _handleMassEdit processar via JSON estruturado
-      const jsonStr = reply.split('===MASSA===')[1].trim().replace(/```json|```/g,'').trim();
+
+    // Extrair e processar tags especiais antes de exibir
+    let display = reply;
+
+    if (display.includes('<SAVE_PREF>')) {
+      const match = display.match(/<SAVE_PREF>([\s\S]*?)<\/SAVE_PREF>/);
+      if (match) {
+        saveAssistantPreference(match[1].trim());
+        display = display.replace(match[0], '').trim();
+      }
+    }
+    if (display.includes('<SAVE_BULK>')) {
+      const match = display.match(/<SAVE_BULK>([\s\S]*?)<\/SAVE_BULK>/);
+      if (match) {
+        saveBulkPreference(match[1].trim());
+        display = display.replace(match[0], '').trim();
+      }
+    }
+
+    if (display.includes('===MASSA===')) {
+      const jsonStr = display.split('===MASSA===')[1].trim().replace(/```json|```/g, '').trim();
       let plano;
-      try { plano = JSON.parse(jsonStr); } catch(e) { addMsg(reply, 'claude'); return; }
+      try { plano = JSON.parse(jsonStr); } catch { addMsg(display, 'claude'); return; }
       await _processarPlanoMassa(plano);
-    } else if (reply.includes('===EMAIL===')) {
-      const parts = reply.split('===EMAIL===');
+    } else if (display.includes('===EMAIL===')) {
+      const parts = display.split('===EMAIL===');
       if (parts[0].trim()) addMsg(parts[0].trim(), 'claude');
       const ne = _limparPalavrasProibidas(parts[1].trim());
       document.getElementById('ed-body').value = ne;
-      if (S.sel!==null) {
+      if (S.sel !== null) {
         S.emails[S.sel] = ne;
         document.getElementById('gmail-btn').classList.add('visible');
       }
       addMsg('✓ E-mail atualizado no editor!', 'claude');
-    } else {
-      addMsg(reply, 'claude');
+    } else if (display) {
+      addMsg(display, 'claude');
     }
   } catch(e) {
     loadEl.remove();
