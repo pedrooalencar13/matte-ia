@@ -1,7 +1,25 @@
+const axios          = require('axios');
 const templates      = require('../data/emailTemplates');
 const { personalizeEmail }    = require('./emailPersonalizer');
 const sheetsClient   = require('./sheetsClient');
 const { sendEmail }  = require('./gmailSender');
+
+// ── Validação de MX (melhor esforço — falha não bloqueia envio) ───────────────
+async function isEmailValid(email) {
+  if (!email || !email.includes('@')) return false;
+  const domain = email.split('@')[1];
+  if (!domain) return false;
+  try {
+    const res = await axios.get(
+      `https://dns.google/resolve?name=${encodeURIComponent(domain)}&type=MX`,
+      { timeout: 5000 }
+    );
+    const d = res.data;
+    return d.Status === 0 && Array.isArray(d.Answer) && d.Answer.length > 0;
+  } catch {
+    return true; // falha de DNS não bloqueia
+  }
+}
 
 let _running = false;
 let _state   = { running: false, processed: 0, sent: 0, errors: 0, current: '' };
@@ -40,15 +58,27 @@ async function runCadenceJob() {
 
     for (const contato of lote) {
       _state.current = contato.nome || contato.email;
+
+      // ── Validação MX (melhor esforço) ──────────────────────────────────────
+      const emailOk = await isEmailValid(contato.email);
+      if (!emailOk) {
+        console.warn(`[CADENCE-AUTO] Email sem MX: ${contato.email} — marcando como bounce`);
+        await sheetsClient.updateCadenciaStatus(contato.rowIndex, 'bounce').catch(() => {});
+        await sheetsClient.updateCell(contato.rowIndex, sheetsClient.COL.EMAIL_VALIDO, 'nao').catch(() => {});
+        _state.errors++;
+        _state.processed++;
+        continue;
+      }
+
       try {
-        const etapaAtual  = parseInt(contato.cadenciaEtapa || 0);
+        const etapaAtual   = parseInt(contato.cadenciaEtapa || 0);
         const proximaEtapa = etapaAtual + 1;
         const template     = templates[etapaAtual]; // índice 0-based = etapa atual
 
         const corpoPersonalizado = await personalizeEmail(template, contato);
 
         // Pixel de tracking via e-mail hash (compatível com rota /track/open existente)
-        const emailHash     = Buffer.from(contato.email || '').toString('base64url');
+        const emailHash        = Buffer.from(contato.email || '').toString('base64url');
         const trackingPixelUrl = `${BACKEND_URL}/track/open?id=${emailHash}&etapa=${etapaAtual}`;
 
         await sendEmail({
@@ -63,7 +93,6 @@ async function runCadenceJob() {
         proximoEnvio.setDate(proximoEnvio.getDate() + 7);
 
         if (proximaEtapa >= templates.length) {
-          // Cadência concluída após último email
           await sheetsClient.updateCadenciaEtapa(contato.rowIndex, proximaEtapa, '');
           await sheetsClient.updateCadenciaStatus(contato.rowIndex, 'concluida');
         } else {
@@ -83,8 +112,23 @@ async function runCadenceJob() {
         await new Promise(r => setTimeout(r, 2500));
 
       } catch(e) {
+        // ── Detecção de bounce por erro de entrega ──────────────────────────
+        const msg      = (e.message || '').toLowerCase();
+        const isBounce =
+          msg.includes('550') || msg.includes('551') || msg.includes('552') ||
+          msg.includes('553') || msg.includes('554') ||
+          msg.includes('invalid') || msg.includes('does not exist') ||
+          msg.includes('user unknown') || msg.includes('no such user') ||
+          msg.includes('mailbox not found');
+
+        if (isBounce) {
+          console.warn(`[CADENCE-AUTO] Bounce para ${contato.email} — pausando cadência`);
+          await sheetsClient.updateCadenciaStatus(contato.rowIndex, 'bounce').catch(() => {});
+          await sheetsClient.updateCell(contato.rowIndex, sheetsClient.COL.EMAIL_VALIDO, 'bounce').catch(() => {});
+        } else {
+          console.error(`[CADENCE-AUTO] Erro para ${contato.email}:`, e.message);
+        }
         _state.errors++;
-        console.error(`[CADENCE-AUTO] Erro para ${contato.email}:`, e.message);
       }
       _state.processed++;
     }

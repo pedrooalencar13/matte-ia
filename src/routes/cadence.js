@@ -1,5 +1,8 @@
 const express = require('express');
-const { pullFromSheets, updateCadenceRow } = require('../services/sheetsClient');
+const {
+  pullFromSheets, updateCadenceRow,
+  updateCadenciaEtapa, updateCadenciaStatus, updateCell, COL,
+} = require('../services/sheetsClient');
 const { logger } = require('../utils/logger');
 
 const router = express.Router();
@@ -115,6 +118,64 @@ router.get('/history/:email', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// ─── POST /cadence/add-batch ──────────────────────────────────────────────────
+// Ativa cadência para uma lista de contatos por rowIndex
+router.post('/add-batch', async (req, res) => {
+  const { rowIndexes } = req.body;
+  if (!Array.isArray(rowIndexes) || rowIndexes.length === 0)
+    return res.json({ added: 0, skipped: 0 });
+
+  try {
+    const contacts = await pullFromSheets();
+    const rowSet   = new Set(rowIndexes.map(Number));
+    const targets  = contacts.filter(c => rowSet.has(c.rowIndex));
+    let added = 0, skipped = 0;
+
+    for (const c of targets) {
+      if (c.cadenciaStatus === 'ativa') { skipped++; continue; }
+      const etapa   = parseInt(c.cadenciaEtapa || '0');
+      const proximo = c.cadenciaProximo || new Date().toISOString();
+      await updateCadenciaEtapa(c.rowIndex, etapa, proximo);
+      await updateCadenciaStatus(c.rowIndex, 'ativa');
+      added++;
+      logger.info(`[CADENCE] Cadência ativada — rowIndex ${c.rowIndex} (${c.email})`);
+    }
+
+    res.json({ added, skipped });
+  } catch(err) {
+    logger.error('[CADENCE] Erro no add-batch:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /cadence/pause-batch ────────────────────────────────────────────────
+// Pausa cadência para uma lista de contatos por rowIndex
+router.post('/pause-batch', async (req, res) => {
+  const { rowIndexes } = req.body;
+  if (!Array.isArray(rowIndexes) || rowIndexes.length === 0)
+    return res.json({ paused: 0 });
+
+  try {
+    let paused = 0;
+    for (const rowIndex of rowIndexes) {
+      await updateCadenciaStatus(Number(rowIndex), 'pausada');
+      paused++;
+    }
+    logger.info(`[CADENCE] pause-batch: ${paused} contatos pausados`);
+    res.json({ paused });
+  } catch(err) {
+    logger.error('[CADENCE] Erro no pause-batch:', err.message);
+    res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /cadence/check-bounces ─────────────────────────────────────────────
+router.post('/check-bounces', (req, res) => {
+  const { checkBounces } = require('../services/bounceChecker');
+  res.json({ status: 'started' });
+  checkBounces().catch(e => logger.error('[BOUNCE] Erro manual:', e.message));
 });
 
 // ─── POST /cadence/run ────────────────────────────────────────────────────────

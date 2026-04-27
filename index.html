@@ -428,6 +428,10 @@ textarea.cta:focus{border-color:var(--acc)}
         <div class="kpi-label">Emails respondidos</div>
         <div class="kpi-value" id="kpi-replied">—</div>
       </div>
+      <div class="kpi-card" onclick="applyDashboardFilter('bounce')">
+        <div class="kpi-label">Bounces</div>
+        <div class="kpi-value" id="kpi-bounces" style="color:#ff4444">—</div>
+      </div>
     </div>
 
     <!-- ANÁLISE PROFUNDA -->
@@ -576,10 +580,18 @@ textarea.cta:focus{border-color:var(--acc)}
       <button class="btn-refresh" onclick="loadClients()">↻ Atualizar</button>
     </div>
 
+    <div id="bulk-actions-bar" style="display:none;background:#1a1a1a;border:1px solid #2a2a2a;border-radius:8px;padding:12px 16px;margin-bottom:12px;align-items:center;gap:12px;">
+      <span id="selected-count" style="font-size:13px;color:#888;">0 selecionados</span>
+      <button onclick="addSelectedToCadence(event)" style="padding:6px 14px;background:#00c853;border:none;border-radius:6px;color:#000;font-size:13px;font-weight:600;cursor:pointer;">⚡ Iniciar cadência</button>
+      <button onclick="pauseSelectedCadence(event)" style="padding:6px 14px;background:transparent;border:1px solid #f0a500;border-radius:6px;color:#f0a500;font-size:13px;cursor:pointer;">⏸ Pausar cadência</button>
+      <button onclick="clearSelection()" style="padding:6px 14px;background:transparent;border:1px solid #444;border-radius:6px;color:#888;font-size:13px;cursor:pointer;">Limpar seleção</button>
+    </div>
+
     <div class="table-wrap">
       <table class="clients-table">
         <thead>
           <tr>
+            <th style="width:36px;text-align:center"><input type="checkbox" id="check-all" onclick="toggleAllClients(this)" title="Selecionar todos"></th>
             <th onclick="sortClients('name')"    style="cursor:pointer">Nome ↕</th>
             <th onclick="sortClients('email')"   style="cursor:pointer">Email ↕</th>
             <th onclick="sortClients('celular')" style="cursor:pointer">Celular ↕</th>
@@ -587,7 +599,7 @@ textarea.cta:focus{border-color:var(--acc)}
             <th onclick="sortClients('site')"    style="cursor:pointer">Site ↕</th>
             <th onclick="sortClients('city')"    style="cursor:pointer">Cidade ↕</th>
             <th onclick="sortClients('score')"   style="cursor:pointer">Score ↕</th>
-            <th onclick="sortClients('status')"  style="cursor:pointer">Status ↕</th>
+            <th onclick="sortClients('cadence')" style="cursor:pointer">Cadência ↕</th>
             <th onclick="sortClients('created')" style="cursor:pointer">Captado em ↕</th>
             <th>Ação</th>
           </tr>
@@ -3493,6 +3505,17 @@ async function _pollCaptureStatus() {
             banner.className  = 'capt-banner ok';
             banner.innerHTML  = '✓ ' + data.valid + ' novo' + (data.valid > 1 ? 's' : '') + ' cliente' + (data.valid > 1 ? 's' : '') + ' captado' + (data.valid > 1 ? 's' : '') +
               '<div style="font-size:11px;font-weight:400;margin-top:3px;color:#7aaa7a">' + sub + '</div>';
+            // Iniciar cadência automaticamente para os novos clientes
+            (async () => {
+              const logEl2 = document.getElementById('capt-status-log');
+              if (logEl2) logEl2.textContent = 'Iniciando cadência para ' + data.valid + ' novos clientes...';
+              try {
+                await apiFetch('/cadence/run', { method: 'POST' });
+                if (logEl2) logEl2.textContent = '✓ Cadência iniciada para ' + data.valid + ' clientes';
+              } catch(e) {
+                if (logEl2) logEl2.textContent = '⚠ Captação ok, mas falha ao iniciar cadência';
+              }
+            })();
           } else {
             banner.className  = 'capt-banner warn';
             banner.innerHTML  = 'Nenhum novo cliente encontrado' +
@@ -3542,7 +3565,7 @@ function splitPhoneClient(raw) {
 async function loadClients() {
   const tbody = document.getElementById('clients-tbody');
   if (!tbody) return;
-  tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#888;padding:24px;">Carregando...</td></tr>';
+  tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#888;padding:24px;">Carregando...</td></tr>';
   try {
     const res = await apiFetch('/sheets/pull');
     const data = await res.json();
@@ -3552,6 +3575,7 @@ async function loadClients() {
       const fixo     = c.telefoneFixo    || phones.fixo    || '';
       const celular  = c.telefoneCelular || phones.celular || (phones.fixo ? '' : rawPhone) || '';
       return {
+        rowIndex:        parseInt(c.rowIndex || 0),
         name:           (c.nome        || '').trim(),
         lastName:       (c.sobrenome   || '').trim(),
         email:           c.email       || '',
@@ -3573,7 +3597,7 @@ async function loadClients() {
     filterClients();
     updateSidebarBadges();
   } catch(e) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#ff4444;padding:24px;">Erro ao carregar clientes</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#ff4444;padding:24px;">Erro ao carregar clientes</td></tr>';
   }
 }
 
@@ -3599,7 +3623,8 @@ function filterClients() {
       (_scoreFilter === 'low'       && c.score > 0  && c.score < 5) ||
       (_scoreFilter === 'instagram' && !!c.instagram) ||
       (_scoreFilter === 'sent'      && c.emailsSent > 0) ||
-      (_scoreFilter === 'replied'   && c.replied === true);
+      (_scoreFilter === 'replied'   && c.replied === true) ||
+      (_scoreFilter === 'bounce'    && c.cadence === 'bounce');
     return matchSearch && matchScore;
   });
   sortClientsArr();
@@ -3645,10 +3670,11 @@ function sortClientsArr() {
         if (ha !== hb) return (hb - ha) * (dir === -1 ? 1 : -1);
         return a.site.localeCompare(b.site) * dir;
       }
-      case 'email':  return a.email.localeCompare(b.email)   * dir;
-      case 'city':   return a.city.localeCompare(b.city)     * dir;
-      case 'status': return a.status.localeCompare(b.status) * dir;
-      default:       return a.name.localeCompare(b.name)     * dir;
+      case 'email':   return a.email.localeCompare(b.email)     * dir;
+      case 'city':    return a.city.localeCompare(b.city)      * dir;
+      case 'status':  return a.status.localeCompare(b.status)  * dir;
+      case 'cadence': return a.cadence.localeCompare(b.cadence)* dir;
+      default:        return a.name.localeCompare(b.name)      * dir;
     }
   });
 }
@@ -3663,13 +3689,22 @@ function formatCaptDate(val) {
   } catch(e) { return '—'; }
 }
 
+function getCadenceBadge(status) {
+  if (status === 'ativa')    return '<span style="color:#00c853;font-size:12px;">● ativa</span>';
+  if (status === 'pausada')  return '<span style="color:#f0a500;font-size:12px;">⏸ pausada</span>';
+  if (status === 'concluida')return '<span style="color:#555;font-size:12px;">✓ concluída</span>';
+  if (status === 'respondeu')return '<span style="color:#378ADD;font-size:12px;">✉ respondeu</span>';
+  if (status === 'bounce')   return '<span style="color:#ff4444;font-size:12px;">✕ inválido</span>';
+  return '<span style="color:#555;font-size:12px;">' + (status || '—') + '</span>';
+}
+
 function renderClients() {
   const tbody = document.getElementById('clients-tbody');
   if (!tbody) return;
   const start = (_clientsPage - 1) * _clientsPerPage;
   const page  = _filteredClients.slice(start, start + _clientsPerPage);
   if (!page.length) {
-    tbody.innerHTML = '<tr><td colspan="10" style="text-align:center;color:#888;padding:24px;">Nenhum cliente encontrado</td></tr>';
+    tbody.innerHTML = '<tr><td colspan="11" style="text-align:center;color:#888;padding:24px;">Nenhum cliente encontrado</td></tr>';
     document.getElementById('clients-pagination').innerHTML = '';
     return;
   }
@@ -3686,7 +3721,14 @@ function renderClients() {
       '<span class="score-badge ' + scoreClass + '">' + scoreLabel + '</span>' +
       '<div class="tooltip-box">' + scoreTip.replace(/</g,'&lt;').replace(/>/g,'&gt;') + '</div>' +
       '</span>';
+    const safeEmail = (c.email || '').replace(/"/g, '&quot;');
+    const safeName  = (c.name  || '').replace(/"/g, '&quot;');
     return '<tr>' +
+      '<td style="text-align:center;padding:0 8px">' +
+        '<input type="checkbox" class="client-check" ' +
+        'data-row="' + c.rowIndex + '" data-email="' + safeEmail + '" data-nome="' + safeName + '" ' +
+        'onchange="updateBulkActionsBar()">' +
+      '</td>' +
       '<td>' + (fullName || '—') + '</td>' +
       '<td style="color:#888">' + (c.email || '—') + '</td>' +
       '<td style="color:#888;font-size:12px">' + (c.telefoneCelular || '—') + '</td>' +
@@ -3694,12 +3736,91 @@ function renderClients() {
       '<td>' + siteLink + '</td>' +
       '<td style="color:#888">' + (c.city  || '—') + '</td>' +
       '<td>' + scoreCell + '</td>' +
-      '<td style="color:#888;font-size:12px">' + (c.status || '—') + '</td>' +
+      '<td>' + getCadenceBadge(c.cadence) + '</td>' +
       '<td style="color:#888;font-size:12px">' + captDate + '</td>' +
       '<td><button class="btn-email" onclick="selectClientForEmail(\'' + (c.email||'').replace(/'/g,"\\'") + '\',\'' + (c.name||'').replace(/'/g,"\\'") + '\')">✉ Email</button></td>' +
       '</tr>';
   }).join('');
   renderPagination();
+}
+
+// ── SELEÇÃO EM MASSA ──────────────────────────────────────────────────────────
+function toggleAllClients(checkbox) {
+  document.querySelectorAll('.client-check').forEach(c => { c.checked = checkbox.checked; });
+  updateBulkActionsBar();
+}
+
+function updateBulkActionsBar() {
+  const selected = document.querySelectorAll('.client-check:checked');
+  const bar      = document.getElementById('bulk-actions-bar');
+  const count    = document.getElementById('selected-count');
+  if (selected.length > 0) {
+    bar.style.display = 'flex';
+    count.textContent = selected.length + ' selecionado' + (selected.length > 1 ? 's' : '');
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+function clearSelection() {
+  document.querySelectorAll('.client-check').forEach(c => { c.checked = false; });
+  const chkAll = document.getElementById('check-all');
+  if (chkAll) chkAll.checked = false;
+  updateBulkActionsBar();
+}
+
+function getSelectedRowIndexes() {
+  return Array.from(document.querySelectorAll('.client-check:checked'))
+    .map(c => parseInt(c.dataset.row));
+}
+
+async function addSelectedToCadence(event) {
+  const rowIndexes = getSelectedRowIndexes();
+  if (rowIndexes.length === 0) return;
+  const btn = event.target;
+  btn.disabled    = true;
+  btn.textContent = 'Processando...';
+  try {
+    const res  = await apiFetch('/cadence/add-batch', {
+      method: 'POST',
+      body:   JSON.stringify({ rowIndexes }),
+    });
+    const data = await res.json();
+    btn.textContent = '✓ ' + data.added + ' adicionados';
+    setTimeout(() => {
+      btn.textContent = '⚡ Iniciar cadência';
+      btn.disabled    = false;
+      clearSelection();
+      loadClients();
+    }, 2000);
+  } catch(e) {
+    btn.textContent = 'Erro';
+    btn.disabled    = false;
+  }
+}
+
+async function pauseSelectedCadence(event) {
+  const rowIndexes = getSelectedRowIndexes();
+  if (rowIndexes.length === 0) return;
+  const btn = event.target;
+  btn.disabled    = true;
+  btn.textContent = 'Pausando...';
+  try {
+    await apiFetch('/cadence/pause-batch', {
+      method: 'POST',
+      body:   JSON.stringify({ rowIndexes }),
+    });
+    btn.textContent = '✓ Pausado';
+    setTimeout(() => {
+      btn.textContent = '⏸ Pausar cadência';
+      btn.disabled    = false;
+      clearSelection();
+      loadClients();
+    }, 2000);
+  } catch(e) {
+    btn.textContent = 'Erro';
+    btn.disabled    = false;
+  }
 }
 
 function renderPagination() {
@@ -3845,12 +3966,14 @@ async function loadSectionDashboard() {
     const sent    = list.filter(c => c.emailsSent > 0 || c.cadStatus === 'ativa').length;
     const replied = list.filter(c => c.replied).length;
     const ig      = list.filter(c => c.instagram).length;
+    const bounces = list.filter(c => c.cadStatus === 'bounce').length;
 
     setKpi('kpi-total',   total);
     setKpi('kpi-high',    high);
     setKpi('kpi-sent',    sent);
     setKpi('kpi-ig',      ig);
     setKpi('kpi-replied', replied);
+    setKpi('kpi-bounces', bounces);
     updateSidebarBadges();
 
     // Funil

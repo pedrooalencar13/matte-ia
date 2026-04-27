@@ -96,6 +96,15 @@ app.listen(PORT, () => {
   logger.info(`[SERVER] Matte Backend rodando na porta ${PORT}`);
   const { startCadenceScheduler } = require('./src/services/cadenceAutoJob');
   startCadenceScheduler();
+
+  const { checkBounces } = require('./src/services/bounceChecker');
+  // Verificar bounces a cada 6 horas
+  setInterval(async () => {
+    console.log('[BOUNCE] Verificando bounces na caixa de entrada...');
+    await checkBounces();
+  }, 6 * 60 * 60 * 1000);
+  // Primeira verificação 5 minutos após boot
+  setTimeout(() => checkBounces(), 5 * 60 * 1000);
   logger.info(`[SERVER] Origins permitidas: ${ALLOWED_ORIGINS.join(', ')} + localhost`);
 
   // ── Verificação de credenciais na inicialização ──────────────────
