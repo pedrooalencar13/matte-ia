@@ -120,6 +120,21 @@ router.get('/history/:email', async (req, res) => {
   }
 });
 
+// ─── GET /cadence/template/:etapa ────────────────────────────────────────────
+// Retorna template de email por etapa (1-10)
+router.get('/template/:etapa', (req, res) => {
+  const templates = require('../data/emailTemplates');
+  const etapa = parseInt(req.params.etapa);
+  if (etapa > templates.length) {
+    return res.json({ concluida: true, message: 'Cadência concluída', totalEtapas: templates.length });
+  }
+  if (isNaN(etapa) || etapa < 1) {
+    return res.status(400).json({ error: 'Etapa inválida' });
+  }
+  const t = templates[etapa - 1];
+  res.json({ id: t.id, assunto: t.assunto, corpo: t.corpo, etapa, totalEtapas: templates.length });
+});
+
 // ─── POST /cadence/add-batch ──────────────────────────────────────────────────
 // Ativa cadência para uma lista de contatos por rowIndex
 router.post('/add-batch', async (req, res) => {
