@@ -117,4 +117,19 @@ router.get('/history/:email', async (req, res) => {
   }
 });
 
+// ─── POST /cadence/run ────────────────────────────────────────────────────────
+// Dispara cadência automática manualmente (retorna imediatamente, roda em bg)
+router.post('/run', (req, res) => {
+  const { runCadenceJob } = require('../services/cadenceAutoJob');
+  res.json({ status: 'started', message: 'Cadência iniciada em background' });
+  runCadenceJob().catch(e => logger.error('[CADENCE] Erro no run manual:', e.message));
+});
+
+// ─── GET /cadence/auto-status ─────────────────────────────────────────────────
+// Estado do job de cadência automática (separado do /status que usa a planilha)
+router.get('/auto-status', (req, res) => {
+  const { getCadenceState } = require('../services/cadenceAutoJob');
+  res.json(getCadenceState());
+});
+
 module.exports = router;

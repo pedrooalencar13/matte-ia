@@ -637,6 +637,7 @@ textarea.cta:focus{border-color:var(--acc)}
           <span id="hdr-notif-new" style="display:none;position:absolute;top:-4px;right:-4px;background:#f5734a;color:#fff;font-size:9px;font-weight:700;border-radius:20px;padding:1px 5px">0</span>
         </button>
         <button onclick="syncNow()" class="btn-refresh">↻ Sync</button>
+        <button id="cadence-auto-btn" onclick="runCadenceManual()" style="padding:7px 14px;background:transparent;border:1px solid #378ADD;border-radius:6px;color:#378ADD;font-size:13px;cursor:pointer;">⏱ Rodar cadência</button>
         <button onclick="openBulk()" style="padding:7px 14px;background:#00c853;border:none;border-radius:6px;color:#000;font-size:13px;font-weight:600;cursor:pointer;">⚡ Disparo em massa</button>
       </div>
     </div>
@@ -3798,6 +3799,21 @@ async function startRescore() {
     status.textContent  = 'Erro: ' + e.message;
     btn.disabled        = false;
     btn.textContent     = '↻ Reanalisar existentes';
+  }
+}
+
+async function runCadenceManual() {
+  const btn          = document.getElementById('cadence-auto-btn');
+  const originalText = btn.textContent;
+  btn.disabled    = true;
+  btn.textContent = 'Iniciando...';
+  try {
+    await apiFetch('/cadence/run', { method: 'POST' });
+    btn.textContent = '✓ Iniciado';
+    setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 3000);
+  } catch(e) {
+    btn.textContent = 'Erro';
+    setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 3000);
   }
 }
 

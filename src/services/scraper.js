@@ -203,6 +203,17 @@ async function runScraper(options = {}) {
 
     // Inicia enriquecimento profundo em background após 2s
     setTimeout(() => runEnrichmentBatch(leadsParaSalvar.length), 2000);
+
+    // Inicia cadência automática para novos clientes após 10s
+    setTimeout(async () => {
+      try {
+        const { runCadenceJob } = require('./cadenceAutoJob');
+        logger.info('[SCRAPER] Iniciando cadência para novos clientes...');
+        await runCadenceJob();
+      } catch(e) {
+        logger.error('[SCRAPER] Erro ao iniciar cadência:', e.message);
+      }
+    }, 10000);
   }
 
   jobStatus.running  = false;

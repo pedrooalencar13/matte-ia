@@ -51,6 +51,8 @@ app.use(express.json({ limit: '10mb' }));
 const API_SECRET = process.env.API_SECRET;
 app.use((req, res, next) => {
   if (req.path === '/ping' || req.path === '/health') return next();
+  // Rotas de tracking são públicas — chamadas por clientes de email sem API key
+  if (req.path.startsWith('/track/')) return next();
   if (!API_SECRET) return next();
   const key = req.headers['x-api-key'];
   if (key !== API_SECRET) return res.status(401).json({ error: 'Unauthorized' });
@@ -92,6 +94,8 @@ app.use((err, req, res, next) => {
 
 app.listen(PORT, () => {
   logger.info(`[SERVER] Matte Backend rodando na porta ${PORT}`);
+  const { startCadenceScheduler } = require('./src/services/cadenceAutoJob');
+  startCadenceScheduler();
   logger.info(`[SERVER] Origins permitidas: ${ALLOWED_ORIGINS.join(', ')} + localhost`);
 
   // ── Verificação de credenciais na inicialização ──────────────────

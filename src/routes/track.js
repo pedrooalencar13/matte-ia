@@ -5,6 +5,8 @@ const { PIXEL_GIF } = require('../services/gmailSender');
 const { updateCadenceRow } = require('../services/sheetsClient');
 const { logger } = require('../utils/logger');
 
+const { updateCell, COL } = require('../services/sheetsClient');
+
 const router = express.Router();
 const TRACK_FILE = path.join(__dirname, '../data/tracking.json');
 
@@ -120,6 +122,36 @@ router.get('/stats/:email', async (req, res) => {
   } catch (err) {
     res.status(500).json({ error: err.message });
   }
+});
+
+// ─── GET /track/open/:rowIndex ────────────────────────────────────────────────
+// Rota de tracking por rowIndex (usada pelo cadenceAutoJob)
+router.get('/open/:rowIndex', async (req, res) => {
+  res.set('Content-Type', 'image/gif');
+  res.set('Cache-Control', 'no-store, no-cache, must-revalidate');
+  res.send(PIXEL_GIF);
+
+  try {
+    const rowIndex = parseInt(req.params.rowIndex);
+    if (!isNaN(rowIndex) && rowIndex > 1) {
+      await updateCell(rowIndex, COL.ABERTO, 'sim').catch(() => {});
+      logger.info(`[TRACK] Email aberto via rowIndex ${rowIndex}`);
+    }
+  } catch { /* silencioso */ }
+});
+
+// ─── GET /track/click/:rowIndex ───────────────────────────────────────────────
+// Registra clique no CTA e redireciona para Instagram
+router.get('/click/:rowIndex', async (req, res) => {
+  res.redirect('https://instagram.com/pedrocgaaranha');
+
+  try {
+    const rowIndex = parseInt(req.params.rowIndex);
+    if (!isNaN(rowIndex) && rowIndex > 1) {
+      await updateCell(rowIndex, COL.CTA_CLICADO, 'sim').catch(() => {});
+      logger.info(`[TRACK] CTA clicado via rowIndex ${rowIndex}`);
+    }
+  } catch { /* silencioso */ }
 });
 
 module.exports = router;

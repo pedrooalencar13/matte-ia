@@ -59,9 +59,11 @@ const COL = {
   TELEFONE_CEL:  25,
   SITE:          26,
   EMAIL_VALIDO:  27,
+  // Tracking de clique no CTA
+  CTA_CLICADO:   28,
 };
 
-const SHEET_RANGE_READ  = 'A1:AB'; // inclui linha de cabeçalho (sheetRows[0] = header)
+const SHEET_RANGE_READ  = 'A1:AC'; // inclui linha de cabeçalho (sheetRows[0] = header)
 const SHEET_RANGE_WRITE = 'A1';
 
 // ── Auth ──────────────────────────────────────────────────────────────────────
@@ -167,11 +169,12 @@ async function ensureHeaders(sheets, sheetId) {
     [COL.TELEFONE_CEL]: 'Telefone Celular',
     [COL.SITE]:         'Site',
     [COL.EMAIL_VALIDO]: 'Email Valido',
+    [COL.CTA_CLICADO]:  'CTA Clicado',
   };
 
   const res = await sheets.spreadsheets.values.get({
     spreadsheetId: sheetId,
-    range: `${tab()}!A1:AB1`,
+    range: `${tab()}!A1:AC1`,
   });
 
   const header = (res.data.values || [[]])[0] || [];
@@ -373,4 +376,32 @@ async function updateCell(rowNum, colIndex, value) {
   logger.info(`[SHEETS] updateCell(${range}) = "${value}"`);
 }
 
-module.exports = { pullFromSheets, pushToSheets, getExistingEmails, updateCadenceRow, readAll, updateCell };
+// ── Atualização da etapa de cadência por rowIndex ─────────────────────────────
+async function updateCadenciaEtapa(rowIndex, etapa, proximoEnvio) {
+  const sheets  = await getSheetsClient();
+  const sheetId = process.env.SHEET_ID;
+  const data    = [
+    { range: `${tab()}!${indexToCol(COL.CAD_ETAPA)}${rowIndex}`,   values: [[String(etapa)]] },
+    { range: `${tab()}!${indexToCol(COL.CAD_PROXIMO)}${rowIndex}`, values: [[proximoEnvio || '']] },
+  ];
+  await sheets.spreadsheets.values.batchUpdate({
+    spreadsheetId: sheetId,
+    resource: { valueInputOption: 'RAW', data },
+  });
+}
+
+async function updateCadenciaStatus(rowIndex, status) {
+  await updateCell(rowIndex, COL.CAD_STATUS, status);
+}
+
+module.exports = {
+  COL,
+  pullFromSheets,
+  pushToSheets,
+  getExistingEmails,
+  updateCadenceRow,
+  updateCadenciaEtapa,
+  updateCadenciaStatus,
+  readAll,
+  updateCell,
+};
