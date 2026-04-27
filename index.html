@@ -684,6 +684,10 @@ textarea.cta:focus{border-color:var(--acc)}
           </div>
           <div id="ed-tags" class="tags"></div>
         </div>
+        <div id="cadence-step-indicator" style="display:none;background:#1a1a1a;border-radius:6px;padding:6px 12px;font-size:12px;color:#888;margin-bottom:8px;flex-direction:row;justify-content:space-between;align-items:center;border:1px solid #2a2a2a;">
+          <span id="cadence-step-text">Email 1 de 10</span>
+          <span id="cadence-step-status" style="color:#00c853;">● ativa</span>
+        </div>
         <div class="ed-subj">
           <label>Assunto</label>
           <input id="ed-subj" type="text">
@@ -1308,8 +1312,14 @@ function selectContact(i) {
   document.getElementById('ed-subj').value = S.subjects[i] || getSubject(c);
   document.getElementById('ed-body').value = S.emails[i] || '';
   document.getElementById('approve-btn').textContent = S.approved.has(i) ? '✓ Aprovado' : '✓ Aprovar e-mail';
-  if (!S.emails[i]) generateEmail();
-  else document.getElementById('gmail-btn').classList.add('visible');
+  updateCadenceStepIndicator(c);
+  if (c.cadStatus && !S.emails[i]) {
+    loadCadenceEmailForContact(c, i).then(ok => { if (!ok) generateEmail(); });
+  } else if (!S.emails[i]) {
+    generateEmail();
+  } else {
+    document.getElementById('gmail-btn').classList.add('visible');
+  }
 }
 
 function getSubject(c) {
@@ -1317,6 +1327,70 @@ function getSubject(c) {
   if (c.q==='sim') return 'Vamos marcar uma conversa? | Pedro Aranha Gestão de Tráfego';
   if (c.q==='com potencial') return 'Como negócios estão crescendo com tráfego pago | Pedro Aranha';
   return 'Uma solução que pode transformar seus resultados';
+}
+
+function cleanEmailBody(text) {
+  if (!text) return '';
+  return text
+    .replace(/^#+\s+.+$/gm, '')
+    .replace(/\*\*(.+?)\*\*/g, '$1')
+    .replace(/\*(.+?)\*/g, '$1')
+    .replace(/\n{3,}/g, '\n\n')
+    .trim();
+}
+
+function updateCadenceStepIndicator(c) {
+  const el = document.getElementById('cadence-step-indicator');
+  if (!el) return;
+  if (!c || !c.cadStatus) { el.style.display = 'none'; return; }
+  const etapa = parseInt(c.cadEtapa || 0);
+  document.getElementById('cadence-step-text').textContent = `Email ${etapa + 1} de 10`;
+  const statusEl = document.getElementById('cadence-step-status');
+  const colors = { ativa: '#00c853', pausada: '#ff9800', concluida: '#607d8b', bounce: '#f44336' };
+  statusEl.textContent = `● ${c.cadStatus}`;
+  statusEl.style.color = colors[c.cadStatus] || '#888';
+  el.style.display = 'flex';
+}
+
+async function loadCadenceEmailForContact(c, idx) {
+  const etapaAtual = parseInt(c.cadEtapa || 0);
+  const proximaEtapa = etapaAtual + 1;
+  const ta = document.getElementById('ed-body');
+  const subjEl = document.getElementById('ed-subj');
+
+  if (c.cadStatus === 'concluida' || etapaAtual >= 10) {
+    ta.value = 'Cadência concluída para este contato. Todos os 10 emails foram enviados.';
+    return true;
+  }
+  if (c.cadStatus === 'bounce') {
+    ta.value = 'Email inválido (bounce) — não é possível enviar para este endereço.';
+    return true;
+  }
+
+  try {
+    const res = await apiFetch(`/cadence/template/${proximaEtapa}`);
+    const data = await res.json();
+    if (data.concluida) {
+      ta.value = 'Cadência concluída para este contato.';
+      return true;
+    }
+    let corpo = data.corpo || '';
+    if (proximaEtapa === 1 && c.name && c.name !== 'Sem nome') {
+      const primeiro = c.name.split(' ')[0];
+      corpo = corpo.replace('Olá, meu nome é Pedro Aranha', `Olá ${primeiro}, meu nome é Pedro Aranha`);
+    }
+    corpo = cleanEmailBody(corpo);
+    ta.value = corpo;
+    S.emails[idx] = corpo;
+    subjEl.value = data.assunto || getSubject(c);
+    S.subjects[idx] = subjEl.value;
+    document.getElementById('gmail-btn').classList.add('visible');
+    updateCadenceStepIndicator(c);
+    return true;
+  } catch(e) {
+    console.error('loadCadenceEmailForContact erro:', e);
+    return false;
+  }
 }
 
 // ── GENERATE EMAIL ────────────────────────────────────────────────
@@ -1440,8 +1514,9 @@ Escreva APENAS o corpo central do e-mail (2 a 3 parágrafos curtos).
     const emailBase     = `${PEDRO_EMAIL_INTRO}\n\n${corpoLimpo}\n\n${PEDRO_EMAIL_CLOSING}`;
     const emailCompleto = await applyBulkPrefs(emailBase);
 
-    ta.value          = emailCompleto;
-    S.emails[S.sel]   = emailCompleto;
+    const emailLimpo  = cleanEmailBody(emailCompleto);
+    ta.value          = emailLimpo;
+    S.emails[S.sel]   = emailLimpo;
     S.subjects[S.sel] = document.getElementById('ed-subj').value;
     gbtn.classList.add('visible');
     if (leadRespondeu) toast('✦ Follow-up gerado com base na resposta do cliente!');
