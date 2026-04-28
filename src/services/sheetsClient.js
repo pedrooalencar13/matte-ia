@@ -159,8 +159,43 @@ function splitPhone(raw) {
   return { fixo: raw.trim(), celular: '' };
 }
 
+// ── Expande o grid da planilha se o número de colunas for insuficiente ────────
+async function expandSheetIfNeeded(sheets, sheetId, requiredColumns = 30) {
+  try {
+    const meta = await sheets.spreadsheets.get({
+      spreadsheetId: sheetId,
+      includeGridData: false,
+    });
+    const sheet = meta.data.sheets?.find(s => s.properties.title === tab());
+    if (!sheet) return;
+
+    const currentCols = sheet.properties.gridProperties.columnCount;
+    if (currentCols >= requiredColumns) return;
+
+    logger.info(`[SHEETS] Expandindo grid de ${currentCols} para ${requiredColumns} colunas...`);
+    await sheets.spreadsheets.batchUpdate({
+      spreadsheetId: sheetId,
+      resource: {
+        requests: [{
+          updateSheetProperties: {
+            properties: {
+              sheetId: sheet.properties.sheetId,
+              gridProperties: { columnCount: requiredColumns },
+            },
+            fields: 'gridProperties.columnCount',
+          },
+        }],
+      },
+    });
+    logger.info(`[SHEETS] Grid expandido para ${requiredColumns} colunas`);
+  } catch(e) {
+    logger.error('[SHEETS] Erro ao expandir grid:', e.message);
+  }
+}
+
 // ── Verifica/insere cabeçalhos das colunas V-AB na primeira execução ──────────
 async function ensureHeaders(sheets, sheetId) {
+  await expandSheetIfNeeded(sheets, sheetId, 30);
   const EXPECTED = {
     [COL.INSTAGRAM]:    'Instagram',
     [COL.SCORE_IA]:     'Score IA',
@@ -209,6 +244,7 @@ async function pushToSheets(leads) {
   const valid   = leads.filter(l => l.email && l.email.includes('@'));
   const skipped = leads.length - valid.length;
 
+  await expandSheetIfNeeded(sheets, sheetId, 30);
   await ensureHeaders(sheets, sheetId);
 
   const rows = valid.map(lead => {
