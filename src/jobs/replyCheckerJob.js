@@ -114,6 +114,35 @@ Formato da resposta — PRIMEIRA LINHA: assunto do e-mail. SEGUNDA LINHA: ===ASS
     : { assunto: `Re: ${replyData.subject}`, corpo: texto.trim() };
 }
 
+// ── Detecção de auto-replies e spam ──────────────────────────────────────────
+function isAutoReply(data) {
+  const subject = (data.subject || '').toLowerCase();
+  const from    = (data.from    || '').toLowerCase();
+  const body    = (data.bodyClean || data.snippet || '').toLowerCase();
+  const headers = data.headers ? JSON.stringify(data.headers).toLowerCase() : '';
+
+  const autoSenders = ['mailer-daemon', 'postmaster', 'noreply', 'no-reply',
+                       'donotreply', 'do-not-reply', 'bounce', 'auto-reply', 'autoresponder'];
+  if (autoSenders.some(s => from.includes(s))) return true;
+
+  const subjectIndicators = [
+    'auto-reply', 'automatic reply', 'out of office', 'fora do escritório',
+    'delivery status notification', 'undeliverable', 'mail delivery failed',
+    'returned mail', 'vacation', 'ausência', 'férias', 'autoresponder',
+    'this is an automated', 'esta é uma mensagem automática',
+    'sua mensagem foi recebida', 'obrigado por entrar em contato',
+    'em até', 'dias úteis', 'business days', 'responderemos em',
+  ];
+  if (subjectIndicators.some(s => subject.includes(s))) return true;
+
+  if (headers.includes('auto-submitted') ||
+      headers.includes('x-auto-response-suppress') ||
+      headers.includes('"precedence":"bulk"') ||
+      headers.includes('precedence: bulk')) return true;
+
+  return false;
+}
+
 // ── Verificação principal ─────────────────────────────────────────────────────
 async function checkReplies() {
   if (!process.env.GMAIL_CLIENT_ID || !process.env.GMAIL_REFRESH_TOKEN) {
@@ -181,6 +210,16 @@ async function checkReplies() {
 
       if (!sheetEmails.includes(fromEmail))                      { stored.processedIds.push(msg.id); continue; }
       if (updatedReplies.some(r => r.id === msg.id))             { stored.processedIds.push(msg.id); continue; }
+
+      // Ignorar auto-replies (respostas automáticas de servidores e sistemas)
+      const bodyRawCheck = extractBody(detail.data.payload);
+      const checkData = { subject, from: fromHeader, bodyClean: bodyRawCheck.slice(0, 300),
+                          headers: detail.data.payload?.headers };
+      if (isAutoReply(checkData)) {
+        log(`[AUTO-REPLY] Ignorado: "${subject}" de ${fromEmail}`);
+        stored.processedIds.push(msg.id);
+        continue;
+      }
 
       log(`Resposta de lead encontrada: ${fromEmail}`);
 

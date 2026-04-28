@@ -341,19 +341,26 @@ textarea.cta:focus{border-color:var(--acc)}
 .page-btn:hover{color:#fff}
 /* ── SEÇÃO DISPAROS ─────────────────────────────────────────────────*/
 #section-disparos.active{padding:28px;gap:14px}
-#section-disparos .layout{gap:14px}
-#section-disparos .sidebar{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;border-right:none}
+#section-disparos .layout{gap:14px;grid-template-columns:300px 1fr 260px}
+#section-disparos .sidebar{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;border-right:none;display:flex;flex-direction:column;overflow:hidden}
 #section-disparos .editor{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px}
-#section-disparos .chat{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;border-left:none}
+#section-disparos .chat{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;border-left:none;transition:width .2s,min-width .2s}
 #section-disparos .sb-head h2{font-size:12px;text-transform:uppercase;letter-spacing:.04em;color:#888}
-#section-disparos .sb-list{scrollbar-width:thin;scrollbar-color:#2a2a2a transparent}
+#section-disparos .sb-list{flex:1;overflow-y:auto;scrollbar-width:thin;scrollbar-color:#333 transparent}
+#section-disparos .sb-list::-webkit-scrollbar{width:4px}
+#section-disparos .sb-list::-webkit-scrollbar-track{background:transparent}
+#section-disparos .sb-list::-webkit-scrollbar-thumb{background:#333;border-radius:2px}
 #section-disparos .ci:hover{background:#242424}
+#section-disparos .ci.active{background:#242424;border-left:2px solid #00c853}
 #section-disparos textarea.eta{background:#242424;border-color:#2a2a2a;font-size:13px;line-height:1.6;color:#fff}
 #section-disparos .qb{background:#242424;border-color:#2a2a2a;border-radius:4px}
 #section-disparos .qb:hover{border-color:#00c853;color:#e8ede9}
 #section-disparos .chat-head{font-size:14px;font-weight:500}
 #section-disparos .msg.claude{background:#1e1e1e}
 #section-disparos .msg.user{background:#242424}
+.df-btn{padding:4px 10px;background:#242424;border:1px solid #2a2a2a;border-radius:4px;color:#888;font-size:11px;cursor:pointer;white-space:nowrap}
+.df-btn.active{border-color:#00c853;color:#00c853}
+.df-btn:hover{color:#fff}
 /* ── SEÇÃO DASHBOARD ────────────────────────────────────────────────*/
 .kpi-grid{display:grid;grid-template-columns:repeat(5,1fr);gap:14px}
 .kpi-card{background:#1a1a1a;border:1px solid #2a2a2a;border-radius:12px;padding:20px;cursor:pointer;transition:border-color .15s}
@@ -671,6 +678,22 @@ textarea.cta:focus{border-color:var(--acc)}
       <span class="badge" id="sb-badge">—</span>
     </div>
     <div class="sync-bar loading" id="sync-bar">⟳ Carregando Google Sheets...</div>
+    <div style="padding:6px 12px;border-bottom:1px solid #2a2a2a;">
+      <input id="disp-search" type="text" placeholder="🔍 Buscar contato..."
+        oninput="filterDispContacts(this.value)"
+        style="width:100%;padding:6px 10px;background:#242424;border:1px solid #2a2a2a;border-radius:6px;color:#fff;font-size:12px;outline:none;box-sizing:border-box;">
+    </div>
+    <div id="disp-filters" style="padding:8px 10px;border-bottom:1px solid #2a2a2a;display:flex;gap:5px;flex-wrap:wrap;">
+      <button class="df-btn active" onclick="setDispFilter('todos', this)">Todos</button>
+      <button class="df-btn" onclick="setDispFilter('sem-cadencia', this)">Sem email <span id="df-count-sem" style="opacity:0.7"></span></button>
+      <button class="df-btn" onclick="setDispFilter('ativa', this)">Ativa <span id="df-count-ativa" style="opacity:0.7"></span></button>
+      <button class="df-btn" onclick="setDispFilter('pendente', this)">Pendentes <span id="df-count-pendente" style="opacity:0.7"></span></button>
+      <button class="df-btn" onclick="setDispFilter('respondeu', this)">Responderam <span id="df-count-respondeu" style="opacity:0.7"></span></button>
+    </div>
+    <div id="disp-filter-action" style="display:none;padding:7px 12px;background:#0d2e1a;border-bottom:1px solid #00c853;display:none;">
+      <span id="disp-filter-action-text" style="font-size:12px;color:#00c853;"></span>
+      <button onclick="activateFilteredCadence()" style="margin-left:10px;padding:3px 10px;background:#00c853;border:none;border-radius:4px;color:#000;font-size:11px;font-weight:600;cursor:pointer;">⚡ Iniciar cadência</button>
+    </div>
     <div style="padding:4px 12px 0;display:flex;align-items:center;gap:6px;">
       <label style="font-size:11px;color:#666;cursor:pointer;display:flex;align-items:center;gap:5px;">
         <input type="checkbox" id="show-invalid" onchange="toggleInvalidContacts(this)" style="accent-color:#ff4444;">
@@ -725,13 +748,17 @@ textarea.cta:focus{border-color:var(--acc)}
   </div>
 
   <!-- CHAT -->
-  <div class="chat">
-    <div class="chat-head">
-      <div class="cav">✦</div>
-      <div>
-        <div style="font-weight:500;font-size:13px">Assistente Claude</div>
-        <div style="font-size:11px;color:var(--mut)">Peça ajustes ou tire dúvidas</div>
+  <div class="chat" id="chat-panel">
+    <div class="chat-head" style="display:flex;justify-content:space-between;align-items:center;padding:12px 14px;border-bottom:1px solid #2a2a2a;flex-shrink:0;">
+      <div style="display:flex;align-items:center;gap:10px;">
+        <div class="cav">✦</div>
+        <div id="chat-head-text">
+          <div style="font-weight:500;font-size:13px">Assistente Claude</div>
+          <div style="font-size:11px;color:var(--mut)">Peça ajustes ou tire dúvidas</div>
+        </div>
       </div>
+      <button id="chat-toggle" onclick="toggleChat()" title="Minimizar assistente"
+        style="background:transparent;border:none;color:#888;cursor:pointer;font-size:14px;padding:4px;line-height:1;">◀</button>
     </div>
     <div class="msgs" id="msgs">
       <div class="msg claude">Olá! Selecione um contato e clique em ⚡ para gerar o e-mail automaticamente. Posso ajustar o tom, corrigir erros ou reescrever qualquer parte. 🚀</div>
@@ -1186,6 +1213,7 @@ async function loadSheet(showLoading=true) {
         cidade:       cleanCell(r[COL.ACTIVITY]),
         cadStatus:    cleanCell(r[COL.CAD_STATUS]),
         cadEtapa:     cleanCell(r[COL.CAD_ETAPA]),
+        cadProximo:   cleanCell(r[COL.CAD_PROXIMO]),
         aberto:       cleanCell(r[COL.ABERTO]),
         respondido:   cleanCell(r[COL.RESPONDIDO]),
         emailValido:  cleanCell(r[COL.EMAIL_VALIDO] || ''),
@@ -1241,8 +1269,8 @@ function saveKey() {
 }
 
 // ── CLAUDE API ────────────────────────────────────────────────────
-async function callClaude(messages, system='', maxTokens=600) {
-  const body = { model:'claude-haiku-4-5-20251001', max_tokens:maxTokens, messages };
+async function callClaude(messages, system='', maxTokens=600, model='claude-haiku-4-5-20251001') {
+  const body = { model, max_tokens:maxTokens, messages };
   if (system) body.system = system;
   const r = await fetch('https://api.anthropic.com/v1/messages', {
     method: 'POST',
@@ -1279,19 +1307,49 @@ function _limparPalavrasProibidas(texto) {
     .replace(/\bléad\b/gi,  'cliente');
 }
 
+let _dispFilter      = 'todos';
+let _dispSearchQuery = '';
+
 function renderList() {
-  const el = document.getElementById('sb-list');
-  const st = el.scrollTop;
-  el.innerHTML = '';
-  let visible = 0;
+  const el          = document.getElementById('sb-list');
+  const st          = el.scrollTop;
+  el.innerHTML      = '';
+  let visible       = 0;
+  const agora       = new Date();
+  const showInvalid = document.getElementById('show-invalid')?.checked;
+
   CONTACTS.forEach((c, i) => {
     if (S.skipped.has(i)) return;
-    visible++;
+
     const isBounce = c.cadStatus === 'bounce' || c.emailValido === 'nao' || c.emailValido === 'bounce';
+
+    // Bounces só aparecem quando "Mostrar inválidos" está ativo
+    if (isBounce && !showInvalid) return;
+
+    // Filtro de cadência (ignora bounces — eles têm filtro próprio)
+    if (!isBounce && _dispFilter !== 'todos') {
+      if (_dispFilter === 'sem-cadencia' && c.cadStatus && c.cadStatus !== '') return;
+      if (_dispFilter === 'ativa'        && c.cadStatus !== 'ativa')            return;
+      if (_dispFilter === 'pendente') {
+        if (c.cadStatus !== 'ativa')                               return;
+        if (c.cadProximo && new Date(c.cadProximo) > agora)        return;
+      }
+      if (_dispFilter === 'respondeu'    && c.respondido !== 'sim') return;
+    }
+
+    // Busca por texto
+    if (_dispSearchQuery) {
+      const q = _dispSearchQuery;
+      const hit = (c.name   || '').toLowerCase().includes(q) ||
+                  (c.email  || '').toLowerCase().includes(q) ||
+                  (c.cidade || '').toLowerCase().includes(q);
+      if (!hit) return;
+    }
+
+    visible++;
     const d = document.createElement('div');
     d.className = 'ci' + (S.sel===i?' active':'') + (isBounce ? ' contact-item-invalid' : '');
     d.dataset.row = c.rowIndex || '';
-    if (isBounce) d.style.display = document.getElementById('show-invalid')?.checked ? '' : 'none';
     d.onclick = () => selectContact(i);
     const removeBtn = isBounce
       ? `<span onclick="event.stopPropagation();removeFromCadence(${c.rowIndex||0},'${esc(c.name)}')" title="Email inválido — remover da cadência" style="color:#ff4444;cursor:pointer;font-size:12px;padding:0 4px;line-height:1;">✕</span>`
@@ -1305,9 +1363,12 @@ function renderList() {
       <div class="ci-email">${esc(c.email)}</div>`;
     el.appendChild(d);
   });
+
   el.scrollTop = st;
   document.getElementById('sb-badge').textContent = visible;
   document.getElementById('hdr-count').textContent = `${S.approved.size} aprovados · ${visible} contatos`;
+  updateDispFilterCounts();
+  showFilterAction();
 }
 
 // ── SELECT CONTACT ────────────────────────────────────────────────
@@ -1792,7 +1853,7 @@ Responda no estilo Pedro: direto, sem enrolação, com estratégia real.`;
   S.history.push({ role: 'user', content: msg });
 
   try {
-    const reply = await callClaude(S.history, sys, 900);
+    const reply = await callClaude(S.history, sys, 2000, 'claude-sonnet-4-6');
     S.history.push({ role: 'assistant', content: reply });
     loadEl.remove();
 
@@ -1864,6 +1925,121 @@ function addMsg(text, who) {
 }
 function scrollMsgs() { const m = document.getElementById('msgs'); m.scrollTop = m.scrollHeight; }
 function chatKey(e) { if (e.key==='Enter' && !e.shiftKey) { e.preventDefault(); sendChat(); } }
+
+// ── FILTROS PAINEL DISPAROS ────────────────────────────────────────
+function setDispFilter(filter, btn) {
+  _dispFilter = filter;
+  document.querySelectorAll('.df-btn').forEach(b => b.classList.remove('active'));
+  if (btn) btn.classList.add('active');
+  renderList();
+}
+
+function filterDispContacts(query) {
+  _dispSearchQuery = (query || '').toLowerCase();
+  renderList();
+}
+
+function updateDispFilterCounts() {
+  const agora   = new Date();
+  const validos = CONTACTS.filter(c =>
+    c.cadStatus !== 'bounce' && c.cadStatus !== 'removido' &&
+    c.emailValido !== 'nao'  && c.emailValido !== 'bounce'
+  );
+  const semCad    = validos.filter(c => !c.cadStatus || c.cadStatus === '').length;
+  const ativa     = validos.filter(c => c.cadStatus === 'ativa').length;
+  const pendente  = validos.filter(c => {
+    if (c.cadStatus !== 'ativa') return false;
+    if (!c.cadProximo) return true;
+    return new Date(c.cadProximo) <= agora;
+  }).length;
+  const respondeu = validos.filter(c => c.respondido === 'sim').length;
+
+  const set = (id, n) => { const el = document.getElementById(id); if (el) el.textContent = `(${n})`; };
+  set('df-count-sem',      semCad);
+  set('df-count-ativa',    ativa);
+  set('df-count-pendente', pendente);
+  set('df-count-respondeu',respondeu);
+}
+
+function showFilterAction() {
+  const bar  = document.getElementById('disp-filter-action');
+  const text = document.getElementById('disp-filter-action-text');
+  if (!bar) return;
+  const agora   = new Date();
+  const validos = CONTACTS.filter(c =>
+    c.cadStatus !== 'bounce' && c.cadStatus !== 'removido' &&
+    c.emailValido !== 'nao'  && c.emailValido !== 'bounce'
+  );
+  if (_dispFilter === 'sem-cadencia') {
+    const n = validos.filter(c => !c.cadStatus || c.cadStatus === '').length;
+    bar.style.display  = n > 0 ? 'block' : 'none';
+    if (text) text.textContent = `${n} contatos sem email iniciado`;
+  } else if (_dispFilter === 'pendente') {
+    const n = validos.filter(c => {
+      if (c.cadStatus !== 'ativa') return false;
+      if (!c.cadProximo) return true;
+      return new Date(c.cadProximo) <= agora;
+    }).length;
+    bar.style.display  = n > 0 ? 'block' : 'none';
+    if (text) text.textContent = `${n} pendentes para envio`;
+  } else {
+    bar.style.display = 'none';
+  }
+}
+
+async function activateFilteredCadence() {
+  const agora    = new Date();
+  const filtered = CONTACTS.filter(c => {
+    if (c.cadStatus === 'bounce' || c.cadStatus === 'removido') return false;
+    if (c.emailValido === 'nao'  || c.emailValido === 'bounce')  return false;
+    if (_dispFilter === 'sem-cadencia') return !c.cadStatus || c.cadStatus === '';
+    if (_dispFilter === 'pendente') {
+      if (c.cadStatus !== 'ativa') return false;
+      if (!c.cadProximo) return true;
+      return new Date(c.cadProximo) <= agora;
+    }
+    return false;
+  });
+  const rowIndexes = filtered.map(c => c.rowIndex).filter(Boolean);
+  if (rowIndexes.length === 0) return;
+  if (!confirm(`Iniciar cadência para ${rowIndexes.length} contatos?`)) return;
+  try {
+    await apiFetch('/cadence/add-batch', {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rowIndexes })
+    });
+    showToast(`✓ Cadência ativada para ${rowIndexes.length} contatos`);
+    setTimeout(async () => {
+      await apiFetch('/cadence/run', { method: 'POST' });
+      syncNow();
+    }, 2000);
+  } catch(e) { showToast('Erro: ' + e.message, 'error'); }
+}
+
+let _chatExpanded = true;
+function toggleChat() {
+  _chatExpanded = !_chatExpanded;
+  const panel  = document.getElementById('chat-panel');
+  const btn    = document.getElementById('chat-toggle');
+  const body   = document.getElementById('msgs');
+  const qa     = document.getElementById('chat-qa');
+  const inp    = panel?.querySelector('.chat-inp');
+  const htxt   = document.getElementById('chat-head-text');
+  if (!panel) return;
+  if (_chatExpanded) {
+    panel.style.width    = '';
+    panel.style.minWidth = '';
+    btn.textContent = '◀';
+    btn.title = 'Minimizar assistente';
+    [body, qa, inp, htxt].forEach(el => { if (el) el.style.display = ''; });
+  } else {
+    panel.style.width    = '44px';
+    panel.style.minWidth = '44px';
+    btn.textContent = '▶';
+    btn.title = 'Expandir assistente';
+    [body, qa, inp, htxt].forEach(el => { if (el) el.style.display = 'none'; });
+  }
+}
 
 // ── TOAST ─────────────────────────────────────────────────────────
 function toast(msg) {
