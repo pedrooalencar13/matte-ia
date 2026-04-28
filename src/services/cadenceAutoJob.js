@@ -37,100 +37,115 @@ async function runCadenceJob() {
   _state   = { running: true, processed: 0, sent: 0, errors: 0, current: '' };
 
   try {
-    const result   = await sheetsClient.pullFromSheets();
-    const contacts = Array.isArray(result) ? result : (result.contacts || []);
-    const agora    = new Date();
-
-    const pendentes = contacts.filter(c => {
-      if (c.cadenciaStatus !== 'ativa')      return false;
-      if (c.emailRespondido === 'sim')        return false;
-      if (!c.email || !c.email.includes('@')) return false;
-      const etapa = parseInt(c.cadenciaEtapa || 0);
-      if (etapa >= templates.length)          return false;
-      if (!c.cadenciaProximo)                 return true;
-      return new Date(c.cadenciaProximo) <= agora;
-    });
-
-    console.log(`[CADENCE-AUTO] ${pendentes.length} contatos pendentes de envio`);
-
-    const lote = pendentes.slice(0, 50);
     const BACKEND_URL = process.env.BACKEND_PUBLIC_URL || 'https://matte-ia.onrender.com';
+    let continuar = true;
+    let loteNum   = 0;
 
-    for (const contato of lote) {
-      _state.current = contato.nome || contato.email;
+    while (continuar) {
+      // Re-busca planilha a cada lote para refletir atualizações anteriores
+      const result   = await sheetsClient.pullFromSheets();
+      const contacts = Array.isArray(result) ? result : (result.contacts || []);
+      const agora    = new Date();
 
-      // ── Validação MX (melhor esforço) ──────────────────────────────────────
-      const emailOk = await isEmailValid(contato.email);
-      if (!emailOk) {
-        console.warn(`[CADENCE-AUTO] Email sem MX: ${contato.email} — marcando como bounce`);
-        await sheetsClient.updateCadenciaStatus(contato.rowIndex, 'bounce').catch(() => {});
-        await sheetsClient.updateCell(contato.rowIndex, sheetsClient.COL.EMAIL_VALIDO, 'nao').catch(() => {});
-        _state.errors++;
-        _state.processed++;
-        continue;
-      }
+      const pendentes = contacts.filter(c => {
+        if (c.cadenciaStatus !== 'ativa')      return false;
+        if (c.emailRespondido === 'sim')        return false;
+        if (!c.email || !c.email.includes('@')) return false;
+        const etapa = parseInt(c.cadenciaEtapa || 0);
+        if (etapa >= templates.length)          return false;
+        if (!c.cadenciaProximo)                 return true;
+        return new Date(c.cadenciaProximo) <= agora;
+      });
 
-      try {
-        const etapaAtual   = parseInt(contato.cadenciaEtapa || 0);
-        const proximaEtapa = etapaAtual + 1;
-        const template     = templates[etapaAtual]; // índice 0-based = etapa atual
+      if (pendentes.length === 0) { continuar = false; break; }
 
-        const corpoPersonalizado = await personalizeEmail(template, contato);
+      const lote = pendentes.slice(0, 20); // lotes menores
+      loteNum++;
+      console.log(`[CADENCE-AUTO] Lote ${loteNum} — ${lote.length} contatos (${pendentes.length} pendentes total)`);
 
-        // Pixel de tracking via e-mail hash (compatível com rota /track/open existente)
-        const emailHash        = Buffer.from(contato.email || '').toString('base64url');
-        const trackingPixelUrl = `${BACKEND_URL}/track/open?id=${emailHash}&etapa=${etapaAtual}`;
+      for (const contato of lote) {
+        _state.current = contato.nome || contato.email;
 
-        await sendEmail({
-          to:               contato.email,
-          subject:          template.assunto,
-          body:             corpoPersonalizado,
-          trackingPixelUrl,
-          source:           'manual_individual'
-        });
-
-        const proximoEnvio = new Date();
-        proximoEnvio.setDate(proximoEnvio.getDate() + 7);
-
-        if (proximaEtapa >= templates.length) {
-          await sheetsClient.updateCadenciaEtapa(contato.rowIndex, proximaEtapa, '');
-          await sheetsClient.updateCadenciaStatus(contato.rowIndex, 'concluida');
-        } else {
-          await sheetsClient.updateCadenciaEtapa(
-            contato.rowIndex,
-            proximaEtapa,
-            proximoEnvio.toISOString()
-          );
-        }
-
-        _state.sent++;
-        console.log(
-          `[CADENCE-AUTO] ✓ Email ${proximaEtapa}/${templates.length} enviado para ` +
-          `${contato.nome} (${contato.email})`
-        );
-
-        await new Promise(r => setTimeout(r, 2500));
-
-      } catch(e) {
-        // ── Detecção de bounce por erro de entrega ──────────────────────────
-        const msg      = (e.message || '').toLowerCase();
-        const isBounce =
-          msg.includes('550') || msg.includes('551') || msg.includes('552') ||
-          msg.includes('553') || msg.includes('554') ||
-          msg.includes('invalid') || msg.includes('does not exist') ||
-          msg.includes('user unknown') || msg.includes('no such user') ||
-          msg.includes('mailbox not found');
-
-        if (isBounce) {
-          console.warn(`[CADENCE-AUTO] Bounce para ${contato.email} — pausando cadência`);
+        // ── Validação MX (melhor esforço) ────────────────────────────────────
+        const emailOk = await isEmailValid(contato.email);
+        if (!emailOk) {
+          console.warn(`[CADENCE-AUTO] Email sem MX: ${contato.email} — marcando como bounce`);
           await sheetsClient.updateCadenciaStatus(contato.rowIndex, 'bounce').catch(() => {});
-          await sheetsClient.updateCell(contato.rowIndex, sheetsClient.COL.EMAIL_VALIDO, 'bounce').catch(() => {});
-        } else {
-          console.error(`[CADENCE-AUTO] Erro para ${contato.email}:`, e.message);
+          await sheetsClient.updateCell(contato.rowIndex, sheetsClient.COL.EMAIL_VALIDO, 'nao').catch(() => {});
+          _state.errors++;
+          _state.processed++;
+          continue;
         }
-        _state.errors++;
+
+        try {
+          const etapaAtual   = parseInt(contato.cadenciaEtapa || 0);
+          const proximaEtapa = etapaAtual + 1;
+          const template     = templates[etapaAtual]; // índice 0-based = etapa atual
+
+          const corpoPersonalizado = await personalizeEmail(template, contato);
+
+          // Pixel de tracking via e-mail hash (compatível com rota /track/open existente)
+          const emailHash        = Buffer.from(contato.email || '').toString('base64url');
+          const trackingPixelUrl = `${BACKEND_URL}/track/open?id=${emailHash}&etapa=${etapaAtual}`;
+
+          await sendEmail({
+            to:               contato.email,
+            subject:          template.assunto,
+            body:             corpoPersonalizado,
+            trackingPixelUrl,
+            source:           'manual_individual'
+          });
+
+          const proximoEnvio = new Date();
+          proximoEnvio.setDate(proximoEnvio.getDate() + 7);
+
+          if (proximaEtapa >= templates.length) {
+            await sheetsClient.updateCadenciaEtapa(contato.rowIndex, proximaEtapa, '');
+            await sheetsClient.updateCadenciaStatus(contato.rowIndex, 'concluida');
+          } else {
+            await sheetsClient.updateCadenciaEtapa(
+              contato.rowIndex,
+              proximaEtapa,
+              proximoEnvio.toISOString()
+            );
+          }
+
+          _state.sent++;
+          console.log(
+            `[CADENCE-AUTO] ✓ Email ${proximaEtapa}/${templates.length} enviado para ` +
+            `${contato.nome} (${contato.email})`
+          );
+
+          await new Promise(r => setTimeout(r, 2500));
+
+        } catch(e) {
+          // ── Detecção de bounce por erro de entrega ────────────────────────
+          const msg      = (e.message || '').toLowerCase();
+          const isBounce =
+            msg.includes('550') || msg.includes('551') || msg.includes('552') ||
+            msg.includes('553') || msg.includes('554') ||
+            msg.includes('invalid') || msg.includes('does not exist') ||
+            msg.includes('user unknown') || msg.includes('no such user') ||
+            msg.includes('mailbox not found');
+
+          if (isBounce) {
+            console.warn(`[CADENCE-AUTO] Bounce para ${contato.email} — pausando cadência`);
+            await sheetsClient.updateCadenciaStatus(contato.rowIndex, 'bounce').catch(() => {});
+            await sheetsClient.updateCell(contato.rowIndex, sheetsClient.COL.EMAIL_VALIDO, 'bounce').catch(() => {});
+          } else {
+            console.error(`[CADENCE-AUTO] Erro para ${contato.email}:`, e.message);
+          }
+          _state.errors++;
+        }
+        _state.processed++;
       }
-      _state.processed++;
+
+      if (pendentes.length <= 20) {
+        continuar = false;
+      } else {
+        console.log('[CADENCE-AUTO] Pausa de 30s entre lotes...');
+        await new Promise(r => setTimeout(r, 30_000));
+      }
     }
 
   } catch(e) {
