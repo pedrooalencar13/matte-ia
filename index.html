@@ -535,6 +535,13 @@ textarea.cta:focus{border-color:var(--acc)}
           <option value="50">50 resultados</option>
         </select>
 
+        <label class="field-label" style="margin-top:14px">Fonte de captação</label>
+        <select class="field-select" id="capt-source">
+          <option value="outscraper" selected>Outscraper (500/mês grátis)</option>
+          <option value="serp">SerpAPI (100/mês grátis)</option>
+          <option value="apify">Apify (mais dados — requer créditos)</option>
+        </select>
+
         <div class="capt-counter-il" id="capt-counter-inline">0 combinações</div>
         <div class="capt-error-il" id="capt-error-inline"></div>
         <button class="btn-capt-submit" id="capt-submit-inline" onclick="submitCaptureInline()">🔍 Iniciar captação</button>
@@ -3520,14 +3527,18 @@ async function submitCaptureInline() {
     await apiFetch('/scraper/start', {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ terms: _ilTerms, cities: _ilCities, limit }),
+      body: JSON.stringify({ terms: _ilTerms, cities: _ilCities, limit, source: document.getElementById('capt-source')?.value || 'outscraper' }),
     });
     const stopBtn = document.getElementById('capt-stop-btn');
     if (stopBtn) stopBtn.style.display = 'block';
     btn.style.display = 'none';
     _startInlinePolling();
   } catch(err) {
-    errEl.textContent = 'Erro ao iniciar: ' + err.message;
+    let msg = err.message;
+    if (msg && msg.toLowerCase().includes('apify') && (msg.toLowerCase().includes('esgotado') || msg.toLowerCase().includes('credit'))) {
+      msg += ' Use Outscraper ou SerpAPI como alternativa gratuita.';
+    }
+    errEl.textContent = 'Erro ao iniciar: ' + msg;
     errEl.style.display = 'block';
     btn.disabled = false;
     btn.textContent = '🔍 Iniciar captação';

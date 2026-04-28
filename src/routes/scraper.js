@@ -15,13 +15,13 @@ router.post('/start', async (req, res) => {
     });
   }
 
-  const { terms, cities, limit } = req.body || {};
+  const { terms, cities, limit, source } = req.body || {};
   const combinations = (terms || []).length * (cities || []).length || 'padrao';
 
-  logger.info('[SCRAPER] Iniciando job via API...');
+  logger.info(`[SCRAPER] Iniciando job via API (source: ${source || 'apify'})...`);
 
   // Inicia em background — não bloqueia a resposta
-  runScraper({ terms, cities, limit }).catch(err => {
+  runScraper({ terms, cities, limit, source }).catch(err => {
     logger.error('[SCRAPER] Erro no job:', err.message);
   });
 

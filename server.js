@@ -81,6 +81,18 @@ app.use('/tasks',   tasksRouter);
 app.use('/replies',     repliesRouter);
 app.use('/enrichment',  enrichmentRouter);
 
+// ── SERP AUTO ────────────────────────────────────────────────────────────────
+app.post('/scraper/serp-run', async (req, res) => {
+  const { runSerpAutoCron } = require('./src/services/serpAutoService');
+  res.json({ status: 'started', message: 'Busca automática iniciada' });
+  runSerpAutoCron().catch(e => logger.error('[SERP-CRON] Erro manual:', e.message));
+});
+
+app.get('/scraper/serp-status', (req, res) => {
+  const { getAutoStatus } = require('./src/services/serpAutoService');
+  res.json(getAutoStatus());
+});
+
 // ── 404 ─────────────────────────────────────────────────────────────────────
 app.use((req, res) => {
   res.status(404).json({ error: 'Rota não encontrada' });
@@ -96,6 +108,13 @@ app.listen(PORT, () => {
   logger.info(`[SERVER] Matte Backend rodando na porta ${PORT}`);
   const { startCadenceScheduler } = require('./src/services/cadenceAutoJob');
   startCadenceScheduler();
+
+  const { runSerpAutoCron, getAutoStatus } = require('./src/services/serpAutoService');
+  setTimeout(() => {
+    console.log('[SERP-CRON] Agendado — primeira execução em 15 minutos');
+    setTimeout(runSerpAutoCron, 15 * 60 * 1000);
+    setInterval(runSerpAutoCron, 6 * 60 * 60 * 1000);
+  }, 0);
 
   const { checkBounces } = require('./src/services/bounceChecker');
   // Verificar bounces a cada 6 horas

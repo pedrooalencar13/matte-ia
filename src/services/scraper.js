@@ -1,5 +1,10 @@
 const { v4: uuidv4 } = require('uuid');
-const { scrapePlaces } = require('../scrapers/apifyScraper');
+
+function getScraperFn(source) {
+  if (source === 'outscraper') return require('../scrapers/outscraper').scrapePlaces;
+  if (source === 'serp')       return require('../scrapers/serpScraper').scrapePlaces;
+  return require('../scrapers/apifyScraper').scrapePlaces;
+}
 const { scoreLeads } = require('../utils/scorer');
 const { isDuplicate } = require('./deduplicator');
 const { isValidEmail } = require('../utils/validator');
@@ -74,6 +79,8 @@ async function runScraper(options = {}) {
   const terms      = options.terms  || DEFAULT_SEARCH_TERMS;
   const cities     = options.cities || DEFAULT_CITIES;
   const maxPerRun  = options.limit  || parseInt(process.env.SCRAPER_MAX_PER_RUN) || 50;
+  const source     = options.source || 'apify';
+  const scrapePlaces = getScraperFn(source);
   const jobId      = uuidv4().substring(0, 8);
 
   // Reset status
@@ -98,7 +105,7 @@ async function runScraper(options = {}) {
     }
   }
 
-  logger.info(`[SCRAPER] Job ${jobId} — ${combinations.length} combinações de busca (Apify)`);
+  logger.info(`[SCRAPER] Job ${jobId} — ${combinations.length} combinações de busca (${source})`);
 
   // Pré-carrega e-mails existentes para deduplicação
   let sheetEmails = [];
