@@ -656,8 +656,7 @@ textarea.cta:focus{border-color:var(--acc)}
           <span id="hdr-notif-new" style="display:none;position:absolute;top:-4px;right:-4px;background:#f5734a;color:#fff;font-size:9px;font-weight:700;border-radius:20px;padding:1px 5px">0</span>
         </button>
         <button onclick="syncNow()" class="btn-refresh">↻ Sync</button>
-        <button id="cadence-auto-btn" onclick="runCadenceManual()" style="padding:7px 14px;background:transparent;border:1px solid #378ADD;border-radius:6px;color:#378ADD;font-size:13px;cursor:pointer;">⏱ Rodar cadência</button>
-        <button onclick="openBulk()" style="padding:7px 14px;background:#00c853;border:none;border-radius:6px;color:#000;font-size:13px;font-weight:600;cursor:pointer;">⚡ Disparo em massa</button>
+        <button id="cadence-auto-btn" onclick="runCadenceManual()" style="padding:7px 14px;background:#00c853;border:none;border-radius:6px;color:#000;font-size:13px;font-weight:600;cursor:pointer;">⚡ Rodar cadência</button>
       </div>
     </div>
   </div>
@@ -671,6 +670,12 @@ textarea.cta:focus{border-color:var(--acc)}
       <span class="badge" id="sb-badge">—</span>
     </div>
     <div class="sync-bar loading" id="sync-bar">⟳ Carregando Google Sheets...</div>
+    <div style="padding:4px 12px 0;display:flex;align-items:center;gap:6px;">
+      <label style="font-size:11px;color:#666;cursor:pointer;display:flex;align-items:center;gap:5px;">
+        <input type="checkbox" id="show-invalid" onchange="toggleInvalidContacts(this)" style="accent-color:#ff4444;">
+        Mostrar inválidos
+      </label>
+    </div>
     <div class="sb-list" id="sb-list"></div>
   </div>
 
@@ -931,7 +936,8 @@ const SYNC_MS     = 60000;
 const COL         = { NOME:0, SOBRENOME:1, TELEFONE:2, EMAIL:3, EMPRESA:4, CREATED:5,
                       ACTIVITY:6, TAGS:7, SOURCE:8, MEDIUM:9, CAMPAIGN:10, CONTENT:11,
                       FAT:12, URG:13, QUALIF:14, CAD_STATUS:15, CAD_ETAPA:16, CAD_PROXIMO:17,
-                      ABERTO:18, RESPONDIDO:19, DT_RESPOSTA:20 };
+                      ABERTO:18, RESPONDIDO:19, DT_RESPOSTA:20,
+                      EMAIL_VALIDO:27 };
 const BACKEND_URL = 'https://matte-ia.onrender.com';
 const BACKEND_SECRET = 'd19f0790d4e0959b189ff526938be2f8865a2a56521b2de532d997318cee8cf3';
 function apiFetch(path, options = {}) {
@@ -1166,7 +1172,7 @@ async function loadSheet(showLoading=true) {
     if (rows.length < 2) throw new Error('Planilha sem dados.');
     const prevEmail = S.sel !== null ? CONTACTS[S.sel]?.email : null;
     CONTACTS = rows.slice(1)
-      .map(r => ({
+      .map((r, i) => ({
         name:         cleanCell(r[COL.NOME])       || 'Sem nome',
         email:        cleanCell(r[COL.EMAIL]),
         emp:          cleanCell(r[COL.EMPRESA]),
@@ -1181,8 +1187,10 @@ async function loadSheet(showLoading=true) {
         cadEtapa:     cleanCell(r[COL.CAD_ETAPA]),
         aberto:       cleanCell(r[COL.ABERTO]),
         respondido:   cleanCell(r[COL.RESPONDIDO]),
+        emailValido:  cleanCell(r[COL.EMAIL_VALIDO] || ''),
+        rowIndex:     i + 2,
       }))
-      .filter(c => c.email && c.email.includes('@'));
+      .filter(c => c.email && c.email.includes('@') && c.cadStatus !== 'removido');
     // Restaurar aprovados/enviados confirmados pela planilha
     CONTACTS.forEach((c, i) => {
       if (c.aberto === 'sim' || c.respondido === 'sim') {
@@ -1278,15 +1286,22 @@ function renderList() {
   CONTACTS.forEach((c, i) => {
     if (S.skipped.has(i)) return;
     visible++;
+    const isBounce = c.cadStatus === 'bounce' || c.emailValido === 'nao' || c.emailValido === 'bounce';
     const d = document.createElement('div');
-    d.className = 'ci' + (S.sel===i?' active':'');
+    d.className = 'ci' + (S.sel===i?' active':'') + (isBounce ? ' contact-item-invalid' : '');
+    d.dataset.row = c.rowIndex || '';
+    if (isBounce) d.style.display = document.getElementById('show-invalid')?.checked ? '' : 'none';
     d.onclick = () => selectContact(i);
     const advBadge = isAdvogado(c) ? '<span class="tag" style="background:#101820;color:#7ab8f5;border:1px solid #1a2d40;font-size:9px">ADV</span>' : '';
     const cadBadge = c.cadStatus === 'ativa' ? '<span class="tag" style="background:#0d1f0d;color:var(--acc);border:1px solid #1a3a1a;font-size:9px">cad</span>' : '';
+    const removeBtn = isBounce
+      ? `<span onclick="event.stopPropagation();removeFromCadence(${c.rowIndex||0},'${esc(c.name)}')" title="Email inválido — remover da cadência" style="color:#ff4444;cursor:pointer;font-size:12px;padding:0 4px;line-height:1;">✕</span>`
+      : '';
     d.innerHTML = `
       <div class="ci-name">
         <span>${esc(c.name)}</span>
-        ${S.sent.has(i) ? '<span class="ci-check" title="Enviado">✓</span>' : S.approved.has(i) ? '<span class="ci-check" style="color:#b8860b" title="Gerado, não enviado">⏸</span>' : ''}
+        ${getCadenceCheckBadge(c)}${S.approved.has(i) && !getCadenceCheckBadge(c) ? '<span class="ci-check" style="color:#b8860b" title="Gerado, não enviado">⏸</span>' : ''}
+        ${removeBtn}
       </div>
       <div class="ci-email">${esc(c.email)}</div>
       <div class="tags">
@@ -1334,6 +1349,38 @@ function getSubject(c) {
   if (c.q==='sim') return 'Vamos marcar uma conversa? | Pedro Aranha Gestão de Tráfego';
   if (c.q==='com potencial') return 'Como negócios estão crescendo com tráfego pago | Pedro Aranha';
   return 'Uma solução que pode transformar seus resultados';
+}
+
+function getCadenceCheckBadge(c) {
+  const etapa = parseInt(c.cadEtapa || 0);
+  const respondeu = c.respondido === 'sim';
+  const bounce = c.cadStatus === 'bounce' || c.emailValido === 'nao' || c.emailValido === 'bounce';
+  if (bounce)    return '<span style="color:#ff4444;font-size:11px;" title="Email inválido">✕</span>';
+  if (respondeu) return '<span style="color:#378ADD;font-size:11px;" title="Respondeu">✉</span>';
+  if (etapa >= 1) return `<span class="ci-check" style="color:#00c853;" title="${etapa} email(s) enviado(s)">✓ E${etapa}</span>`;
+  return '';
+}
+
+function toggleInvalidContacts(checkbox) {
+  document.querySelectorAll('.contact-item-invalid').forEach(el => {
+    el.style.display = checkbox.checked ? '' : 'none';
+  });
+}
+
+async function removeFromCadence(rowIndex, nome) {
+  if (!confirm(`Remover "${nome}" da cadência?\nO contato ficará oculto mas não será deletado da planilha.`)) return;
+  try {
+    await apiFetch('/cadence/remove', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ rowIndex })
+    });
+    const item = document.querySelector(`[data-row="${rowIndex}"]`);
+    if (item) item.remove();
+    toast(`${nome} removido da cadência`);
+  } catch(e) {
+    alert('Erro ao remover: ' + e.message);
+  }
 }
 
 function cleanEmailBody(text) {
@@ -4010,17 +4057,35 @@ async function startRescore() {
 }
 
 async function runCadenceManual() {
-  const btn          = document.getElementById('cadence-auto-btn');
-  const originalText = btn.textContent;
-  btn.disabled    = true;
-  btn.textContent = 'Iniciando...';
+  const btn = document.getElementById('cadence-auto-btn');
+  const restore = () => { btn.textContent = '⚡ Rodar cadência'; btn.disabled = false; };
+  btn.disabled = true;
+  btn.textContent = 'Verificando...';
   try {
+    const statusData = await apiFetch('/cadence/status').then(r => r.json());
+    const pendentes = statusData.pendentes || 0;
+    if (pendentes === 0) {
+      btn.textContent = '✓ Nenhum pendente';
+      setTimeout(restore, 3000);
+      return;
+    }
+    btn.textContent = `Enviando para ${pendentes} clientes...`;
     await apiFetch('/cadence/run', { method: 'POST' });
-    btn.textContent = '✓ Iniciado';
-    setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 3000);
+    const poll = setInterval(async () => {
+      try {
+        const r = await apiFetch('/cadence/auto-status').then(x => x.json());
+        if (r.running) {
+          btn.textContent = `Enviando... ${r.sent || 0} enviados`;
+        } else {
+          clearInterval(poll);
+          btn.textContent = `✓ ${r.sent || 0} emails enviados`;
+          setTimeout(() => { restore(); syncNow(); }, 3000);
+        }
+      } catch { clearInterval(poll); restore(); }
+    }, 3000);
   } catch(e) {
-    btn.textContent = 'Erro';
-    setTimeout(() => { btn.textContent = originalText; btn.disabled = false; }, 3000);
+    btn.textContent = 'Erro — tente novamente';
+    setTimeout(restore, 3000);
   }
 }
 

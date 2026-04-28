@@ -17,7 +17,18 @@ router.get('/status', async (req, res) => {
       if (stats[s] !== undefined) stats[s]++;
       else stats.semCadencia++;
     });
-    res.json({ ...stats, total: contacts.length });
+    const agora = new Date();
+    const templates = require('../data/emailTemplates');
+    const pendentes = contacts.filter(c => {
+      if (c.cadenciaStatus !== 'ativa')        return false;
+      if (c.emailRespondido === 'sim')          return false;
+      if (!c.email || !c.email.includes('@'))   return false;
+      const etapa = parseInt(c.cadenciaEtapa || 0);
+      if (etapa >= templates.length)            return false;
+      if (!c.cadenciaProximo)                   return true;
+      return new Date(c.cadenciaProximo) <= agora;
+    }).length;
+    res.json({ ...stats, pendentes, total: contacts.length });
   } catch (err) {
     logger.error('[CADENCE] Erro ao buscar status:', err.message);
     res.status(500).json({ error: err.message });
@@ -183,6 +194,20 @@ router.post('/pause-batch', async (req, res) => {
   } catch(err) {
     logger.error('[CADENCE] Erro no pause-batch:', err.message);
     res.status(500).json({ error: err.message });
+  }
+});
+
+// ─── POST /cadence/remove ─────────────────────────────────────────────────────
+router.post('/remove', async (req, res) => {
+  const { rowIndex } = req.body;
+  if (!rowIndex) return res.status(400).json({ error: 'rowIndex obrigatório' });
+  try {
+    await updateCadenciaStatus(Number(rowIndex), 'removido');
+    logger.info(`[CADENCE] Contato linha ${rowIndex} removido da cadência`);
+    res.json({ success: true, rowIndex });
+  } catch(e) {
+    logger.error('[CADENCE] Erro ao remover:', e.message);
+    res.status(500).json({ error: e.message });
   }
 });
 
