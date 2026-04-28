@@ -129,10 +129,10 @@ async function runScraper(options = {}) {
 
     let results = [];
     try {
-      results = await scrapePlaces(query);
+      results = await scrapePlaces(query, maxPerRun);
       jobStatus.found += results.length;
     } catch (err) {
-      logger.error(`[SCRAPER] Erro no Apify para "${query}": ${err.message}`);
+      logger.error(`[SCRAPER][${source}] Erro para "${query}": ${err.message}`);
       jobStatus.errors++;
     }
 

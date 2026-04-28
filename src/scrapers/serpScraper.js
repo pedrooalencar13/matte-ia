@@ -3,8 +3,9 @@ const { scoreLeads } = require('../utils/scorer');
 
 async function scrapePlaces(query, limit = 10) {
   const SERP_API_KEY = process.env.SERP_API_KEY;
+  console.log('[SERP] Key disponível:', !!SERP_API_KEY);
   if (!SERP_API_KEY) {
-    console.warn('[SERP] SERP_API_KEY não configurada');
+    console.warn('[SERP] SERP_API_KEY não configurada — configure no Render Environment');
     return [];
   }
 
