@@ -8,7 +8,7 @@ function getScraperFn(source) {
 const { scoreLeads } = require('../utils/scorer');
 const { isDuplicate } = require('./deduplicator');
 const { isValidEmail } = require('../utils/validator');
-const { getExistingEmails } = require('./sheetsClient');
+const { getExistingEmails, pushToSheets } = require('./sheetsClient');
 const { logger } = require('../utils/logger');
 const { readLeads, writeLeads } = require('../routes/leads');
 const { runEnrichmentBatch } = require('./enrichmentService');
@@ -207,6 +207,16 @@ async function runScraper(options = {}) {
     const allLeads = [...localLeads, ...leadsParaSalvar];
     writeLeads(allLeads);
     logger.success(`[SCRAPER] ${leadsParaSalvar.length} novos leads salvos no cache local`);
+
+    // Enviar para o Google Sheets
+    try {
+      logger.info(`[SCRAPER] Enviando ${leadsParaSalvar.length} leads para o Sheets...`);
+      const sheetsResult = await pushToSheets(leadsParaSalvar);
+      const inserted = sheetsResult?.inserted || sheetsResult?.pushCount || leadsParaSalvar.length;
+      logger.success(`[SHEETS] ${inserted} leads inseridos no Sheets`);
+    } catch(e) {
+      logger.error('[SCRAPER] Erro ao enviar para Sheets:', e.message);
+    }
 
     // Inicia enriquecimento profundo em background após 2s
     setTimeout(() => runEnrichmentBatch(leadsParaSalvar.length), 2000);
