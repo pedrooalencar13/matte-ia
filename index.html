@@ -33,7 +33,7 @@ header{padding:13px 24px;border-bottom:1px solid var(--bor);background:var(--sur
 .btn-sm{padding:5px 10px;font-size:11px;opacity:.8}
 
 /* LAYOUT */
-.layout{display:grid;grid-template-columns:270px 1fr 330px;flex:1;min-height:0;overflow:hidden}
+.layout{display:grid;grid-template-columns:260px 1fr 280px;flex:1;min-height:0;overflow:hidden}
 
 /* SIDEBAR */
 .sidebar{border-right:1px solid var(--bor);background:var(--sur);display:flex;flex-direction:column;overflow:hidden}
@@ -657,6 +657,7 @@ textarea.cta:focus{border-color:var(--acc)}
         </button>
         <button onclick="syncNow()" class="btn-refresh">↻ Sync</button>
         <button id="cadence-auto-btn" onclick="runCadenceManual()" style="padding:7px 14px;background:#00c853;border:none;border-radius:6px;color:#000;font-size:13px;font-weight:600;cursor:pointer;">⚡ Rodar cadência</button>
+        <button onclick="activateAllCadence()" style="padding:7px 14px;background:#0a3a1a;border:1px solid #00c853;border-radius:6px;color:#00c853;font-size:13px;font-weight:600;cursor:pointer;">✦ Ativar todos</button>
       </div>
     </div>
   </div>
@@ -736,16 +737,16 @@ textarea.cta:focus{border-color:var(--acc)}
       <div class="msg claude">Olá! Selecione um contato e clique em ⚡ para gerar o e-mail automaticamente. Posso ajustar o tom, corrigir erros ou reescrever qualquer parte. 🚀</div>
     </div>
     <div class="chat-qa" id="chat-qa">
-      <div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:1px;width:100%;margin-bottom:2px">Ações rápidas:</div>
-      <button class="qb" onclick="quickAsk('Deixe o e-mail mais direto e no estilo Pedro — sem enrolação')">+ direto</button>
-      <button class="qb" onclick="quickAsk('Adicione mais urgência, no estilo provocativo do Pedro')">+ urgência</button>
-      <button class="qb" onclick="quickAsk('Deixe o e-mail mais curto — máximo 3 parágrafos')">+ curto</button>
-      <button class="qb" onclick="quickAsk('Reescreva focando em marcar uma reunião ou call')">marcar call</button>
+      <div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:1px;width:100%;margin-bottom:2px">Este contato:</div>
+      <button class="qb" onclick="quickAction('direto')">+ direto</button>
+      <button class="qb" onclick="quickAction('urgencia')">+ urgência</button>
+      <button class="qb" onclick="quickAction('curto')">+ curto</button>
+      <button class="qb" onclick="quickAction('call')">marcar call</button>
       <div style="font-size:10px;color:var(--mut);text-transform:uppercase;letter-spacing:1px;width:100%;margin-top:6px;margin-bottom:2px">Em massa:</div>
-      <button class="qb" onclick="quickAsk('Adicione a apresentação do Pedro antes do corpo do e-mail de todos os leads')">+ apresentação p/ todos</button>
-      <button class="qb" onclick="quickAsk('Adicione o Instagram @pedrocgaaranha no encerramento de todos os e-mails')">+ Instagram p/ todos</button>
-      <button class="qb" onclick="quickAsk('Reescreva os e-mails de todos os leads qualificados com tom mais direto e urgente')">urgência p/ qualificados</button>
-      <button class="qb" onclick="quickAsk('Reescreva os e-mails de todos os advogados no estilo Pedro — direto e provocativo')">revisar advogados</button>
+      <button class="qb" onclick="quickAction('apresentar')">+ apresentação</button>
+      <button class="qb" onclick="quickAction('instagram')">+ Instagram</button>
+      <button class="qb" onclick="quickAction('qualif')">urgência p/ qualif</button>
+      <button class="qb" onclick="quickAction('adv')">revisar advogados</button>
     </div>
     <div class="chat-inp">
       <textarea class="cta" id="chat-inp" rows="2" placeholder="Peça uma alteração ou faça uma pergunta..." onkeydown="chatKey(event)"></textarea>
@@ -1292,8 +1293,6 @@ function renderList() {
     d.dataset.row = c.rowIndex || '';
     if (isBounce) d.style.display = document.getElementById('show-invalid')?.checked ? '' : 'none';
     d.onclick = () => selectContact(i);
-    const advBadge = isAdvogado(c) ? '<span class="tag" style="background:#101820;color:#7ab8f5;border:1px solid #1a2d40;font-size:9px">ADV</span>' : '';
-    const cadBadge = c.cadStatus === 'ativa' ? '<span class="tag" style="background:#0d1f0d;color:var(--acc);border:1px solid #1a3a1a;font-size:9px">cad</span>' : '';
     const removeBtn = isBounce
       ? `<span onclick="event.stopPropagation();removeFromCadence(${c.rowIndex||0},'${esc(c.name)}')" title="Email inválido — remover da cadência" style="color:#ff4444;cursor:pointer;font-size:12px;padding:0 4px;line-height:1;">✕</span>`
       : '';
@@ -1303,12 +1302,7 @@ function renderList() {
         ${getCadenceCheckBadge(c)}${S.approved.has(i) && !getCadenceCheckBadge(c) ? '<span class="ci-check" style="color:#b8860b" title="Gerado, não enviado">⏸</span>' : ''}
         ${removeBtn}
       </div>
-      <div class="ci-email">${esc(c.email)}</div>
-      <div class="tags">
-        <span class="tag ${tagClass(c.q)}">${esc(c.q)}</span>
-        <span class="tag t-fat">${esc(fatShort(c.fat))}</span>
-        ${advBadge}${cadBadge}
-      </div>`;
+      <div class="ci-email">${esc(c.email)}</div>`;
     el.appendChild(d);
   });
   el.scrollTop = st;
@@ -1738,7 +1732,11 @@ CONTATO SELECIONADO AGORA:
 E-MAIL ATUAL NO EDITOR:
 ${emailAtual || '(vazio)'}
 
-TOTAL DE CONTATOS CARREGADOS: ${CONTACTS.length}
+ESTATÍSTICAS AO VIVO:
+- Total de contatos: ${CONTACTS.length}
+- Cadência ativa: ${CONTACTS.filter(x=>x.cadStatus==='ativa').length}
+- Sem cadência: ${CONTACTS.filter(x=>!x.cadStatus||x.cadStatus==='').length}
+- Responderam: ${CONTACTS.filter(x=>x.respondido==='sim').length}
 
 SUAS FUNÇÕES:
 1. Ajustar e-mails do contato selecionado quando Pedro pedir
@@ -1776,7 +1774,11 @@ REGRAS DE ESTILO (sempre aplicar nos e-mails):
     : `Você é o assistente pessoal de Pedro Aranha, estrategista de tráfego pago.
 ${PEDRO_PROFILE}
 ${prefsBlock}${bulkBlock}
-TOTAL DE CONTATOS CARREGADOS: ${CONTACTS.length}
+ESTATÍSTICAS AO VIVO:
+- Total de contatos: ${CONTACTS.length}
+- Cadência ativa: ${CONTACTS.filter(x=>x.cadStatus==='ativa').length}
+- Sem cadência: ${CONTACTS.filter(x=>!x.cadStatus||x.cadStatus==='').length}
+- Responderam: ${CONTACTS.filter(x=>x.respondido==='sim').length}
 Responda no estilo Pedro: direto, sem enrolação, com estratégia real.`;
 
   const loadEl = document.createElement('div');
@@ -1837,6 +1839,22 @@ Responda no estilo Pedro: direto, sem enrolação, com estratégia real.`;
 }
 
 function quickAsk(msg) { document.getElementById('chat-inp').value = msg; sendChat(); }
+function quickAction(type) {
+  const c = S.sel !== null ? CONTACTS[S.sel] : null;
+  const ctx = c ? ` para ${c.name} (${c.medium||c.especialidade||'geral'}, ${c.cidade||''})` : '';
+  const msgs = {
+    direto:    'Deixe o e-mail mais direto e no estilo Pedro — sem enrolação' + ctx,
+    urgencia:  'Adicione mais urgência, no estilo provocativo do Pedro' + ctx,
+    curto:     'Deixe o e-mail mais curto — máximo 3 parágrafos' + ctx,
+    call:      'Reescreva focando em marcar uma reunião ou call' + ctx,
+    apresentar:'Adicione a apresentação do Pedro antes do corpo do e-mail de todos os leads',
+    instagram: 'Adicione o Instagram @pedrocgaaranha no encerramento de todos os e-mails',
+    qualif:    'Reescreva os e-mails de todos os leads qualificados com tom mais direto e urgente',
+    adv:       'Reescreva os e-mails de todos os advogados no estilo Pedro — direto e provocativo',
+  };
+  document.getElementById('chat-inp').value = msgs[type] || type;
+  sendChat();
+}
 function addMsg(text, who) {
   const d = document.createElement('div');
   d.className = 'msg ' + who;
@@ -4053,6 +4071,19 @@ async function startRescore() {
     status.textContent  = 'Erro: ' + e.message;
     btn.disabled        = false;
     btn.textContent     = '↻ Reanalisar existentes';
+  }
+}
+
+async function activateAllCadence() {
+  const semCad = CONTACTS.filter(c => !c.cadStatus || c.cadStatus === '').length;
+  if (semCad === 0) { alert('Todos os contatos já têm cadência configurada.'); return; }
+  if (!confirm(`Ativar cadência para ${semCad} contatos sem cadência?`)) return;
+  try {
+    const r = await apiFetch('/cadence/activate-all', { method: 'POST' }).then(x => x.json());
+    alert(`✓ ${r.activated} leads ativados na cadência.`);
+    syncNow();
+  } catch(e) {
+    alert('Erro ao ativar: ' + e.message);
   }
 }
 
