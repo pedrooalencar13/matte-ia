@@ -1,6 +1,6 @@
 # Status do Projeto MATTE
 
-## Última atualização: 28/04/2026
+## Última atualização: 29/04/2026
 
 ## Implementado
 
@@ -44,6 +44,13 @@
 - CLAUDE.md com instruções de sessão
 - GET /email/test para diagnóstico Gmail OAuth2
 - GET /ping para keep-alive via cron-job.org (Render plano gratuito)
+- Painel Disparos: barra de busca + 5 filtros clicáveis (Todos/Sem email/Ativa/Pendentes/Responderam)
+  - Botão "⚡ Iniciar cadência" contextual para filtros "Sem email" e "Pendentes"
+  - Bounces ocultos por padrão — visíveis apenas com "Mostrar inválidos"
+  - Campo cadProximo mapeado da planilha (col 17)
+- Detecção de auto-reply em replyCheckerJob.js: isAutoReply() filtra respostas automáticas antes de marcar respondido
+- Chat assistente usa claude-sonnet-4-6 (2000 tokens) para melhor qualidade
+- Assistente colapsável: botão ◀/▶ minimiza para 44px e expande de volta
 - POST /cadence/activate-all + botão "✦ Ativar todos" no header do frontend
 - cadenceAutoJob.js processa em lotes de 20 com rebus da planilha + pausa de 30s entre lotes (sem limite de 50)
 - Interface de contatos limpa: remove tags (qualif, fat, ADV, cad) — exibe só nome + email + badge de etapa
