@@ -2008,36 +2008,46 @@ async function activateFilteredCadence() {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ rowIndexes })
     });
-    showToast(`✓ Cadência ativada para ${rowIndexes.length} contatos`);
+    toast(`✓ Cadência ativada para ${rowIndexes.length} contatos`);
     setTimeout(async () => {
       await apiFetch('/cadence/run', { method: 'POST' });
       syncNow();
     }, 2000);
-  } catch(e) { showToast('Erro: ' + e.message, 'error'); }
+  } catch(e) { toast('Erro: ' + e.message); }
 }
 
 let _chatExpanded = true;
 function toggleChat() {
   _chatExpanded = !_chatExpanded;
-  const panel  = document.getElementById('chat-panel');
-  const btn    = document.getElementById('chat-toggle');
-  const body   = document.getElementById('msgs');
-  const qa     = document.getElementById('chat-qa');
-  const inp    = panel?.querySelector('.chat-inp');
-  const htxt   = document.getElementById('chat-head-text');
-  if (!panel) return;
+  const panel    = document.getElementById('chat-panel');
+  const btn      = document.getElementById('chat-toggle');
+  if (!panel || !btn) return;
+
+  const layout   = panel.closest('.layout');
+  const head     = panel.querySelector('.chat-head');
+  const headLeft = head?.querySelector('div');   // div que contém cav + texto
+  const body     = document.getElementById('msgs');
+  const qa       = document.getElementById('chat-qa');
+  const inp      = panel.querySelector('.chat-inp');
+
   if (_chatExpanded) {
-    panel.style.width    = '';
+    // Expandir
+    if (layout) layout.style.gridTemplateColumns = '300px 1fr 260px';
     panel.style.minWidth = '';
+    panel.style.maxWidth = '';
+    if (head) { head.style.justifyContent = 'space-between'; head.style.padding = '12px 14px'; }
     btn.textContent = '◀';
     btn.title = 'Minimizar assistente';
-    [body, qa, inp, htxt].forEach(el => { if (el) el.style.display = ''; });
+    [headLeft, body, qa, inp].forEach(el => { if (el) el.style.display = ''; });
   } else {
-    panel.style.width    = '44px';
+    // Colapsar
+    if (layout) layout.style.gridTemplateColumns = '300px 1fr 44px';
     panel.style.minWidth = '44px';
+    panel.style.maxWidth = '44px';
+    if (head) { head.style.justifyContent = 'center'; head.style.padding = '12px 8px'; }
     btn.textContent = '▶';
     btn.title = 'Expandir assistente';
-    [body, qa, inp, htxt].forEach(el => { if (el) el.style.display = 'none'; });
+    [headLeft, body, qa, inp].forEach(el => { if (el) el.style.display = 'none'; });
   }
 }
 
